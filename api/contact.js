@@ -7,23 +7,23 @@ export default async function handler(req, res) {
 
   const { name, email, message } = req.body
 
-  try {
-    const data = await resend.emails.send({
-      from: 'jason@myelitedance.com', // <- Hardcoded to test
-      to: 'frontdesk@myelitedance.com',
-      subject: 'New Registration Inquiry',
-      reply_to: [email], // optional but good to keep
-      html: `
-        <h2>New Inquiry</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Message:</strong><br>${message}</p>
-      `,
-    })
+  const { data, error } = await resend.emails.send({
+    from: 'Elite Dance <jason@myelitedance.com>', // formatted "name <email>"
+    to: ['frontdesk@myelitedance.com'],
+    subject: 'New Registration Inquiry',
+    reply_to: [email], // array is safer format
+    html: `
+      <h2>New Inquiry</h2>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Message:</strong><br>${message}</p>
+    `,
+  })
 
-    return res.status(200).json({ success: true, data })
-  } catch (error) {
-    console.error('Email send failed:', error)
-    return res.status(500).json({ error: error.message })
+  if (error) {
+    console.error('Resend error:', error)
+    return res.status(400).json(error)
   }
+
+  return res.status(200).json({ success: true, data })
 }
