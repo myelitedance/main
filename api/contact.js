@@ -1,28 +1,29 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+import { Resend } from 'resend'
 
-  const { name, email, message } = req.body;
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end()
+
+  const { name, email, message } = req.body
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM,
-        to: process.env.EMAIL_TO,
-        subject: 'New Registration Inquiry',
-        html: `<p><strong>Name:</strong> ${name}</p>
-               <p><strong>Email:</strong> ${email}</p>
-               <p><strong>Message:</strong><br>${message}</p>`,
-      }),
-    });
+    const data = await resend.emails.send({
+      from: process.env.EMAIL_FROM,
+      to: process.env.EMAIL_TO,
+      subject: 'New Registration Inquiry',
+      reply_to: email,
+      html: `
+        <h2>New Inquiry</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Message:</strong><br>${message}</p>
+      `,
+    })
 
-    if (!response.ok) throw new Error('Email send failed');
-    res.status(200).json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(200).json({ success: true, data })
+  } catch (error) {
+    console.error('Email send failed:', error)
+    return res.status(500).json({ error: error.message })
   }
 }
