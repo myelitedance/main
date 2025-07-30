@@ -12,7 +12,6 @@ export default async function handler(req, res) {
       from: process.env.EMAIL_FROM,
       to: process.env.EMAIL_TO,
       subject: 'New Registration Inquiry',
-      reply_to: [email],
       html: `
         <h2>New Inquiry</h2>
         <p><strong>Name:</strong> ${name}</p>
