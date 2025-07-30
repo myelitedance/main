@@ -7,11 +7,15 @@ export default async function handler(req, res) {
 
   const { name, email, message } = req.body
 
+  console.log('API Request Received:', { name, email, message })
+  console.log('From:', process.env.EMAIL_FROM)
+  console.log('To:', process.env.EMAIL_TO)
+
   const { data, error } = await resend.emails.send({
-    from: 'Elite Dance <jason@myelitedance.com>', // formatted "name <email>"
-    to: ['frontdesk@myelitedance.com'],
+    from: `Elite Dance <${process.env.EMAIL_FROM}>`,
+    to: [process.env.EMAIL_TO],
     subject: 'New Registration Inquiry',
-    reply_to: [email], // array is safer format
+    reply_to: [email],
     html: `
       <h2>New Inquiry</h2>
       <p><strong>Name:</strong> ${name}</p>
@@ -21,9 +25,10 @@ export default async function handler(req, res) {
   })
 
   if (error) {
-    console.error('Resend error:', error)
-    return res.status(400).json(error)
+    console.error('Resend Email Error:', error)
+    return res.status(400).json({ success: false, error })
   }
 
+  console.log('Resend Success:', data)
   return res.status(200).json({ success: true, data })
 }
