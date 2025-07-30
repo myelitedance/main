@@ -9,15 +9,15 @@ export default async function handler(req, res) {
 
   try {
     const data = await resend.emails.send({
-      from: process.env.EMAIL_FROM,
-      to: process.env.EMAIL_TO,
+      from: 'jason@myelitedance.com', // <- Hardcoded to test
+      to: 'frontdesk@myelitedance.com',
       subject: 'New Registration Inquiry',
+      reply_to: [email], // optional but good to keep
       html: `
         <h2>New Inquiry</h2>
         <p><strong>Name:</strong> ${name}</p>
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Message:</strong><br>${message}</p>
-        <p><stong>Hi!</strong><br></p>
       `,
     })
 
