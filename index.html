@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Dance & Music - Nolensville, TN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dance-purple': '#8B5CF6',
+                        'dance-pink': '#EC4899',
+                        'dance-blue': '#3B82F6',
+                        'dance-gold': '#F59E0B'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Poppins', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #3B82F6 100%); }
+        .dance-shadow { box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15); }
+        .scroll-smooth { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="scroll-smooth">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-sm z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">Elite Dance & Music</h1>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-8">
+                        <a href="#home" class="text-gray-700 hover:text-dance-purple transition-colors">Home</a>
+                        <a href="#about" class="text-gray-700 hover:text-dance-purple transition-colors">About</a>
+                        <a href="#classes" class="text-gray-700 hover:text-dance-purple transition-colors">Classes</a>
+                        <a href="#schedule" class="text-gray-700 hover:text-dance-purple transition-colors">Schedule</a>
+                        <a href="#testimonials" class="text-gray-700 hover:text-dance-purple transition-colors">Testimonials</a>
+                        <a href="#contact" class="text-gray-700 hover:text-dance-purple transition-colors">Contact</a>
+                    </div>
+                </div>
+                <button id="mobile-menu-btn" class="md:hidden p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="md:hidden hidden bg-white border-t">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="#home" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Home</a>
+                <a href="#about" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">About</a>
+                <a href="#classes" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Classes</a>
+                <a href="#schedule" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Schedule</a>
+                <a href="#testimonials" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Testimonials</a>
+                <a href="#contact" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Contact</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="min-h-screen gradient-bg flex items-center justify-center relative overflow-hidden">
+        <div class="absolute inset-0 bg-black/20"></div>
+        <!-- Dance silhouettes -->
+        <div class="absolute top-20 left-10 opacity-10">
+            <svg width="100" height="120" viewBox="0 0 100 120" fill="white">
+                <path d="M50 10 C60 15, 70 25, 65 40 C60 55, 55 70, 50 85 C45 70, 40 55, 35 40 C30 25, 40 15, 50 10 Z"/>
+                <circle cx="50" cy="8" r="6"/>
+                <path d="M35 40 C25 45, 15 50, 20 65 M65 40 C75 45, 85 50, 80 65"/>
+                <path d="M50 85 C45 95, 40 105, 35 115 M50 85 C55 95, 60 105, 65 115"/>
+            </svg>
+        </div>
+        <div class="absolute bottom-20 right-10 opacity-10">
+            <svg width="80" height="100" viewBox="0 0 80 100" fill="white">
+                <path d="M40 5 C45 10, 50 20, 45 30 C40 40, 35 50, 40 65 C45 50, 50 40, 45 30 C50 20, 45 10, 40 5 Z"/>
+                <circle cx="40" cy="3" r="5"/>
+                <path d="M25 30 C15 35, 10 40, 15 50 M55 30 C65 35, 70 40, 65 50"/>
+                <path d="M40 65 C35 75, 30 85, 25 95 M40 65 C45 75, 50 85, 55 95"/>
+            </svg>
+        </div>
+        
+        <div class="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+                Where Dreams Take Flight
+            </h1>
+            <p class="text-xl md:text-2xl mb-8 opacity-90 max-w-2xl mx-auto">
+                Elite Dance & Music in Nolensville, TN - Nurturing dancers of all ages with world-class training in a warm, family-friendly environment
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button onclick="scrollToSection('schedule')" class="bg-white text-dance-purple px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 dance-shadow">
+                    Register Now
+                </button>
+                <button onclick="scrollToSection('about')" class="border-2 border-white text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-dance-purple transition-all">
+                    Learn More
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Us Section -->
+    <section id="about" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Our Story</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Built on a foundation of excellence, community, and the transformative power of dance
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-12 items-center mb-16">
+                <div>
+                    <h3 class="text-3xl font-bold text-dance-purple mb-6">Legacy of Excellence</h3>
+                    <p class="text-gray-700 mb-6 leading-relaxed">
+                        Founded by the visionary Cheri, Elite Dance & Music has been a cornerstone of the Nolensville community for years. Cheri's passion for dance and dedication to nurturing young talent created a studio where technical excellence meets heartfelt mentorship.
+                    </p>
+                    <p class="text-gray-700 leading-relaxed">
+                        Under new ownership, we continue to honor Cheri's legacy while bringing fresh energy and expanded opportunities. Our commitment remains unchanged: providing world-class dance education in an environment where every dancer feels valued, supported, and inspired to reach their full potential.
+                    </p>
+                </div>
+                <div class="bg-white p-8 rounded-2xl dance-shadow">
+                    <div class="text-center">
+                        <div class="w-20 h-20 bg-gradient-to-r from-dance-purple to-dance-pink rounded-full mx-auto mb-6 flex items-center justify-center">
+                            <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <h4 class="text-2xl font-bold text-gray-900 mb-4">Our Values</h4>
+                        <ul class="text-gray-700 space-y-2">
+                            <li>✨ Excellence in every movement</li>
+                            <li>🤝 Inclusive, supportive community</li>
+                            <li>🌟 Individual growth and confidence</li>
+                            <li>❤️ Family-centered approach</li>
+                            <li>🎯 Professional training standards</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Classes Section -->
+    <section id="classes" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Class Offerings</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    From recreational joy to competitive excellence - we have the perfect program for every dancer
+                </p>
+            </div>
+
+            <!-- Program Types -->
+            <div class="grid md:grid-cols-2 gap-8 mb-16">
+                <div class="bg-gradient-to-br from-dance-purple to-dance-pink p-8 rounded-2xl text-white">
+                    <h3 class="text-3xl font-bold mb-6">Recreational Programs</h3>
+                    <p class="mb-6 opacity-90">
+                        Perfect for dancers who want to explore their passion in a fun, supportive environment. Build confidence, make friends, and develop a lifelong love of dance.
+                    </p>
+                    <ul class="space-y-2 opacity-90">
+                        <li>• Ages 2-18 and Adult classes</li>
+                        <li>• Flexible scheduling options</li>
+                        <li>• Performance opportunities</li>
+                        <li>• Focus on fun and fundamentals</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-gradient-to-br from-dance-blue to-dance-gold p-8 rounded-2xl text-white">
+                    <h3 class="text-3xl font-bold mb-6">Competitive Programs</h3>
+                    <p class="mb-6 opacity-90">
+                        For dedicated dancers ready to take their skills to the next level. Intensive training, competition opportunities, and advanced technique development.
+                    </p>
+                    <ul class="space-y-2 opacity-90">
+                        <li>• Audition-based placement</li>
+                        <li>• Regional and national competitions</li>
+                        <li>• Advanced technique training</li>
+                        <li>• Scholarship opportunities</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Dance Styles -->
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition-all">
+                    <div class="w-12 h-12 bg-dance-purple rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-white text-2xl">🩰</span>
+                    </div>
+                    <h4 class="text-xl font-bold text-gray-900 mb-2">Ballet</h4>
+                    <p class="text-gray-600">Classical foundation with proper technique, grace, and artistry</p>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition-all">
+                    <div class="w-12 h-12 bg-dance-pink rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-white text-2xl">👠</span>
+                    </div>
+                    <h4 class="text-xl font-bold text-gray-900 mb-2">Tap</h4>
+                    <p class="text-gray-600">Rhythm, musicality, and precision in this classic American art form</p>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition-all">
+                    <div class="w-12 h-12 bg-dance-blue rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-white text-2xl">🎭</span>
+                    </div>
+                    <h4 class="text-xl font-bold text-gray-900 mb-2">Jazz</h4>
+                    <p class="text-gray-600">High-energy movement with style, attitude, and performance quality</p>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition-all">
+                    <div class="w-12 h-12 bg-dance-gold rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-white text-2xl">🎤</span>
+                    </div>
+                    <h4 class="text-xl font-bold text-gray-900 mb-2">Hip Hop</h4>
+                    <p class="text-gray-600">Urban styles with creativity, self-expression, and street dance culture</p>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition-all">
+                    <div class="w-12 h-12 bg-dance-purple rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-white text-2xl">🤸</span>
+                    </div>
+                    <h4 class="text-xl font-bold text-gray-900 mb-2">Acro</h4>
+                    <p class="text-gray-600">Athletic dance combining tumbling skills with dance technique</p>
+                </div>
+                
+                <div class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition-all">
+                    <div class="w-12 h-12 bg-dance-pink rounded-lg mb-4 flex items-center justify-center">
+                        <span class="text-white text-2xl">✨</span>
+                    </div>
+                    <h4 class="text-xl font-bold text-gray-900 mb-2">& More!</h4>
+                    <p class="text-gray-600">Contemporary, lyrical, musical theater, and specialty workshops</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Schedule & Registration -->
+    <section id="schedule" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Schedule & Registration</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Ready to start your dance journey? We make it easy to find the perfect class and get registered
+                </p>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-12">
+                <div class="bg-white p-8 rounded-2xl dance-shadow">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Class Schedule</h3>
+                    <div class="space-y-4">
+                        <div class="border-l-4 border-dance-purple pl-4">
+                            <h4 class="font-semibold text-gray-900">Tiny Dancers (Ages 2-4)</h4>
+                            <p class="text-gray-600">Saturdays 9:00-9:30 AM</p>
+                        </div>
+                        <div class="border-l-4 border-dance-pink pl-4">
+                            <h4 class="font-semibold text-gray-900">Pre-School Ballet/Tap (Ages 3-5)</h4>
+                            <p class="text-gray-600">Tuesdays 4:00-4:45 PM, Saturdays 10:00-10:45 AM</p>
+                        </div>
+                        <div class="border-l-4 border-dance-blue pl-4">
+                            <h4 class="font-semibold text-gray-900">Elementary Classes (Ages 6-10)</h4>
+                            <p class="text-gray-600">Multiple times throughout the week</p>
+                        </div>
+                        <div class="border-l-4 border-dance-gold pl-4">
+                            <h4 class="font-semibold text-gray-900">Teen & Adult Classes</h4>
+                            <p class="text-gray-600">Evenings and weekend options available</p>
+                        </div>
+                    </div>
+                    <div class="mt-8 p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-600">
+                            <strong>Note:</strong> Full schedule with specific times for all age groups and styles available upon registration. Classes fill quickly - early registration recommended!
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-8 rounded-2xl dance-shadow">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Registration Information</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="font-semibold text-dance-purple mb-2">🗓️ Registration Periods</h4>
+                            <p class="text-gray-700">Fall semester: August - December<br>Spring semester: January - May<br>Summer intensives: June - July</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-dance-purple mb-2">💰 Tuition & Fees</h4>
+                            <p class="text-gray-700">Competitive rates with family discounts available. Payment plans offered to make dance accessible for all families.</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-dance-purple mb-2">👕 Dress Code</h4>
+                            <p class="text-gray-700">Specific attire requirements by class level. Dancewear available for purchase at the studio.</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-dance-purple mb-2">📋 Trial Classes</h4>
+                            <p class="text-gray-700">First class is always free! Come see if Elite Dance & Music is the right fit for your dancer.</p>
+                        </div>
+                    </div>
+                    <button onclick="openRegistrationForm()" class="w-full mt-6 bg-gradient-to-r from-dance-purple to-dance-pink text-white py-4 rounded-lg font-semibold text-lg hover:shadow-lg transition-all">
+                        Start Registration Process
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section id="testimonials" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">What Families Say</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Hear from the parents and dancers who make Elite Dance & Music a special place
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-gray-50 p-8 rounded-2xl">
+                    <div class="flex items-center mb-4">
+                        <div class="flex text-dance-gold">
+                            ⭐⭐⭐⭐⭐
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-6 italic">
+                        "Elite Dance & Music has been such a blessing for our family. My daughter has grown not just as a dancer, but as a confident young woman. The teachers truly care about each child's individual journey."
+                    </p>
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-dance-purple rounded-full flex items-center justify-center text-white font-bold">
+                            SM
+                        </div>
+                        <div class="ml-4">
+                            <p class="font-semibold text-gray-900">Sarah M.</p>
+                            <p class="text-gray-600 text-sm">Dance Mom, 3 years</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-8 rounded-2xl">
+                    <div class="flex items-center mb-4">
+                        <div class="flex text-dance-gold">
+                            ⭐⭐⭐⭐⭐
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-6 italic">
+                        "The level of instruction is incredible, but what sets Elite apart is the family atmosphere. My son started shy and hesitant - now he lights up the stage with confidence!"
+                    </p>
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-dance-pink rounded-full flex items-center justify-center text-white font-bold">
+                            JR
+                        </div>
+                        <div class="ml-4">
+                            <p class="font-semibold text-gray-900">Jennifer R.</p>
+                            <p class="text-gray-600 text-sm">Parent, 2 years</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-8 rounded-2xl">
+                    <div class="flex items-center mb-4">
+                        <div class="flex text-dance-gold">
+                            ⭐⭐⭐⭐⭐
+                        </div>
+                    </div>
+                    <p class="text-gray-700 mb-6 italic">
+                        "From recreational to competitive, Elite has supported our dancer every step of the way. The technique training is top-notch, and the community feels like extended family."
+                    </p>
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-dance-blue rounded-full flex items-center justify-center text-white font-bold">
+                            MT
+                        </div>
+                        <div class="ml-4">
+                            <p class="font-semibold text-gray-900">Mike T.</p>
+                            <p class="text-gray-600 text-sm">Competition Parent, 4 years</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQs -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h2>
+                <p class="text-xl text-gray-600">
+                    Everything new families want to know about joining Elite Dance & Music
+                </p>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-white rounded-lg shadow-sm">
+                    <button class="faq-button w-full text-left p-6 focus:outline-none" onclick="toggleFAQ(this)">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-900">What age groups do you serve?</h3>
+                            <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </button>
+                    <div class="faq-content hidden px-6 pb-6">
+                        <p class="text-gray-700">We welcome dancers from age 2 through adult! Our Tiny Dancers program starts at age 2, and we have classes for preschoolers, elementary, middle school, high school, and adults. Each age group has specially designed curriculum appropriate for their developmental stage.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm">
+                    <button class="faq-button w-full text-left p-6 focus:outline-none" onclick="toggleFAQ(this)">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-900">Do you offer trial classes?</h3>
+                            <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </button>
+                    <div class="faq-content hidden px-6 pb-6">
+                        <p class="text-gray-700">Yes! Your first class is always free. We believe it's important for both dancers and parents to experience our studio culture and teaching style before making a commitment. Just contact us to schedule your trial class.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm">
+                    <button class="faq-button w-full text-left p-6 focus:outline-none" onclick="toggleFAQ(this)">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-900">What's the difference between recreational and competitive programs?</h3>
+                            <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </button>
+                    <div class="faq-content hidden px-6 pb-6">
+                        <p class="text-gray-700">Recreational classes focus on fun, fundamentals, and building a love of dance with one annual recital. Competitive programs involve more intensive training, multiple competitions throughout the year, and require auditions. Both maintain our high standards of instruction - it's about finding the right fit for your dancer's goals and commitment level.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm">
+                    <button class="faq-button w-full text-left p-6 focus:outline-none" onclick="toggleFAQ(this)">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-900">What should my child wear to class?</h3>
+                            <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </button>
+                    <div class="faq-content hidden px-6 pb-6">
+                        <p class="text-gray-700">Each class has specific dress code requirements that will be provided upon registration. Generally, comfortable fitted clothing that allows for movement, with hair pulled back securely. We have dancewear available for purchase at the studio, and our staff is happy to help new families with dress code questions.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm">
+                    <button class="faq-button w-full text-left p-6 focus:outline-none" onclick="toggleFAQ(this)">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-900">Do you offer family discounts?</h3>
+                            <svg class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </button>
+                    <div class="faq-content hidden px-6 pb-6">
+                        <p class="text-gray-700">Absolutely! We offer discounts for multiple children from the same family, and we also have payment plan options to help make dance accessible for all families. Contact us to discuss the best options for your family's situation.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Get In Touch</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Ready to join the Elite Dance & Music family? We'd love to hear from you!
+                </p>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-12">
+                <div>
+                    <div class="bg-gray-50 p-8 rounded-2xl mb-8">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-6">Studio Information</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <div class="w-6 h-6 text-dance-purple mt-1">📍</div>
+                                <div class="ml-4">
+                                    <p class="font-semibold text-gray-900">Location</p>
+                                    <p class="text-gray-700">Nolensville, TN<br>Convenient to Brentwood, Franklin, and surrounding areas</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-6 h-6 text-dance-purple mt-1">📞</div>
+                                <div class="ml-4">
+                                    <p class="font-semibold text-gray-900">Phone</p>
+                                    <p class="text-gray-700">(615) 555-DANCE</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-6 h-6 text-dance-purple mt-1">✉️</div>
+                                <div class="ml-4">
+                                    <p class="font-semibold text-gray-900">Email</p>
+                                    <p class="text-gray-700">info@elitedancemusic.com</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-dance-purple to-dance-pink p-8 rounded-2xl text-white">
+                        <h3 class="text-2xl font-bold mb-4">Follow Us</h3>
+                        <p class="mb-6 opacity-90">Stay connected for class updates, performance videos, and behind-the-scenes moments!</p>
+                        <div class="flex space-x-4">
+                            <a href="#" class="bg-white/20 hover:bg-white/30 p-3 rounded-lg transition-colors">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                                </svg>
+                            </a>
+                            <a href="#" class="bg-white/20 hover:bg-white/30 p-3 rounded-lg transition-colors">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"/>
+                                </svg>
+                            </a>
+                            <a href="#" class="bg-white/20 hover:bg-white/30 p-3 rounded-lg transition-colors">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.174-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24.009 12.017 24.009c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641.001.012.001z"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-8 rounded-2xl">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">Send Us a Message</h3>
+                    <form id="contact-form" class="space-y-6">
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Parent/Guardian Name</label>
+                                <input type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dance-purple focus:border-transparent" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                                <input type="tel" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dance-purple focus:border-transparent" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                            <input type="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dance-purple focus:border-transparent" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Dancer's Name & Age</label>
+                            <input type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dance-purple focus:border-transparent" placeholder="e.g., Emma Smith, Age 8">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Interested In</label>
+                            <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dance-purple focus:border-transparent">
+                                <option>Trial Class</option>
+                                <option>Recreational Programs</option>
+                                <option>Competitive Programs</option>
+                                <option>Schedule Information</option>
+                                <option>General Questions</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                            <textarea rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dance-purple focus:border-transparent" placeholder="Tell us about your dancer's experience level, interests, or any questions you have..."></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-gradient-to-r from-dance-purple to-dance-pink text-white py-4 rounded-lg font-semibold text-lg hover:shadow-lg transition-all">
+                            Send Message
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent mb-4">Elite Dance & Music</h3>
+                    <p class="text-gray-300 mb-4">
+                        Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in Nolensville, TN.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">Facebook</a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">Instagram</a>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#about" class="hover:text-white transition-colors">About Us</a></li>
+                        <li><a href="#classes" class="hover:text-white transition-colors">Class Offerings</a></li>
+                        <li><a href="#schedule" class="hover:text-white transition-colors">Schedule & Registration</a></li>
+                        <li><a href="#contact" class="hover:text-white transition-colors">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Contact Info</h4>
+                    <div class="text-gray-300 space-y-2">
+                        <p>Nolensville, TN</p>
+                        <p>(615) 555-DANCE</p>
+                        <p>info@elitedancemusic.com</p>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; 2024 Elite Dance & Music. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Smooth scrolling function
+        function scrollToSection(sectionId) {
+            document.getElementById(sectionId).scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
+
+        // FAQ toggle function
+        function toggleFAQ(button) {
+            const content = button.nextElementSibling;
+            const icon = button.querySelector('svg');
+            
+            content.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        }
+
+        // Registration form function
+        function openRegistrationForm() {
+            alert('Registration form would open here! For now, please call (615) 555-DANCE or use the contact form below to get started with your free trial class.');
+        }
+
+        // Contact form submission
+        document.getElementById('contact-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Thank you for your message! We\'ll get back to you within 24 hours to discuss your dancer\'s needs and schedule a trial class.');
+            this.reset();
+        });
+
+        // Navbar background on scroll
+        window.addEventListener('scroll', function() {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('bg-white/98');
+                nav.classList.remove('bg-white/95');
+            } else {
+                nav.classList.add('bg-white/95');
+                nav.classList.remove('bg-white/98');
+            }
+        });
+
+        // Close mobile menu when clicking on links
+        document.querySelectorAll('#mobile-menu a').forEach(link => {
+            link.addEventListener('click', function() {
+                document.getElementById('mobile-menu').classList.add('hidden');
+            });
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9671270647ac676a',t:'MTc1MzgzOTY3My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
