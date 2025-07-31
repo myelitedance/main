@@ -734,11 +734,28 @@
         }
 
         // Contact form submission
-        document.getElementById('contact-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Thank you for your message! We\'ll get back to you within 24 hours to discuss your dancer\'s needs and schedule a trial class.');
-            this.reset();
-        });
+        document.getElementById('contact-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const formData = new FormData(form);
+
+  const payload = Object.fromEntries(formData.entries());
+
+  const res = await fetch('/api/contact-form', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (res.ok) {
+    form.reset();
+    alert('Message sent!');
+    toggleForm(false);
+  } else {
+    alert('Something went wrong. Please try again.');
+  }
+});
 
         // Navbar background on scroll
         window.addEventListener('scroll', function() {
