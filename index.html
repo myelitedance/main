@@ -291,14 +291,14 @@
 </div>
 
                 <div class="bg-white p-8 rounded-2xl dance-shadow">
-  <h3 class="text-2xl font-bold text-gray-900 mb-6">Registration Information</h3>
+  <h3 class="text-2xl font-bold text-gray-900 mb-6">Class Information</h3>
 
   <div class="grid md:grid-cols-2 gap-8">
     <div>
-      <h4 class="font-semibold text-dance-purple mb-2">🗓️ Registration Periods</h4>
+      <h4 class="font-semibold text-dance-purple mb-2">🗓️ Class Periods</h4>
       <p class="text-gray-700">
-        Fall semester: August - December<br>
-        Spring semester: January - May<br>
+        Fall Session: August - December<br>
+        Spring Session: January - May<br>
         Summer intensives: June - July
       </p>
     </div>
@@ -381,6 +381,18 @@
     const popup = document.getElementById('popup-form');
     popup.classList.toggle('hidden', !show);
     popup.classList.toggle('flex', show);
+
+    // Reset state when opening
+    if (show) {
+      document.getElementById('dancer-options').classList.remove('hidden');
+      document.getElementById('contact-form').classList.add('hidden');
+      document.getElementById('form-response').classList.add('hidden');
+    }
+  }
+
+  function showNewDancerForm() {
+    document.getElementById('dancer-options').classList.add('hidden');
+    document.getElementById('contact-form').classList.remove('hidden');
   }
 
   document.getElementById('contact-form').addEventListener('submit', async function (e) {
