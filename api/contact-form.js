@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       subject: 'Potential Customer Wants More Information!',
       reply_to: email,
       html: `
-        <h2>New Contact Inquiry</h2>
+        <h2>New Message Inquiry</h2>
         <p><strong>Parent/Guardian Name:</strong> ${parent}</p>
         <p><strong>Phone Number:</strong> ${phone}</p>
         <p><strong>Email:</strong> ${email}</p>
