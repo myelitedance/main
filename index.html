@@ -322,11 +322,15 @@
     </div>
   </div>
 
- <!-- Button -->
-<button onclick="toggleForm(true)" class="bg-gradient-to-r from-dance-purple to-dance-pink text-white py-4 px-6 rounded-lg font-semibold text-lg hover:shadow-lg transition-all">
-  Start Registration Process
-</button>
-
+<!-- Register Now Button -->
+<div class="flex justify-center mt-12 px-4">
+  <button 
+    onclick="toggleForm(true)" 
+    class="w-full max-w-2xl bg-gradient-to-r from-dance-purple to-dance-pink text-white py-5 px-8 rounded-2xl font-semibold text-2xl text-center shadow-lg hover:scale-105 transition-all"
+  >
+    Register Now!
+  </button>
+</div>
 <!-- Modal -->
 <div id="popup-form" class="fixed inset-0 z-50 bg-black/50 hidden items-center justify-center">
   <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-8 relative">
@@ -367,27 +371,42 @@
 
   document.getElementById('contact-form').addEventListener('submit', async function (e) {
     e.preventDefault();
-    
+
     const form = e.target;
     const name = form.name.value;
     const email = form.email.value;
     const message = form.message.value;
+    const responseMsg = document.getElementById('form-response');
+    const submitBtn = form.querySelector('button[type="submit"]');
 
-    const res = await fetch('/api/contact', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, message })
-    });
+    // Disable the button and show sending state
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
 
-    if (res.ok) {
-      form.reset();
-      document.getElementById('form-response').classList.remove('hidden');
-      setTimeout(() => {
-        toggleForm(false);
-        document.getElementById('form-response').classList.add('hidden');
-      }, 2000);
-    } else {
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message })
+      });
+
+      if (res.ok) {
+        form.reset();
+        responseMsg.classList.remove('hidden');
+        submitBtn.textContent = 'Send Message';
+
+        setTimeout(() => {
+          toggleForm(false);
+          responseMsg.classList.add('hidden');
+        }, 3000);
+      } else {
+        throw new Error('Submission failed');
+      }
+    } catch (err) {
+      console.error(err);
       alert('Something went wrong. Please try again.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send Message';
     }
   });
 </script>
