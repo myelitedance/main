@@ -1,102 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elite Dance & Music - Nolensville, TN</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'dance-purple': '#8B5CF6',
-                        'dance-pink': '#EC4899',
-                        'dance-blue': '#3B82F6',
-                        'dance-gold': '#F59E0B',
-                        'dance-green': '#32B486'
-                    }
-                }
-            }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elite Dance & Music - Nolensville, TN</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'dance-purple': '#8B5CF6',
+            'dance-pink': '#EC4899',
+            'dance-blue': '#3B82F6',
+            'dance-gold': '#F59E0B',
+            'dance-green': '#32B486'
+          },
+          fontFamily: {
+            sans: ['Poppins', 'sans-serif']
+          }
         }
-    </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Poppins', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #3B82F6 100%); }
-        .dance-shadow { box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15); }
-        .scroll-smooth { scroll-behavior: smooth; }
-    </style>
-    <script defer src="/_vercel/insights/script.js"></script>
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Poppins', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #3B82F6 100%); }
+    .dance-shadow { box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15); }
+    .scroll-smooth { scroll-behavior: smooth; }
+    .bio-text { max-height: 375px; overflow: hidden; transition: max-height 0.5s ease; }
+    .bio-text.expanded { max-height: 10000px; }
+  </style>
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
-<body class="scroll-smooth">
-    <!-- Navigation -->
-    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-sm z-50 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <h1 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">Elite Dance & Music</h1>
-                </div>
-                <div class="hidden md:block">
-                    <div class="ml-10 flex items-baseline space-x-8">
-                        <a href="index.html#home" class="text-gray-700 hover:text-dance-purple transition-colors">Home</a>
-                        <a href="index.html#about" class="text-gray-700 hover:text-dance-purple transition-colors">About</a>
-                        <a href="index.html#classes" class="text-gray-700 hover:text-dance-purple transition-colors">Classes</a>
-                        <a href="index.html#schedule" class="text-gray-700 hover:text-dance-purple transition-colors">Schedule</a>
-                       <a href="team.html" className="text-dance-purple hover:underline">Meet the Team</a>
-                       <!-- <a href="#testimonials" class="text-gray-700 hover:text-dance-purple transition-colors">Testimonials</a>-->
-                        <a href="index.html/#contact" class="text-gray-700 hover:text-dance-purple transition-colors">Contact</a>
-                    </div>
-                </div>
-                <button id="mobile-menu-btn" class="md:hidden p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-            </div>
+<body class="scroll-smooth bg-gray-50 text-gray-800">
+  <!-- Navigation -->
+  <nav class="fixed top-0 w-full bg-white/90 backdrop-blur-md z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent">Elite Dance & Music</h1>
+        <div class="hidden md:flex space-x-8">
+          <a href="index.html#home" class="text-gray-700 hover:text-dance-purple">Home</a>
+          <a href="index.html#about" class="text-gray-700 hover:text-dance-purple">About</a>
+          <a href="index.html#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
+          <a href="index.html#schedule" class="text-gray-700 hover:text-dance-purple">Schedule</a>
+          <a href="team.html" class="text-dance-purple font-medium underline">Meet the Team</a>
+          <a href="index.html#contact" class="text-gray-700 hover:text-dance-purple">Contact</a>
         </div>
-        <!-- Mobile menu -->
-        <div id="mobile-menu" class="md:hidden hidden bg-white border-t">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <div class="ml-10 flex items-baseline space-x-8">
-                        <a href="index.html#home" class="text-gray-700 hover:text-dance-purple transition-colors">Home</a>
-                        <a href="index.html#about" class="text-gray-700 hover:text-dance-purple transition-colors">About</a>
-                        <a href="index.html#classes" class="text-gray-700 hover:text-dance-purple transition-colors">Classes</a>
-                        <a href="index.html#schedule" class="text-gray-700 hover:text-dance-purple transition-colors">Schedule</a>
-                       <a href="team.html" className="text-dance-purple hover:underline">Meet the Team</a>
-                       <!-- <a href="#testimonials" class="text-gray-700 hover:text-dance-purple transition-colors">Testimonials</a>-->
-                        <a href="index.html/#contact" class="text-gray-700 hover:text-dance-purple transition-colors">Contact</a>
-                    </div>
-        </div>
-    </nav>
-
-<section class="max-w-7xl mx-auto px-6 py-12 mt-20">
-  <h1 class="text-4xl font-bold text-center mb-12 text-dance-purple">Meet the Team</h1>
-
-  <!-- Jason -->
-  <div class="flex flex-col sm:flex-row gap-8 mb-16 bg-white rounded-xl shadow-lg overflow-hidden">
-    <div class="sm:w-1/2">
-      <img src="images/Jason_Bio_Pic.jpg" alt="Jason Pond" class="w-full sm:max-h-[600px] max-h-[500px] object-contain" />
+        <button id="mobile-menu-btn" class="md:hidden p-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+      </div>
     </div>
-    <div class="sm:w-1/2 p-6">
-      <h3 class="text-xl font-semibold text-dance-purple">Jason Pond</h3>
-      <p class="text-sm text-gray-600 mb-2">Co-Owner</p>
+    <div id="mobile-menu" class="md:hidden hidden bg-white border-t px-4 py-4 space-y-2">
+      <a href="index.html#home" class="block text-gray-700 hover:text-dance-purple">Home</a>
+      <a href="index.html#about" class="block text-gray-700 hover:text-dance-purple">About</a>
+      <a href="index.html#classes" class="block text-gray-700 hover:text-dance-purple">Classes</a>
+      <a href="index.html#schedule" class="block text-gray-700 hover:text-dance-purple">Schedule</a>
+      <a href="team.html" class="block text-dance-purple font-medium underline">Meet the Team</a>
+      <a href="index.html#contact" class="block text-gray-700 hover:text-dance-purple">Contact</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+    <h1 class="text-5xl font-bold text-center mb-16 text-dance-purple">Meet the Team</h1>
+    <div class="space-y-16">
+      <!-- TEAM MEMBER CARDS WILL BE INSERTED HERE -->
+
+<!-- Jason -->
+<div class="bg-white rounded-xl shadow-xl p-6 flex flex-col sm:flex-row gap-10 items-center min-h-[650px]">
+  <div class="sm:w-1/2 max-h-[600px] flex items-center justify-center">
+    <img src="images/Jason_Bio_Pic.jpg" alt="Jason Pond" class="w-full h-auto object-contain max-h-[600px]" />
+  </div>
+  <div class="sm:w-1/2">
+    <h3 class="text-xl font-semibold text-dance-purple">Jason Pond</h3>
+    <p class="text-sm text-gray-600 mb-2">Co-Owner</p>
+    <div class="bio-text" id="bio-jason">
       <p class="text-gray-700">
         Jason is one half of the leadership duo behind Elite Dance & Music. A visionary entrepreneur with a passion for helping people grow, he brings energy, creativity, and big-picture thinking to the studio. Whether he’s fine-tuning schedules, cheering on young dancers, or fixing something behind the scenes, Jason is all about building a space where kids thrive and families feel at home.
         <br><br>
         While dance might not be his go-to move (unless his daughters volunteer him), Jason is a firm believer in the power of the arts to shape confidence and character. When he’s not at the studio, you’ll likely find him working on hobbies, walking the dog, going to the gym, or spending quality time with his favorite people — his family.
       </p>
     </div>
+    <button onclick="toggleBio('bio-jason', this)" class="mt-4 text-dance-purple font-semibold hover:underline">More...</button>
   </div>
+</div>
 
-  <!-- Tashara -->
-  <div class="flex flex-col sm:flex-row gap-8 bg-white rounded-xl shadow-lg overflow-hidden">
-    <div class="sm:w-1/2">
-      <img src="images/Tashara_Bio_Pic.jpg" alt="Tashara Pond" class="w-full sm:max-h-[300px] max-h-[200px] object-contain" />
-    </div>
-    <div class="sm:w-1/2 p-6">
-      <h3 class="text-xl font-semibold text-dance-purple">Tashara Pond</h3>
-      <p class="text-sm text-gray-600 mb-2">Co-Owner</p>
+<!-- Tashara -->
+<div class="bg-white rounded-xl shadow-xl p-6 flex flex-col sm:flex-row gap-10 items-center min-h-[650px]">
+  <div class="sm:w-1/2 max-h-[600px] flex items-center justify-center">
+    <img src="images/Tashara_Bio_Pic.jpg" alt="Tashara Pond" class="w-full h-auto object-contain max-h-[300px]" />
+  </div>
+  <div class="sm:w-1/2">
+    <h3 class="text-xl font-semibold text-dance-purple">Tashara Pond</h3>
+    <p class="text-sm text-gray-600 mb-2">Co-Owner</p>
+    <div class="bio-text" id="bio-tashara">
       <p class="text-gray-700">
         Tashara is the heart and calm center of Elite Dance & Music. With a head for details and a heart for people, she keeps everything running smoothly behind the scenes. From finances to operations to supporting the team, she’s the quiet force making sure the magic of dance happens without a hitch.
         <br><br>
@@ -105,7 +107,123 @@
         When not at the studio, Tashara is most often found with her family, curled up with a good book, or organizing the next big adventure.
       </p>
     </div>
+    <button onclick="toggleBio('bio-tashara', this)" class="mt-4 text-dance-purple font-semibold hover:underline">More...</button>
   </div>
-</section>
+</div>
+
+<!-- Lisa Hays -->
+<div class="bg-white rounded-xl shadow-xl p-6 flex flex-col sm:flex-row gap-10 items-center min-h-[650px]">
+  <div class="sm:w-1/2 max-h-[600px] flex items-center justify-center">
+    <img src="images/lisa_hays.webp" alt="Lisa Hays" class="w-full h-auto object-contain max-h-[300px]" />
+  </div>
+  <div class="sm:w-1/2">
+    <h3 class="text-xl font-semibold text-dance-purple">Lisa Hays</h3>
+    <p class="text-sm text-gray-600 mb-2">Mini-Movers & Dance Instructor</p>
+    <div class="bio-text" id="bio-lisa">
+      <p class="text-gray-700">
+        Lisa began dancing at the age of four with The Dorothy Frankovitch School of Theatrical Arts in Las Vegas, Nevada. By the age of ten, she was giving solo performances in pointe and flamenco dance. She competed for a short while with a traveling gymnastics team always doing well in the floor category due to her dance training.
+        <br><br>
+        At 12, Lisa began dancing at UNLV with The Nevada Dance Theater under Artistic Director Vasili Sulich where she danced with the youth company in NDT's performances of Hansel and Gretel and The Nutcracker. Later in high school, she was promoted to the corps de ballet for performances of Vivaldi’s Four Seasons and The Nutcracker. Lisa earned several dance scholarships in college where she was chosen for the elite song and dance troupe “Showtime Company.” They toured during the summers throughout the US and Canada performing in over 70 major cities including Chicago, New York, Montreal, and yes... Nashville.
+        <br><br>
+        It was in college that she added tap, modern, jazz, and clogging to her repertoire. She also began to compete in ballroom dance where she completed her silver medal training in both Latin and Smooth ballroom and took several 1st and 2nd place trophies competing against world-ranked BYU ballroom dance team members. While in college, Lisa began teaching ballet, tap, and jazz classes at the local dance studio and then taught ballroom, ballet, and jazz at The Dance Institute in Las Vegas during her summer breaks.
+        <br><br>
+        In 1984, Lisa married Rusel Hays and they created their seven wonderful children. During her 20-year career as a military wife, Lisa created dance programs on bases in Fairbanks, Alaska and for three years in South Korea. Ms. Lisa believes that every dancer should have a strong foundation in ballet and pulls her teaching style mainly from the Russian "Vaganova" school, but uses terminology from the more commonly found French and Cecchetti methods. “My main goal is to have a fun but well-disciplined class which teaches every child to be self-confident and to love dance.”
+        <br><br>
+        Besides teaching at Elite, Lisa is currently competing in Irish dance and gives private lessons in flute, piano, and harp. She and her husband created the Nashville Fencing Club and coach the fencing teams for multiple local high schools. For the past four years, she has taught hundreds of Ravenwood JROTC cadets formation ballroom routines for their annual Military Ball.
+      </p>
+    </div>
+    <button onclick="toggleBio('bio-lisa', this)" class="mt-4 text-dance-purple font-semibold hover:underline">More...</button>
+  </div>
+</div>
+
+<!-- Stacia Simonsen -->
+<div class="bg-white rounded-xl shadow-xl p-6 flex flex-col sm:flex-row gap-10 items-center min-h-[650px]">
+  <div class="sm:w-1/2 max-h-[600px] flex items-center justify-center">
+    <img src="images/stacia_simonsen.webp" alt="Stacia Simonsen" class="w-full h-auto object-contain max-h-[300px]" />
+  </div>
+  <div class="sm:w-1/2">
+    <h3 class="text-xl font-semibold text-dance-purple">Stacia Simonsen</h3>
+    <p class="text-sm text-gray-600 mb-2">Dance Instructor</p>
+    <div class="bio-text" id="bio-stacia">
+      <p class="text-gray-700">
+        Bio Coming Soon!
+      </p>
+    </div>
+    <button onclick="toggleBio('bio-stacia', this)" class="mt-4 text-dance-purple font-semibold hover:underline">More...</button>
+  </div>
+</div>
+
+<!-- Kiana Renae -->
+<div class="bg-white rounded-xl shadow-xl p-6 flex flex-col sm:flex-row gap-10 items-center min-h-[650px]">
+  <div class="sm:w-1/2 max-h-[600px] flex items-center justify-center">
+    <img src="images/Kiana_Renae.jpg" alt="Kiana Renae" class="w-full h-auto object-contain max-h-[300px]" />
+  </div>
+  <div class="sm:w-1/2">
+    <h3 class="text-xl font-semibold text-dance-purple">Kiana Renae</h3>
+    <p class="text-sm text-gray-600 mb-2">Dance Team Director & Dance Instructor</p>
+    <div class="bio-text" id="bio-kiana">
+      <p class="text-gray-700">
+        Kiana Renae is a dance educator, adjudicator, and coach from Southern New Hampshire. She trained with Saving Grace Dance Ensemble and Boston Community Dance Project, performing in NYC and Boston at venues like Alvin Ailey Studios and Times Square. She toured the Northeast teaching and managing events for Step Up 2 Dance and has adjudicated for KAR, NexStar, and Sheer Elite.
+        <br><br>
+        Now based in Nashville with Fresh Talent Group, Kiana is also an ICF-certified life coach, musician, and board member of Satellite School of the Arts. Her passion is inspiring others through dance, music, and storytelling.
+      </p>
+    </div>
+    <button onclick="toggleBio('bio-kiana', this)" class="mt-4 text-dance-purple font-semibold hover:underline">More...</button>
+  </div>
+</div>
+
+<!-- Molly Pena -->
+<div class="bg-white rounded-xl shadow-xl p-6 flex flex-col sm:flex-row gap-10 items-center min-h-[650px]">
+  <div class="sm:w-1/2 max-h-[600px] flex items-center justify-center">
+    <img src="images/Molly_Pena.webp" alt="Molly Pena" class="w-full h-auto object-contain max-h-[300px]" />
+  </div>
+  <div class="sm:w-1/2">
+    <h3 class="text-xl font-semibold text-dance-purple">Molly Pena</h3>
+    <p class="text-sm text-gray-600 mb-2">Dance Instructor</p>
+    <div class="bio-text" id="bio-molly">
+      <p class="text-gray-700">
+        Molly is a dedicated dance educator committed to cultivating vibrant movers, refined performers, and lifelong students of their craft. She holds a Master of Fine Arts in Dance from the University of Arizona and a Bachelor of Arts in Dance Performance from Chapman University.
+        <br><br>
+        Molly’s academic experience includes teaching appointments at the Gus Giordano Jazz Dance School, California State University, Fullerton, Grossmont College, and Middle Tennessee State University, where she has served as an adjunct professor in the School of Dance.
+        <br><br>
+        As a performer, Molly was a principal dancer with Royal Flux Dance Company—featured on NBC’s World of Dance under the direction of Jaci Royal—and with Talia Favia’s award-winning contemporary company, The Difference Between. During her time in Los Angeles, she also toured with Heidi Duckler Dance Theatre and appeared in various film and television projects as a dancer represented by Go 2 Talent Agency, Inc.
+        <br><br>
+        Molly’s unwavering commitment to dance education, combined with her extensive performance background and dynamic choreographic work, offers her students a unique and holistic perspective on the evolving landscape of contemporary dance.
+      </p>
+    </div>
+    <button onclick="toggleBio('bio-molly', this)" class="mt-4 text-dance-purple font-semibold hover:underline">More...</button>
+  </div>
+</div>
+
+<!-- Kylie Koeppen -->
+<div class="bg-white rounded-xl shadow-xl p-6 flex flex-col sm:flex-row gap-10 items-center min-h-[650px]">
+  <div class="sm:w-1/2 max-h-[600px] flex items-center justify-center">
+    <img src="images/Kylie_Koeppen.webp" alt="Kylie Koeppen" class="w-full h-auto object-contain max-h-[300px]" />
+  </div>
+  <div class="sm:w-1/2">
+    <h3 class="text-xl font-semibold text-dance-purple">Kylie Koeppen</h3>
+    <p class="text-sm text-gray-600 mb-2">Dance Instructor</p>
+    <div class="bio-text" id="bio-kylie">
+      <p class="text-gray-700">
+        Kylie Koeppen has called Nashville home for nearly 6 years and has spent that time trying to better herself and her dance community in all the ways she can. Originally from Indiana, Kylie has a degree in Psychology ABA from Purdue University; but her true passion has always been dance and all things creative.
+        <br><br>
+        Kylie spent some time in New York at the Joffrey Ballet School, studying in their Jazz and Contemporary trainee program and loved every second. During her time in Nashville, Kylie has had the privilege to teach at multiple studios in multiple styles. She is also a signed professional dancer with Fresh Talent Group and when she’s not teaching or in class herself, she is most likely on set or on stage!
+      </p>
+    </div>
+    <button onclick="toggleBio('bio-kylie', this)" class="mt-4 text-dance-purple font-semibold hover:underline">More...</button>
+  </div>
+</div>
+
+<!-- ALL TEAM MEMBERS ADDED -->
+    </div>
+  </section>
+
+  <script>
+    function toggleBio(id, btn) {
+      const el = document.getElementById(id);
+      el.classList.toggle('expanded');
+      btn.textContent = el.classList.contains('expanded') ? 'Less...' : 'More...';
+    }
+  </script>
 </body>
 </html>
