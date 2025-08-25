@@ -81,40 +81,79 @@
   function chicagoMonthYear(d) {
     return new Intl.DateTimeFormat('en-US', { timeZone: TZ, month:'long', year:'numeric' }).format(d)
   }
+  // ---- All‑day range helpers (Chicago) ----
+function chicagoYMDParts(d){ // returns {y,m,d} in America/Chicago
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit' })
+    .formatToParts(d)
+  return {
+    y: parts.find(p=>p.type==='year').value,
+    m: parts.find(p=>p.type==='month').value,
+    d: parts.find(p=>p.type==='day').value,
+  }
+}
+function chicagoAddDays(ymd, days){ // ymd = 'YYYY-MM-DD'
+  const dt = new Date(ymd+'T12:00:00') // noon avoids DST edges
+  dt.setDate(dt.getDate()+days)
+  const {y,m,d} = chicagoYMDParts(dt)
+  return `${y}-${m}-${d}`
+}
+function chicagoDateRangeLabel(startYMD, endYMDExclusive){
+  // show inclusive range; end shown is exclusive-1
+  const endInc = chicagoAddDays(endYMDExclusive, -1)
+  const s = new Date(startYMD+'T12:00:00')
+  const e = new Date(endInc+'T12:00:00')
+  const sameMonth = s.getFullYear()===e.getFullYear() && s.getMonth()===e.getMonth()
+  const fmt = (d,opts)=> new Intl.DateTimeFormat('en-US', { timeZone: TZ, ...opts }).format(d)
+  if (startYMD===endInc) return fmt(s,{month:'short', day:'numeric'}) // single day
+  if (sameMonth) return `${fmt(s,{month:'short'})} ${fmt(s,{day:'numeric'})}–${fmt(e,{day:'numeric'})}`
+  return `${fmt(s,{month:'short', day:'numeric'})} – ${fmt(e,{month:'short', day:'numeric'})}`
+}
 
   // ---- Fetch events (window depends on view) ----
   async function fetchEvents(){
-    let timeMin, timeMax
-    const now = new Date()
-
-    if (state.view === 'day') {
-      // Agenda: show from **today** through the next 200 days
-      const startYMD = ymdChicagoFromDate(now)
-      const start = new Date(`${startYMD}T00:00:00`)
-      const end = new Date(start); end.setDate(end.getDate() + 200); end.setHours(23,59,59,999)
-      timeMin = start.toISOString(); timeMax = end.toISOString()
-    } else {
-      const start = new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1)
-      const end = new Date(state.cursor.getFullYear(), state.cursor.getMonth()+1, 0, 23, 59, 59)
-      timeMin = start.toISOString(); timeMax = end.toISOString()
-    }
-
-    const r = await fetch(`/api/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`)
     const json = await r.json()
-    state.events = (json.events || []).sort((a,b)=> new Date(a.start) - new Date(b.start))
+const raw = (json.events || [])
+
+// Expand multi-day all-day events across each day (end.date is exclusive)
+const expanded = []
+for (const ev of raw) {
+  const isAllDay = ev.start && ev.start.length === 10 && ev.end && ev.end.length === 10
+  if (!isAllDay) {
+    expanded.push(ev)
+    continue
+  }
+  // All-day span: iterate from start (inclusive) to end (exclusive)
+  const startYMD = ev.start
+  const endYMDEx = ev.end
+  let cur = startYMD
+  while (cur < endYMDEx) {
+    expanded.push({
+      ...ev,
+      __allDaySpan: { startYMD, endYMDEx }, // keep original span for labels
+      start: cur, // display key for this day
+      end: cur    // not used for all-day display
+    })
+    cur = chicagoAddDays(cur, 1)
+  }
+}
+
+// Sort by start
+expanded.sort((a,b)=> new Date(a.start) - new Date(b.start))
+state.events = expanded
   }
 
   // ---- Group by Chicago day (keys sorted) ----
   function groupByChicagoDaySorted(){
-    const map = new Map()
-    for (const e of state.events) {
-      const key = (e.start.length === 10) ? e.start : ymdChicagoFromISO(e.start)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(e)
-    }
-    const keys = Array.from(map.keys()).sort()
-    return { map, keys }
+  const map = new Map()
+  for (const e of state.events) {
+    // If date-only, e.start is already a YYYY-MM-DD keyed to Chicago (from expansion)
+    const key = (e.start.length === 10) ? e.start : ymdChicagoFromISO(e.start)
+    if (!map.has(key)) map.set(key, [])
+    map.get(key).push(e)
   }
+  const keys = Array.from(map.keys()).sort()
+  return { map, keys }
+}
 
   // ---- Month grid helpers ----
   function buildMonthDays(cursor){
@@ -195,21 +234,26 @@
       list.className = 'divide-y divide-gray-100'
 
       for (const ev of map.get(key)) {
-        const isTimed = ev.start.length > 10
-        const row = document.createElement('a')
-        row.href = ev.htmlLink || '#'
-        row.target = '_blank'
-        row.rel = 'noreferrer'
-        row.className = 'flex items-start gap-4 py-3 group'
-        row.innerHTML = `
-          <div class="text-sm text-gray-700 whitespace-nowrap min-w-[120px]">
-            ${isTimed ? `${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}` : 'All day'}
-          </div>
-          <div class="flex-1">
-            <div class="font-medium text-dance-purple group-hover:underline">${escapeHtml(ev.title || 'Untitled')}</div>
-            ${ev.location ? `<div class="text-sm text-gray-600 mt-0.5">📍 ${escapeHtml(ev.location)}</div>` : ''}
-            ${ev.description ? `<div class="text-sm text-gray-700 mt-1 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
-          </div>
+        const isTimed = e.start.length > 10
+let whenHTML
+if (isTimed) {
+  whenHTML = `${chicagoTime(e.start)} – ${chicagoTime(e.end)}`
+} else {
+  // all-day; check if part of a multi-day span
+  const span = e.__allDaySpan
+  if (span) {
+    whenHTML = chicagoDateRangeLabel(span.startYMD, span.endYMDEx)
+  } else {
+    whenHTML = 'All day'
+  }
+}
+row.innerHTML = `
+  <div class="text-sm text-gray-700 whitespace-nowrap min-w-[140px]">${whenHTML}</div>
+  <div class="flex-1">
+    <div class="font-medium text-dance-purple group-hover:underline">${escapeHtml(e.title || 'Untitled')}</div>
+    ${e.location ? `<div class="text-sm text-gray-600 mt-0.5">📍 ${escapeHtml(e.location)}</div>` : ''}
+    ${e.description ? `<div class="text-sm text-gray-700 mt-1 whitespace-pre-line">${escapeHtml(e.description)}</div>` : ''}
+  </div>
         `
         list.appendChild(row)
       }
