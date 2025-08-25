@@ -219,7 +219,7 @@
   }
 
   // ---- Day = Agenda list (only dates that have events) ----
-  function renderAgenda(){
+function renderAgenda(){
   const { map, keys } = groupByChicagoDaySorted()
   const wrap = document.createElement('div')
   wrap.className = 'space-y-6'
@@ -231,6 +231,14 @@
   }
 
   for (const key of keys) {
+    const allForDay = map.get(key) || []
+
+    // Hide mid-span all‑day instances (only show on span start)
+    const visible = allForDay.filter(ev => !(isAllDay(ev) && ev.__allDaySpan && key !== ev.__allDaySpan.startYMD))
+
+    // If nothing left after filtering, skip this day entirely
+    if (visible.length === 0) continue
+
     const dateObj = new Date(`${key}T12:00:00`)
     const heading = new Intl.DateTimeFormat('en-US', {
       timeZone: TZ, weekday:'long', month:'long', day:'numeric'
@@ -241,16 +249,13 @@
     section.innerHTML = `
       <div class="flex items-baseline justify-between mb-3">
         <h3 class="text-xl font-semibold text-gray-900">${heading}</h3>
-        <span class="text-sm text-gray-500">${map.get(key).length} ${map.get(key).length===1?'event':'events'}</span>
+        <span class="text-sm text-gray-500">${visible.length} ${visible.length===1?'event':'events'}</span>
       </div>
     `
     const list = document.createElement('div')
     list.className = 'divide-y divide-gray-100'
 
-    for (const ev of map.get(key)) {
-      // If it's an all‑day multi‑day span, only show on the start date
-      if (isAllDay(ev) && ev.__allDaySpan && key !== ev.__allDaySpan.startYMD) continue
-
+    for (const ev of visible) {
       const isTimed = ev.start.length > 10
       const whenHTML = isTimed
         ? `${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}`
@@ -276,6 +281,11 @@
 
     section.appendChild(list)
     wrap.appendChild(section)
+  }
+
+  // If every day was filtered out, show a friendly empty state
+  if (!wrap.children.length) {
+    wrap.innerHTML = `<div class="text-gray-600">No upcoming events.</div>`
   }
 
   calEl.appendChild(wrap)
