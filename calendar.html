@@ -4,24 +4,34 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Studio Calendar • Elite Dance</title>
-  <!-- put in <head> before your script if this calendar page is not included in your main page -->
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          'dance-purple': '#8B5CF6',
-          'dance-pink':   '#EC4899',
-          'dance-blue':   '#3B82F6',
-          'dance-gold':   '#F59E0B',
-          'dance-green':  '#32B486'
+
+  <!-- Tailwind CSS (load first) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tailwind theme extensions (ok before or after; after is fine with CDN) -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'dance-purple': '#8B5CF6',
+            'dance-pink':   '#EC4899',
+            'dance-blue':   '#3B82F6',
+            'dance-gold':   '#F59E0B',
+            'dance-green':  '#32B486'
+          }
         }
       }
     }
-  }
-</script>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style> body { font-family: 'Poppins', sans-serif; } </style>
+  </script>
+
+  <!-- Font (Poppins) -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Site-wide tweaks -->
+  <style>
+    body { font-family: 'Poppins', sans-serif; }
+  </style>
 </head>
 <body class="bg-white text-gray-900">
   <main class="max-w-6xl mx-auto px-4 py-10">
