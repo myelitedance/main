@@ -4,10 +4,24 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Studio Calendar • Elite Dance</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root { --brand:#EC4899; } /* pink from your example; change anytime */
-  </style>
+  <!-- put in <head> before your script if this calendar page is not included in your main page -->
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          'dance-purple': '#8B5CF6',
+          'dance-pink':   '#EC4899',
+          'dance-blue':   '#3B82F6',
+          'dance-gold':   '#F59E0B',
+          'dance-green':  '#32B486'
+        }
+      }
+    }
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style> body { font-family: 'Poppins', sans-serif; } </style>
 </head>
 <body class="bg-white text-gray-900">
   <main class="max-w-6xl mx-auto px-4 py-10">
@@ -23,14 +37,13 @@
 
   // ---- State ----
   const state = {
-    cursor: new Date(),    // anchor for Month view
-    view: 'day',           // 'day' | 'month'
+    cursor: new Date(),   // anchor for Month
+    view: 'day',          // 'day' (agenda) | 'month'
     events: [],
   }
 
-  // ---- TZ helpers (America/Chicago) ----
+  // ---- Chicago (TZ) helpers ----
   function ymdChicagoFromISO(iso) {
-    // Get YYYY-MM-DD for a timestamp in America/Chicago
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
     }).formatToParts(new Date(iso))
@@ -56,25 +69,19 @@
   function chicagoMonthYear(d) {
     return new Intl.DateTimeFormat('en-US', { timeZone: TZ, month:'long', year:'numeric' }).format(d)
   }
-  function chicagoWeekdayIndex(d) {
-    // 0=Sun..6=Sat in Chicago
-    return new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday:'short' })
-      .formatToParts(d)
-      // map to index using a Date in local just for lookup
-      // simpler: compute with formatted weekday string
-  }
 
-  // ---- Fetch events for current window ----
+  // ---- Fetch events (window depends on view) ----
   async function fetchEvents(){
     let timeMin, timeMax
+    const now = new Date()
+
     if (state.view === 'day') {
-      const now = new Date()
-      // build a Chicago "today" span (00:00–23:59 in Chicago)
-      const ymd = ymdChicagoFromDate(now)
-      const s = new Date(`${ymd}T00:00:00`)
-      const e = new Date(`${ymd}T23:59:59`)
-      timeMin = s.toISOString(); timeMax = e.toISOString()
-    } else { // month
+      // Agenda: show from **today** through the next 60 days
+      const startYMD = ymdChicagoFromDate(now)
+      const start = new Date(`${startYMD}T00:00:00`)
+      const end = new Date(start); end.setDate(end.getDate() + 60); end.setHours(23,59,59,999)
+      timeMin = start.toISOString(); timeMax = end.toISOString()
+    } else {
       const start = new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1)
       const end = new Date(state.cursor.getFullYear(), state.cursor.getMonth()+1, 0, 23, 59, 59)
       timeMin = start.toISOString(); timeMax = end.toISOString()
@@ -82,39 +89,34 @@
 
     const r = await fetch(`/api/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`)
     const json = await r.json()
-    state.events = (json.events || [])
-      // normalize: keep all-day as-is; ensure sorting by Chicago time
-      .sort((a,b)=> new Date(a.start) - new Date(b.start))
+    state.events = (json.events || []).sort((a,b)=> new Date(a.start) - new Date(b.start))
   }
 
-  // ---- Group by Chicago calendar day ----
-  function groupByChicagoDay(){
+  // ---- Group by Chicago day (keys sorted) ----
+  function groupByChicagoDaySorted(){
     const map = new Map()
     for (const e of state.events) {
-      // Use date-only string as-is for all-day, else derive from dateTime in Chicago
       const key = (e.start.length === 10) ? e.start : ymdChicagoFromISO(e.start)
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(e)
     }
-    return map
+    const keys = Array.from(map.keys()).sort()
+    return { map, keys }
   }
 
-  // ---- Month grid days (42 cells) ----
+  // ---- Month grid helpers ----
   function buildMonthDays(cursor){
     const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
     const end = new Date(cursor.getFullYear(), cursor.getMonth()+1, 0)
-    const firstWeekday = new Date(start).getDay() // (close enough visually)
+    const firstWeekday = start.getDay() // 0=Sun..6=Sat
     const days = []
-    // backfill
     for (let i=0;i<firstWeekday;i++){ const d=new Date(start); d.setDate(start.getDate()-(firstWeekday-i)); days.push(d) }
-    // month days
     for (let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(new Date(d))
-    // forward to 42
     while (days.length<42){ const d=new Date(days[days.length-1]); d.setDate(d.getDate()+1); days.push(d) }
     return days
   }
 
-  // ---- Render ----
+  // ---- Render root ----
   function render(){
     calEl.innerHTML = ''
 
@@ -122,10 +124,10 @@
     const header = document.createElement('div')
     header.className = 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4'
     header.innerHTML = `
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
         <h2 class="text-3xl font-bold">${state.view==='month' ? chicagoMonthYear(state.cursor) : 'Studio Calendar'}</h2>
         ${state.view==='month' ? `
-          <div class="hidden sm:flex gap-2 ml-3">
+          <div class="hidden sm:flex gap-2 ml-1">
             <button class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200" id="btnToday">Today</button>
             <button class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200" id="btnPrev">Prev</button>
             <button class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200" id="btnNext">Next</button>
@@ -134,7 +136,7 @@
       <div class="flex items-center gap-2">
         <label for="viewSel" class="text-sm text-gray-600">View</label>
         <select id="viewSel" class="px-3 py-2 rounded-xl border">
-          <option value="day"${state.view==='day'?' selected':''}>Day</option>
+          <option value="day"${state.view==='day'?' selected':''}>Day (List)</option>
           <option value="month"${state.view==='month'?' selected':''}>Month</option>
         </select>
       </div>
@@ -147,49 +149,67 @@
       header.querySelector('#btnNext').onclick = ()=>{ const d=new Date(state.cursor); d.setMonth(d.getMonth()+1); state.cursor=d; boot() }
     }
 
-    if (state.view === 'day') renderDay()
+    if (state.view === 'day') renderAgenda()
     else renderMonth()
   }
 
-  function renderDay(){
-    const todayYMD = ymdChicagoFromDate(new Date())
-    const byDay = groupByChicagoDay()
-    const list = byDay.get(todayYMD) || []
-
+  // ---- Day = Agenda list (only dates that have events) ----
+  function renderAgenda(){
+    const { map, keys } = groupByChicagoDaySorted()
     const wrap = document.createElement('div')
-    wrap.className = 'space-y-3'
+    wrap.className = 'space-y-6'
 
-    if (!list.length) {
-      wrap.innerHTML = `<div class="text-gray-600">No events today.</div>`
+    if (!keys.length) {
+      wrap.innerHTML = `<div class="text-gray-600">No upcoming events.</div>`
       calEl.appendChild(wrap)
       return
     }
 
-    for (const ev of list) {
-      const isTimed = ev.start.length > 10
-      const card = document.createElement('a')
-      card.href = ev.htmlLink || '#'
-      card.target = '_blank'
-      card.rel = 'noreferrer'
-      card.className = 'block border rounded-2xl p-4 hover:shadow transition'
-      card.innerHTML = `
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="font-semibold text-[color:var(--brand)]">${escapeHtml(ev.title || 'Untitled')}</div>
-            ${ev.location ? `<div class="text-sm text-gray-600 mt-1">📍 ${escapeHtml(ev.location)}</div>` : ''}
-            ${ev.description ? `<div class="text-sm text-gray-700 mt-2 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
-          </div>
-          <div class="text-sm text-gray-700 whitespace-nowrap">
-            ${isTimed ? `${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}` : 'All day'}
-          </div>
+    for (const key of keys) {
+      const dateObj = new Date(`${key}T12:00:00`) // noon to avoid DST edge; display uses TZ anyway
+      const heading = new Intl.DateTimeFormat('en-US', {
+        timeZone: TZ, weekday:'long', month:'long', day:'numeric'
+      }).format(dateObj)
+
+      const section = document.createElement('section')
+      section.className = 'bg-white border border-gray-200 rounded-2xl p-4 shadow-sm'
+      section.innerHTML = `
+        <div class="flex items-baseline justify-between mb-3">
+          <h3 class="text-xl font-semibold text-gray-900">${heading}</h3>
+          <span class="text-sm text-gray-500">${map.get(key).length} ${map.get(key).length===1?'event':'events'}</span>
         </div>
       `
-      wrap.appendChild(card)
+      const list = document.createElement('div')
+      list.className = 'divide-y divide-gray-100'
+
+      for (const ev of map.get(key)) {
+        const isTimed = ev.start.length > 10
+        const row = document.createElement('a')
+        row.href = ev.htmlLink || '#'
+        row.target = '_blank'
+        row.rel = 'noreferrer'
+        row.className = 'flex items-start gap-4 py-3 group'
+        row.innerHTML = `
+          <div class="text-sm text-gray-700 whitespace-nowrap min-w-[120px]">
+            ${isTimed ? `${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}` : 'All day'}
+          </div>
+          <div class="flex-1">
+            <div class="font-medium text-dance-purple group-hover:underline">${escapeHtml(ev.title || 'Untitled')}</div>
+            ${ev.location ? `<div class="text-sm text-gray-600 mt-0.5">📍 ${escapeHtml(ev.location)}</div>` : ''}
+            ${ev.description ? `<div class="text-sm text-gray-700 mt-1 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
+          </div>
+        `
+        list.appendChild(row)
+      }
+
+      section.appendChild(list)
+      wrap.appendChild(section)
     }
 
     calEl.appendChild(wrap)
   }
 
+  // ---- Month grid with clearer borders ----
   function renderMonth(){
     // Weekday header
     const weekdayRow = document.createElement('div')
@@ -198,9 +218,9 @@
     calEl.appendChild(weekdayRow)
 
     const days = buildMonthDays(state.cursor)
-    const byDay = groupByChicagoDay()
+    const { map } = groupByChicagoDaySorted()
     const grid = document.createElement('div')
-    grid.className = 'grid grid-cols-7 gap-2'
+    grid.className = 'grid grid-cols-7 gap-0 rounded-2xl overflow-hidden border border-gray-200' /* outer frame */
 
     const todayYMD = ymdChicagoFromDate(new Date())
     const monthY = state.cursor.getFullYear(), monthM = state.cursor.getMonth()
@@ -209,16 +229,20 @@
       const inMonth = (d.getMonth()===monthM && d.getFullYear()===monthY)
       const ymd = ymdChicagoFromDate(d)
       const isToday = (ymd === todayYMD)
-      const events = byDay.get(ymd) || []
+      const events = map.get(ymd) || []
 
       const cell = document.createElement('button')
-      cell.className = `rounded-2xl border p-2 text-left transition shadow-sm hover:shadow ${inMonth ? 'bg-white' : 'bg-gray-50'} ${isToday ? 'border-[color:var(--brand)]' : 'border-gray-200'}`
+      // NOTE: stronger grid/border styling for clear day boxes:
+      cell.className = `relative text-left p-2 transition hover:bg-gray-50
+                        ${inMonth ? 'bg-white' : 'bg-gray-50'}
+                        ${isToday ? 'ring-2 ring-dance-pink ring-offset-0' : ''}
+                        border border-gray-200`  /* per-cell border */
       cell.style.minHeight = '140px'
 
       cell.innerHTML = `
         <div class="flex items-center justify-between">
           <span class="text-sm ${inMonth?'text-gray-900':'text-gray-400'}">${d.getDate()}</span>
-          ${events.length ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-[color:var(--brand)]/10 text-[color:var(--brand)]">${events.length}</span>` : '<span></span>'}
+          ${events.length ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-dance-purple/10 text-dance-purple">${events.length}</span>` : '<span></span>'}
         </div>
       `
       const list = document.createElement('div')
@@ -227,7 +251,7 @@
       for (const ev of events) {
         if (shown >= 3) break
         const pill = document.createElement('div')
-        pill.className = 'text-[12px] px-2 py-1 rounded-lg bg-black/5 truncate'
+        pill.className = 'text-[12px] px-2 py-1 rounded-lg bg-gray-100 truncate'
         const isTimed = ev.start.length > 10
         const timePrefix = isTimed ? `${chicagoTime(ev.start)} — ` : ''
         pill.textContent = `${timePrefix}${ev.title}`
@@ -286,7 +310,7 @@
       a.className = 'block border rounded-2xl p-3 hover:shadow'
       const isTimed = ev.start.length > 10
       a.innerHTML = `
-        <div class="font-semibold text-[color:var(--brand)]">${escapeHtml(ev.title || 'Untitled')}</div>
+        <div class="font-semibold text-dance-purple">${escapeHtml(ev.title || 'Untitled')}</div>
         ${ev.location ? `<div class="text-sm text-gray-600 mt-1">📍 ${escapeHtml(ev.location)}</div>` : ''}
         ${isTimed ? `<div class="text-sm text-gray-600 mt-1">🕒 ${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}</div>` : '<div class="text-sm text-gray-600 mt-1">All day</div>'}
         ${ev.description ? `<div class="text-sm text-gray-700 mt-2 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
