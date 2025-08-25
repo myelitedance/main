@@ -108,6 +108,7 @@
       ? `${fmt(s,{month:'short'})} ${fmt(s,{day:'numeric'})}–${fmt(e,{day:'numeric'})}`
       : `${fmt(s,{month:'short', day:'numeric'})} – ${fmt(e,{month:'short', day:'numeric'})}`
   }
+  function isAllDay(ev){ return ev.start && ev.start.length===10 && ev.end && ev.end.length===10 }
 
   // ---- Fetch events (window depends on view) ----
   async function fetchEvents(){
@@ -219,147 +220,214 @@
 
   // ---- Day = Agenda list (only dates that have events) ----
   function renderAgenda(){
-    const { map, keys } = groupByChicagoDaySorted()
-    const wrap = document.createElement('div')
-    wrap.className = 'space-y-6'
+  const { map, keys } = groupByChicagoDaySorted()
+  const wrap = document.createElement('div')
+  wrap.className = 'space-y-6'
 
-    if (!keys.length) {
-      wrap.innerHTML = `<div class="text-gray-600">No upcoming events.</div>`
-      calEl.appendChild(wrap)
-      return
-    }
+  if (!keys.length) {
+    wrap.innerHTML = `<div class="text-gray-600">No upcoming events.</div>`
+    calEl.appendChild(wrap)
+    return
+  }
 
-    for (const key of keys) {
-      const dateObj = new Date(`${key}T12:00:00`) // noon to avoid DST edge
-      const heading = new Intl.DateTimeFormat('en-US', {
-        timeZone: TZ, weekday:'long', month:'long', day:'numeric'
-      }).format(dateObj)
+  for (const key of keys) {
+    const dateObj = new Date(`${key}T12:00:00`)
+    const heading = new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ, weekday:'long', month:'long', day:'numeric'
+    }).format(dateObj)
 
-      const section = document.createElement('section')
-      section.className = 'bg-white border border-gray-200 rounded-2xl p-4 shadow-sm'
-      section.innerHTML = `
-        <div class="flex items-baseline justify-between mb-3">
-          <h3 class="text-xl font-semibold text-gray-900">${heading}</h3>
-          <span class="text-sm text-gray-500">${map.get(key).length} ${map.get(key).length===1?'event':'events'}</span>
+    const section = document.createElement('section')
+    section.className = 'bg-white border border-gray-200 rounded-2xl p-4 shadow-sm'
+    section.innerHTML = `
+      <div class="flex items-baseline justify-between mb-3">
+        <h3 class="text-xl font-semibold text-gray-900">${heading}</h3>
+        <span class="text-sm text-gray-500">${map.get(key).length} ${map.get(key).length===1?'event':'events'}</span>
+      </div>
+    `
+    const list = document.createElement('div')
+    list.className = 'divide-y divide-gray-100'
+
+    for (const ev of map.get(key)) {
+      // If it's an all‑day multi‑day span, only show on the start date
+      if (isAllDay(ev) && ev.__allDaySpan && key !== ev.__allDaySpan.startYMD) continue
+
+      const isTimed = ev.start.length > 10
+      const whenHTML = isTimed
+        ? `${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}`
+        : (ev.__allDaySpan
+            ? chicagoDateRangeLabel(ev.__allDaySpan.startYMD, ev.__allDaySpan.endYMDEx)
+            : 'All day')
+
+      const row = document.createElement('a')
+      row.href = ev.htmlLink || '#'
+      row.target = '_blank'
+      row.rel = 'noreferrer'
+      row.className = 'flex items-start gap-4 py-3 group'
+      row.innerHTML = `
+        <div class="text-sm text-gray-700 whitespace-nowrap min-w-[140px]">${whenHTML}</div>
+        <div class="flex-1">
+          <div class="font-medium text-dance-purple group-hover:underline">${escapeHtml(ev.title || 'Untitled')}</div>
+          ${ev.location ? `<div class="text-sm text-gray-600 mt-0.5">📍 ${escapeHtml(ev.location)}</div>` : ''}
+          ${ev.description ? `<div class="text-sm text-gray-700 mt-1 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
         </div>
       `
-      const list = document.createElement('div')
-      list.className = 'divide-y divide-gray-100'
-
-      for (const ev of map.get(key)) {
-        const isTimed = ev.start.length > 10
-        let whenHTML
-        if (isTimed) {
-          whenHTML = `${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}`
-        } else {
-          const span = ev.__allDaySpan
-          whenHTML = span ? chicagoDateRangeLabel(span.startYMD, span.endYMDEx) : 'All day'
-        }
-
-        const row = document.createElement('a')
-        row.href = ev.htmlLink || '#'
-        row.target = '_blank'
-        row.rel = 'noreferrer'
-        row.className = 'flex items-start gap-4 py-3 group'
-        row.innerHTML = `
-          <div class="text-sm text-gray-700 whitespace-nowrap min-w-[140px]">${whenHTML}</div>
-          <div class="flex-1">
-            <div class="font-medium text-dance-purple group-hover:underline">${escapeHtml(ev.title || 'Untitled')}</div>
-            ${ev.location ? `<div class="text-sm text-gray-600 mt-0.5">📍 ${escapeHtml(ev.location)}</div>` : ''}
-            ${ev.description ? `<div class="text-sm text-gray-700 mt-1 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
-          </div>
-        `
-        list.appendChild(row)
-      }
-
-      section.appendChild(list)
-      wrap.appendChild(section)
+      list.appendChild(row)
     }
 
-    calEl.appendChild(wrap)
+    section.appendChild(list)
+    wrap.appendChild(section)
   }
+
+  calEl.appendChild(wrap)
+}
 
   // ---- Month grid with clearer borders ----
   function renderMonth(){
-    const weekdayRow = document.createElement('div')
-    weekdayRow.className = 'grid grid-cols-7 text-xs font-medium text-gray-500 uppercase tracking-wide mb-2'
-    weekdayRow.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="px-2 py-1">${d}</div>`).join('')
-    calEl.appendChild(weekdayRow)
+  // Weekday header
+  const weekdayRow = document.createElement('div')
+  weekdayRow.className = 'grid grid-cols-7 text-xs font-medium text-gray-500 uppercase tracking-wide mb-2'
+  weekdayRow.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="px-2 py-1">${d}</div>`).join('')
+  calEl.appendChild(weekdayRow)
 
-    const days = buildMonthDays(state.cursor)
-    const { map } = groupByChicagoDaySorted()
-    const grid = document.createElement('div')
-    grid.className = 'grid grid-cols-7 gap-0 rounded-2xl overflow-hidden border border-gray-200'
+  // Build month grid (6 rows x 7 cols)
+  const days = buildMonthDays(state.cursor)
+  const { map } = groupByChicagoDaySorted()
 
-    const todayYMD = ymdChicagoFromDate(new Date())
-    const monthY = state.cursor.getFullYear(), monthM = state.cursor.getMonth()
+  // Grid wrapper (relative so we can overlay span bars)
+  const wrap = document.createElement('div')
+  wrap.className = 'relative'
+  calEl.appendChild(wrap)
 
-    for (const d of days){
-      const inMonth = (d.getMonth()===monthM && d.getFullYear()===monthY)
-      const ymd = ymdChicagoFromDate(d)
-      const isToday = (ymd === todayYMD)
-      const events = map.get(ymd) || []
+  // Base day cells
+  const grid = document.createElement('div')
+  grid.className = 'grid grid-cols-7 grid-rows-6 gap-0 rounded-2xl overflow-hidden border border-gray-200'
+  wrap.appendChild(grid)
 
-      const cell = document.createElement('button')
-      cell.className = `relative text-left p-2 transition hover:bg-gray-50
-                        ${inMonth ? 'bg-white' : 'bg-gray-50'}
-                        ${isToday ? 'ring-2 ring-dance-pink ring-offset-0' : ''}
-                        border border-gray-200`
-      cell.style.minHeight = '140px'
+  const todayYMD = ymdChicagoFromDate(new Date())
+  const monthY = state.cursor.getFullYear(), monthM = state.cursor.getMonth()
 
-      cell.innerHTML = `
-        <div class="flex items-center justify-between">
-          <span class="text-sm ${inMonth?'text-gray-900':'text-gray-400'}">${d.getDate()}</span>
-          ${events.length ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-dance-purple/10 text-dance-purple">${events.length}</span>` : '<span></span>'}
-        </div>
-      `
-      const list = document.createElement('div')
-      list.className = 'mt-2 space-y-1'
-      let shown = 0
-      for (const ev of events) {
-        if (shown >= 3) break
-        const pill = document.createElement('div')
-        pill.className = 'text-[12px] px-2 py-1 rounded-lg bg-gray-100 truncate'
-        const isTimed = ev.start.length > 10
-        const timePrefix = isTimed ? `${chicagoTime(ev.start)} — ` : ''
-        pill.textContent = `${timePrefix}${ev.title}`
-        pill.title = ev.title
-        list.appendChild(pill)
-        shown++
-      }
-      if (events.length > shown) {
-        const more = document.createElement('div')
-        more.className = 'text-[11px] text-gray-500'
-        more.textContent = `+${events.length - shown} more`
-        list.appendChild(more)
-      }
+  // Render all 42 day boxes
+  days.forEach((d, idx) => {
+    const inMonth = (d.getMonth()===monthM && d.getFullYear()===monthY)
+    const ymd = ymdChicagoFromDate(d)
+    const isToday = (ymd === todayYMD)
+    const events = (map.get(ymd) || []).filter(ev => !isAllDay(ev)) // suppress all-day spans here
 
-      cell.addEventListener('click', ()=> openPanel(d, events))
-      cell.appendChild(list)
-      grid.appendChild(cell)
+    const cell = document.createElement('button')
+    cell.className = `relative text-left p-2 pt-8 transition hover:bg-gray-50
+                      ${inMonth ? 'bg-white' : 'bg-gray-50'}
+                      ${isToday ? 'ring-2 ring-dance-pink ring-offset-0' : ''}
+                      border border-gray-200`
+    cell.style.minHeight = '140px'
+    cell.innerHTML = `
+      <div class="absolute top-1 left-2 right-2 flex items-center justify-between">
+        <span class="text-sm ${inMonth?'text-gray-900':'text-gray-400'}">${d.getDate()}</span>
+        ${events.length ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-dance-purple/10 text-dance-purple">${events.length}</span>` : '<span></span>'}
+      </div>
+    `
+    const list = document.createElement('div')
+    list.className = 'mt-2 space-y-1'
+    let shown = 0
+    for (const ev of events) {
+      if (shown >= 3) break
+      const pill = document.createElement('div')
+      pill.className = 'text-[12px] px-2 py-1 rounded-lg bg-gray-100 truncate'
+      const isTimed = ev.start.length > 10
+      const timePrefix = isTimed ? `${chicagoTime(ev.start)} — ` : ''
+      pill.textContent = `${timePrefix}${ev.title}`
+      pill.title = ev.title
+      list.appendChild(pill)
+      shown++
+    }
+    if (events.length > shown) {
+      const more = document.createElement('div')
+      more.className = 'text-[11px] text-gray-500'
+      more.textContent = `+${events.length - shown} more`
+      list.appendChild(more)
     }
 
-    calEl.appendChild(grid)
+    // Click (includes all-day spans via panel overlay below)
+    const dayAllEvents = (map.get(ymd) || [])
+    cell.addEventListener('click', ()=> openPanel(d, dayAllEvents))
 
-    // Slide-over overlay (inject once)
-    if (!document.getElementById('overlay')) {
-      const overlay = document.createElement('div')
-      overlay.id = 'overlay'
-      overlay.className = 'fixed inset-0 z-50 hidden'
-      overlay.innerHTML = `
-        <div class="absolute inset-0 bg-black/30" onclick="closePanel()"></div>
-        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl p-6 flex flex-col">
-          <div class="flex items-center justify-between">
-            <h3 id="panel-title" class="text-xl font-bold"></h3>
-            <button onclick="closePanel()" class="p-2 rounded-xl hover:bg-gray-100">✕</button>
-          </div>
-          <div id="panel-body" class="mt-4 space-y-3 overflow-y-auto"></div>
-        </div>
-      `
-      document.body.appendChild(overlay)
+    cell.appendChild(list)
+    grid.appendChild(cell)
+  })
+
+  // ---- Overlay: draw span bars for multi-day all-day events ----
+  // Build a quick index: date -> (row, col)
+  const cellIndex = new Map() // 'YYYY-MM-DD' -> {row, col}
+  days.forEach((d, i) => {
+    const row = Math.floor(i / 7)
+    const col = i % 7
+    cellIndex.set(ymdChicagoFromDate(d), { row, col })
+  })
+
+  // Collect unique spans (use the first occurrence of each __allDaySpan signature)
+  const spanKey = e => isAllDay(e) && e.__allDaySpan ? `${e.id}|${e.__allDaySpan.startYMD}|${e.__allDaySpan.endYMDEx}` : null
+  const seen = new Set()
+  const allSpans = []
+  state.events.forEach(e => {
+    const k = spanKey(e)
+    if (!k || seen.has(k)) return
+    seen.add(k)
+    allSpans.push(e) // any instance carries the span info + title
+  })
+
+  // Overlay grid with same 7x6 structure, bars placed by grid row/columns
+  const overlay = document.createElement('div')
+  overlay.className = 'pointer-events-none absolute inset-0 grid grid-cols-7 grid-rows-6'
+  wrap.appendChild(overlay)
+
+  for (const ev of allSpans) {
+    const { startYMD, endYMDEx } = ev.__allDaySpan
+    // For each week the span intersects, create one bar segment
+    let cur = startYMD
+    while (cur < endYMDEx) {
+      const pos = cellIndex.get(cur)
+      if (!pos) { cur = chicagoAddDays(cur, 1); continue }
+
+      const row = pos.row
+      const rowStartYMD = Array.from(cellIndex.keys()).find(k => cellIndex.get(k).row === row && cellIndex.get(k).col === 0)
+      const rowEndYMD   = Array.from(cellIndex.keys()).find(k => cellIndex.get(k).row === row && cellIndex.get(k).col === 6)
+
+      // Segment start = max(cur, row first day)
+      let segStart = cur
+      if (rowStartYMD && segStart < rowStartYMD) segStart = rowStartYMD
+      // Segment end   = min(endYMDEx - 1day, row last day)
+      const lastInclusive = chicagoAddDays(endYMDEx, -1)
+      let segEnd = lastInclusive
+      if (rowEndYMD && segEnd > rowEndYMD) segEnd = rowEndYMD
+
+      const startPos = cellIndex.get(segStart)
+      const endPos   = cellIndex.get(segEnd)
+      if (startPos && endPos && startPos.row === row && endPos.row === row) {
+        const bar = document.createElement('div')
+        // Place in this row, span the columns
+        bar.style.gridRow = `${row+1}`
+        bar.style.gridColumn = `${startPos.col+1} / ${endPos.col+2}`
+
+        bar.className = 'mx-1 mt-6 h-6 rounded-full bg-dance-purple text-white text-xs px-2 flex items-center gap-2 overflow-hidden'
+        // Only print the label on the **first** segment (start of the overall span)
+        const isFirstSegment = (segStart === startYMD)
+        bar.innerHTML = isFirstSegment
+          ? `<span class="whitespace-nowrap truncate">${escapeHtml(ev.title || 'Untitled')} • ${chicagoDateRangeLabel(startYMD, endYMDEx)}</span>`
+          : `<span class="opacity-80"> </span>`
+
+        overlay.appendChild(bar)
+      }
+
+      // Move to first day of next week row
+      cur = chicagoAddDays(segEnd, 1)
+      // Advance until we hit the next row present in the grid
+      while (cur <= lastInclusive) {
+        const p = cellIndex.get(cur)
+        if (p && p.row !== row) break
+        cur = chicagoAddDays(cur, 1)
+      }
     }
   }
-
+}
   // Panel helpers
   window.closePanel = function(){
     document.getElementById('overlay').classList.add('hidden')
