@@ -28,6 +28,7 @@
         .scroll-smooth { scroll-behavior: smooth; }
     </style>
     <script defer src="/_vercel/insights/script.js"></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body class="scroll-smooth">
     <!-- Navigation -->
@@ -403,6 +404,10 @@
         <label for="message" class="block text-sm font-medium text-gray-700">Message</label>
         <textarea id="message" name="message" rows="4" required class="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm"></textarea>
       </div>
+      <div class="cf-turnstile my-4" 
+     data-sitekey="0x4AAAAAABuwGz6lf0rms8a7"
+     data-theme="light">
+      </div>
       <button type="submit" class="bg-dance-purple hover:bg-dance-pink text-white px-6 py-3 rounded-lg font-semibold w-full">
         Send Message
       </button>
@@ -654,7 +659,7 @@
                                 <div class="w-6 h-6 text-dance-purple mt-1">📍</div>
                                 <div class="ml-4">
                                     <p class="font-semibold text-gray-900">Location</p>
-                                    <p class="text-gray-700">7177 Suite B-3 Nolensville Rd<br>Nolensville, TN<br>Convenient to Brentwood, Franklin, and surrounding areas</p>
+                                    <p class="text-gray-700">7177 Nolensville Rd Suite B-3<br>Nolensville, TN<br>Convenient to Brentwood, Franklin, and surrounding areas</p>
                                 </div>
                             </div>
                             <div class="flex items-start">
