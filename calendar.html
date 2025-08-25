@@ -137,7 +137,7 @@
     header.className = 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4'
     header.innerHTML = `
       <div class="flex items-center gap-3">
-        <h2 class="text-3xl font-bold text-dance-purple">${state.view==='month' ? chicagoMonthYear(state.cursor) : 'Studio Calendar'}</h2>
+        <h3 class="text-3xl font-bold text-dance-purple">${state.view==='month' ? chicagoMonthYear(state.cursor) : 'Select View on the Right -->'}</h3>
         ${state.view==='month' ? `
           <div class="hidden sm:flex gap-2 ml-1">
             <button class="px-3 py-2 rounded-xl bg-gradient-to-r from-dance-purple to-dance-pink text-white hover:opacity-90" id="btnToday">Today</button>
