@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Studio Calendar • Elite Dance</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --brand:#FF7529; }
+  </style>
+</head>
+<body class="bg-white text-gray-900">
+  <main class="max-w-6xl mx-auto px-4 py-10">
+    <h1 class="text-4xl font-bold mb-2">Studio Calendar</h1>
+    <p class="text-gray-600 mb-8">Updated automatically from Google Calendar.</p>
+
+    <div id="cal" class="w-full"></div>
+  </main>
+
+  <template id="day-template">
+    <button class="min-h-[120px] md:min-h-[140px] rounded-2xl border border-gray-200 p-2 text-left transition shadow-sm hover:shadow bg-white">
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-gray-900 day-num"></span>
+        <span class="hidden text-[10px] px-2 py-0.5 rounded-full bg-[color:var(--brand)]/10 text-[color:var(--brand)] badge"></span>
+      </div>
+      <div class="mt-2 space-y-1 entries"></div>
+    </button>
+  </template>
+
+  <div id="overlay" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/30" onclick="closePanel()"></div>
+    <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl p-6 flex flex-col">
+      <div class="flex items-center justify-between">
+        <h3 id="panel-title" class="text-xl font-bold"></h3>
+        <button onclick="closePanel()" class="p-2 rounded-xl hover:bg-gray-100">✕</button>
+      </div>
+      <div id="panel-body" class="mt-4 space-y-3 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <script>
+    const calEl = document.getElementById('cal')
+    const dayTpl = document.getElementById('day-template')
+
+    const state = {
+      cursor: new Date(),
+      events: [],
+    }
+
+    function startOfMonth(d){ const x=new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x }
+    function endOfMonth(d){ const x=new Date(d); x.setMonth(x.getMonth()+1,0); x.setHours(23,59,59,999); return x }
+    function ymd(d){ return d.toISOString().slice(0,10) }
+    function fmtMonth(d){ return d.toLocaleDateString('en-US',{ month:'long', year:'numeric' }) }
+    function sameDay(a,b){ return a.getFullYear()==b.getFullYear() && a.getMonth()==b.getMonth() && a.getDate()==b.getDate() }
+
+    async function fetchEvents(){
+      const min = startOfMonth(state.cursor).toISOString()
+      const max = endOfMonth(state.cursor).toISOString()
+      const r = await fetch(`/api/events?timeMin=${encodeURIComponent(min)}&timeMax=${encodeURIComponent(max)}`)
+      const json = await r.json()
+      state.events = json.events || []
+    }
+
+    function groupByDay(){
+      const map = new Map()
+      for(const e of state.events){
+        const k = ymd(new Date(e.start))
+        if(!map.has(k)) map.set(k, [])
+        map.get(k).push(e)
+      }
+      return map
+    }
+
+    function render(){
+      calEl.innerHTML = ''
+
+      const header = document.createElement('div')
+      header.className = 'flex items-center justify-between mb-6'
+      header.innerHTML = `
+        <h2 class="text-3xl font-bold">${fmtMonth(state.cursor)}</h2>
+        <div class="flex gap-2">
+          <button class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200" onclick="goToday()">Today</button>
+          <button class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200" onclick="goPrev()">Prev</button>
+          <button class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200" onclick="goNext()">Next</button>
+        </div>`
+      calEl.appendChild(header)
+
+      const weekdays = document.createElement('div')
+      weekdays.className = 'grid grid-cols-7 text-xs font-medium text-gray-500 uppercase tracking-wide mb-2'
+      weekdays.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="px-2 py-1">${d}</div>`).join('')
+      calEl.appendChild(weekdays)
+
+      const grid = document.createElement('div')
+      grid.className = 'grid grid-cols-7 gap-2'
+
+      const start = startOfMonth(state.cursor)
+      const end = endOfMonth(state.cursor)
+      const firstWeekday = start.getDay()
+      const days = []
+
+      for(let i=0;i<firstWeekday;i++){ const d=new Date(start); d.setDate(d.getDate()-(firstWeekday-i)); days.push(d) }
+      for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(new Date(d))
+      while(days.length<42){ const d = new Date(days[days.length-1]); d.setDate(d.getDate()+1); days.push(d) }
+
+      const byDay = groupByDay()
+
+      for(const d of days){
+        const node = dayTpl.content.firstElementChild.cloneNode(true)
+        const inMonth = d.getMonth() === state.cursor.getMonth()
+        const isToday = sameDay(d, new Date())
+        const dayNum = node.querySelector('.day-num')
+        const badge = node.querySelector('.badge')
+        const list = node.querySelector('.entries')
+        dayNum.textContent = d.getDate()
+        if(!inMonth){ node.classList.remove('bg-white'); node.classList.add('bg-gray-50') }
+        if(isToday){ node.classList.remove('border-gray-200'); node.classList.add('border-[color:var(--brand)]') }
+
+        const events = byDay.get(ymd(d)) || []
+        if(events.length){
+          badge.classList.remove('hidden')
+          badge.textContent = events.length
+          for(const ev of events.slice(0,3)){
+            const pill = document.createElement('div')
+            pill.className = 'truncate text-[12px] px-2 py-1 rounded-lg bg-black/5'
+            pill.textContent = ev.title
+            list.appendChild(pill)
+          }
+          if(events.length>3){
+            const more = document.createElement('div')
+            more.className = 'text-[11px] text-gray-500'
+            more.textContent = `+${events.length-3} more`
+            list.appendChild(more)
+          }
+        }
+
+        node.addEventListener('click', () => openPanel(d, events))
+        grid.appendChild(node)
+      }
+
+      calEl.appendChild(grid)
+    }
+
+    function goPrev(){ const d=new Date(state.cursor); d.setMonth(d.getMonth()-1); state.cursor=d; boot() }
+    function goNext(){ const d=new Date(state.cursor); d.setMonth(d.getMonth()+1); state.cursor=d; boot() }
+    function goToday(){ state.cursor = new Date(); boot() }
+
+    async function boot(){ await fetchEvents(); render() }
+
+    // Panel
+    function el(id){ return document.getElementById(id) }
+    window.closePanel = function(){ el('overlay').classList.add('hidden') }
+    window.openPanel = function(day, events){
+      el('panel-title').textContent = day.toLocaleDateString('en-US',{weekday:'long', month:'long', day:'numeric'})
+      const body = el('panel-body')
+      body.innerHTML = ''
+      if(!events.length){ body.innerHTML = '<div class="text-gray-500">No events.</div>'; el('overlay').classList.remove('hidden'); return }
+      for(const ev of events){
+        const a = document.createElement('a')
+        a.href = ev.htmlLink || '#'
+        a.target = '_blank'
+        a.rel = 'noreferrer'
+        a.className = 'block border rounded-xl p-3 hover:shadow'
+        a.innerHTML = `
+          <div class="font-semibold text-[color:var(--brand)]">${ev.title}</div>
+          ${ev.location ? `<div class='text-sm text-gray-600 mt-1'>📍 ${ev.location}</div>` : ''}
+          ${ev.start ? `<div class='text-sm text-gray-600 mt-1'>🕒 ${fmtTime(ev.start)} – ${fmtTime(ev.end)}</div>` : ''}
+          ${ev.description ? `<div class='text-sm text-gray-700 mt-2 whitespace-pre-line'>${escapeHtml(ev.description)}</div>` : ''}
+        `
+        body.appendChild(a)
+      }
+      el('overlay').classList.remove('hidden')
+    }
+
+    function fmtTime(iso){
+      const d = new Date(iso)
+      return d.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' })
+    }
+    function escapeHtml(s){ return s?.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])) }
+
+    boot()
+  </script>
+</body>
+</html>
