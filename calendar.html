@@ -88,10 +88,10 @@
     const now = new Date()
 
     if (state.view === 'day') {
-      // Agenda: show from **today** through the next 60 days
+      // Agenda: show from **today** through the next 200 days
       const startYMD = ymdChicagoFromDate(now)
       const start = new Date(`${startYMD}T00:00:00`)
-      const end = new Date(start); end.setDate(end.getDate() + 60); end.setHours(23,59,59,999)
+      const end = new Date(start); end.setDate(end.getDate() + 200); end.setHours(23,59,59,999)
       timeMin = start.toISOString(); timeMax = end.toISOString()
     } else {
       const start = new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1)
