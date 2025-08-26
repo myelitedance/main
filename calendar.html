@@ -3,12 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Studio Calendar • Elite Dance</title>
 
-  <!-- Tailwind CSS (load first) -->
+  <!-- Primary SEO -->
+  <title>Studio Calendar | Elite Dance & Music, Nolensville TN</title>
+  <meta name="description" content="See important dates, studio closures, and events for Elite Dance & Music in Nolensville, TN. Updated automatically from our Google Calendar." />
+  <link rel="canonical" href="https://www.myelitedance.com/calendar.html" />
+  <meta name="theme-color" content="#8B5CF6" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Studio Calendar | Elite Dance & Music, Nolensville TN" />
+  <meta property="og:description" content="Upcoming dates and events for Elite Dance & Music. Updated automatically from Google Calendar." />
+  <meta property="og:url" content="https://www.myelitedance.com/calendar.html" />
+  <meta property="og:site_name" content="Elite Dance & Music" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Studio Calendar | Elite Dance & Music, Nolensville TN" />
+  <meta name="twitter:description" content="Important dates and events at Elite Dance & Music." />
+
+  <!-- Favicons (match homepage) -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Tailwind theme extensions (ok before or after; after is fine with CDN) -->
   <script>
     tailwind.config = {
       theme: {
@@ -42,13 +60,13 @@
         Elite Dance & Music
       </h1>
       <div class="hidden md:flex space-x-8">
-        <a href="index.html#home"    class="text-gray-700 hover:text-dance-purple">Home</a>
-        <a href="index.html#about"   class="text-gray-700 hover:text-dance-purple">About</a>
-        <a href="index.html#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
+        <a href="/#home"    class="text-gray-700 hover:text-dance-purple">Home</a>
+        <a href="/#about"   class="text-gray-700 hover:text-dance-purple">About</a>
+        <a href="/#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
+        <a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a> 
         <!-- Active page -->
         <a href="calendar.html" class="text-dance-purple font-semibold underline underline-offset-4">Calendar</a>
         <a href="team.html"     class="text-gray-700 hover:text-dance-purple">Meet the Team</a>
-        <a href="index.html#contact" class="text-gray-700 hover:text-dance-purple">Contact</a>
       </div>
       <button id="mobile-menu-btn" class="md:hidden p-2" aria-label="Open menu" aria-expanded="false">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,12 +78,12 @@
   </div>
   <!-- Mobile -->
   <div id="mobile-menu" class="md:hidden hidden bg-white border-t px-4 py-4 space-y-2">
-    <a href="index.html#home"    class="block text-gray-700 hover:text-dance-purple">Home</a>
-    <a href="index.html#about"   class="block text-gray-700 hover:text-dance-purple">About</a>
-    <a href="index.html#classes" class="block text-gray-700 hover:text-dance-purple">Classes</a>
+   <a href="/#home"    class="text-gray-700 hover:text-dance-purple">Home</a>
+   <a href="/#about"   class="text-gray-700 hover:text-dance-purple">About</a>
+   <a href="/#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
+   <a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a> 
     <a href="calendar.html"      class="block text-dance-purple font-semibold underline">Calendar</a>
     <a href="team.html"          class="block text-gray-700 hover:text-dance-purple">Meet the Team</a>
-    <a href="index.html#contact" class="block text-gray-700 hover:text-dance-purple">Contact</a>
   </div>
 </nav>
     <main class="max-w-6xl mx-auto px-4 pt-24 pb-12">

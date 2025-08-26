@@ -1,9 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elite Dance & Music - Nolensville, TN</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Primary SEO -->
+  <title>Meet the Team | Elite Dance & Music Teachers in Nolensville</title>
+  <meta name="description" content="Get to know the Elite Dance & Music faculty in Nolensville—experienced, encouraging instructors dedicated to helping dancers grow in skill and confidence." />
+  <link rel="canonical" href="https://www.myelitedance.com/team.html" />
+  <meta name="theme-color" content="#8B5CF6" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Meet the Team | Elite Dance & Music Teachers in Nolensville" />
+  <meta property="og:description" content="Meet the Elite Dance & Music faculty—experienced, encouraging instructors dedicated to your dancer’s growth." />
+  <meta property="og:url" content="https://www.myelitedance.com/team.html" />
+  <meta property="og:site_name" content="Elite Dance & Music" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Meet the Team | Elite Dance & Music Teachers in Nolensville" />
+  <meta name="twitter:description" content="Get to know the Elite Dance & Music faculty." />
+
+  <!-- Favicons -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -23,8 +45,12 @@
       }
     }
   </script>
+
+  <!-- Font (Poppins) -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Site styles -->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
     body { font-family: 'Poppins', sans-serif; }
     .gradient-bg { background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #3B82F6 100%); }
     .dance-shadow { box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15); }
@@ -32,6 +58,8 @@
     .bio-text { max-height: 375px; overflow: hidden; transition: max-height 0.5s ease; }
     .bio-text.expanded { max-height: 10000px; }
   </style>
+
+  <!-- Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body class="scroll-smooth bg-gray-50 text-gray-800">
@@ -41,12 +69,11 @@
       <div class="flex justify-between items-center h-16">
         <h1 class="text-2xl font-bold bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent">Elite Dance & Music</h1>
         <div class="hidden md:flex space-x-8">
-          <a href="index.html#home" class="text-gray-700 hover:text-dance-purple">Home</a>
-          <a href="index.html#about" class="text-gray-700 hover:text-dance-purple">About</a>
-          <a href="index.html#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
-          <a href="calendar.html" class="text-gray-700 hover:text-dance-purple">Calendar</a>
+          <a href="/#home" class="text-gray-700 hover:text-dance-purple">Home</a>
+<a href="/#about" class="text-gray-700 hover:text-dance-purple">About</a>
+<a href="/#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
+<a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a>
           <a href="team.html" class="text-dance-purple font-medium underline">Meet the Team</a>
-          <a href="index.html#contact" class="text-gray-700 hover:text-dance-purple">Contact</a>
         </div>
         <button id="mobile-menu-btn" class="md:hidden p-2">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,12 +83,12 @@
       </div>
     </div>
     <div id="mobile-menu" class="md:hidden hidden bg-white border-t px-4 py-4 space-y-2">
-      <a href="index.html#home" class="block text-gray-700 hover:text-dance-purple">Home</a>
-      <a href="index.html#about" class="block text-gray-700 hover:text-dance-purple">About</a>
-      <a href="index.html#classes" class="block text-gray-700 hover:text-dance-purple">Classes</a>
+<a href="/#home" class="text-gray-700 hover:text-dance-purple">Home</a>
+<a href="/#about" class="text-gray-700 hover:text-dance-purple">About</a>
+<a href="/#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
+<a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a>
       <a href="calendar.html" class="block text-gray-700 hover:text-dance-purple">Calendar</a>
       <a href="team.html" class="block text-dance-purple font-medium underline">Meet the Team</a>
-      <a href="index.html#contact" class="block text-gray-700 hover:text-dance-purple">Contact</a>
     </div>
   </nav>
 
