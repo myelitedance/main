@@ -63,10 +63,10 @@
         <a href="/#home"    class="text-gray-700 hover:text-dance-purple">Home</a>
         <a href="/#about"   class="text-gray-700 hover:text-dance-purple">About</a>
         <a href="/#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
-        <a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a> 
         <!-- Active page -->
         <a href="calendar.html" class="text-dance-purple font-semibold underline underline-offset-4">Calendar</a>
         <a href="team.html"     class="text-gray-700 hover:text-dance-purple">Meet the Team</a>
+        <a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a> 
       </div>
       <button id="mobile-menu-btn" class="md:hidden p-2" aria-label="Open menu" aria-expanded="false">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,9 +81,9 @@
    <a href="/#home"    class="text-gray-700 hover:text-dance-purple">Home</a>
    <a href="/#about"   class="text-gray-700 hover:text-dance-purple">About</a>
    <a href="/#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
-   <a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a> 
     <a href="calendar.html"      class="block text-dance-purple font-semibold underline">Calendar</a>
     <a href="team.html"          class="block text-gray-700 hover:text-dance-purple">Meet the Team</a>
+    <a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a> 
   </div>
 </nav>
     <main class="max-w-6xl mx-auto px-4 pt-24 pb-12">
@@ -542,6 +542,28 @@ function renderAgenda(){
       btn.setAttribute('aria-expanded', 'false');
     });
   });
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "DanceSchool",
+  "name": "Elite Dance & Music",
+  "url": "https://www.myelitedance.com/",
+  "logo": "https://www.myelitedance.com/assets/img/social-card.jpg",
+  "telephone": "(615) 776-4202",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "7177 Nolensville Rd Suite B-3",
+    "addressLocality": "Nolensville",
+    "addressRegion": "TN",
+    "postalCode": "",
+    "addressCountry": "US"
+  },
+  "sameAs": [
+    "https://www.facebook.com/profile.php?id=61573876559298",
+    "https://www.instagram.com/elitedancetn/"
+  ]
+}
 </script>
 </body>
 </html>
