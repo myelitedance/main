@@ -1,9 +1,18 @@
 // /api/events.js
 export default async function handler(req, res) {
   try {
-    const CAL_ID = process.env.GCAL_CALENDAR_ID
     const API_KEY = process.env.GCAL_API_KEY
-    if (!CAL_ID || !API_KEY) throw new Error('Missing GCAL env vars')
+    if (!API_KEY) throw new Error('Missing GCAL_API_KEY')
+
+    // Allow-list of calendars
+    const CAL_MAP = {
+      studio: process.env.GCAL_CALENDAR_ID,        // existing one
+      team:   process.env.GCAL_CALENDAR_ID_TEAM,   // add this in Vercel
+    }
+
+    const calSlug = (req.query.cal || 'studio').toString()
+    const CAL_ID = CAL_MAP[calSlug]
+    if (!CAL_ID) return res.status(400).json({ error: 'Unknown or unset calendar' })
 
     const { timeMin, timeMax, maxResults = 250 } = req.query || {}
     const now = new Date()
@@ -30,7 +39,7 @@ export default async function handler(req, res) {
       title: e.summary || 'Untitled',
       description: e.description || '',
       location: e.location || '',
-      start: e.start.dateTime || e.start.date,
+      start: e.start.dateTime || e.start.date, // all-day fallback
       end: e.end.dateTime || e.end.date,
       htmlLink: e.htmlLink,
     }))
