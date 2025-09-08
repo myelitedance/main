@@ -69,40 +69,47 @@ export default function BookTrialForm() {
 
   const chip = (active:boolean) =>
     `px-3 py-2 rounded-2xl border ${active ? "bg-dance-blue text-white border-dance-blue" : "border-gray-300"}`;
-  const btn = "inline-flex items-center px-5 py-3 rounded-2xl font-medium bg-dance-purple text-white hover:opacity-90";
+  const btn = "inline-flex items-center px-5 py-3 rounded-2xl font-medium bg-dance-pink text-white hover:opacity-90";
 
-  const quickCapture = async () => {
-    setBusy(true); setMsg(null);
-    try {
-      const phone = data.phone.replace(/[^\d+]/g, "");
-      const res = await fetch("/api/elite/quick-capture", {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          parentFirst: data.parentFirst,
-          parentLast: data.parentLast,
-          email: data.email,
-          phone,
-          smsConsent: data.smsConsent,
-          dancerFirst: data.dancerFirst,
-          dancerLast: "", // available later if you decide to capture
-          age: data.age,
-          page: typeof window !== "undefined" ? window.location.pathname : "",
-          utm: {
-            source: (window as any).utm_source || "",
-            medium: (window as any).utm_medium || "",
-            campaign: (window as any).utm_campaign || ""
-          }
-        })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const j = await res.json();
-      setData(d => ({ ...d, contactId: j.contactId }));
-      setStep(1);
-    } catch (e:any) {
-      setMsg(e.message || "Couldn’t save. Please try again.");
-    } finally { setBusy(false); }
-  };
+  // In /components/BookTrialForm.tsx
+const quickCapture = async () => {
+  setBusy(true); setMsg(null);
+  try {
+    const phone = data.phone.replace(/[^\d+]/g, "");
+    const res = await fetch("/api/elite/quick-capture", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        parentFirst: data.parentFirst,
+        parentLast: data.parentLast,
+        email: data.email,
+        phone,
+        smsConsent: data.smsConsent,
+        dancerFirst: data.dancerFirst,
+        age: data.age,
+        page: typeof window !== "undefined" ? window.location.pathname : "",
+        utm: {
+          source: (window as any).utm_source || "",
+          medium: (window as any).utm_medium || "",
+          campaign: (window as any).utm_campaign || ""
+        }
+      })
+    });
 
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    const j = await res.json();
+    setData(d => ({ ...d, contactId: j.contactId }));
+    setStep(1);
+  } catch (e:any) {
+    console.error(e);
+    setMsg(e?.message || "Couldn’t save. Please try again.");
+  } finally {
+    setBusy(false);
+  }
+};
   const finalize = async () => {
     setBusy(true); setMsg(null);
     try {
