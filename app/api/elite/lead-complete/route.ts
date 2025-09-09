@@ -154,9 +154,9 @@ export async function POST(req: NextRequest) {
     if (body.wantsTeam) tags.push("DanceTeamInterest");
     if (body.hasQuestions || body.action === "inquiry") tags.push("NeedHelp");
 
-    // Update contact with CFs + tags
-    await ghl(`/contacts/`, {
-      method: "POST",
+    // Update contact PUT to /contacts/{id}, no "id" in body
+    await ghl(`/contacts/${contactId}`, {
+      method: "PUT",
       body: JSON.stringify({
         id: contactId,
         locationId: LOCATION_ID,
@@ -164,6 +164,21 @@ export async function POST(req: NextRequest) {
         customFields,
       }),
     });
+
+    // Optional: create the Opportunity here if you want it at Step 2
+await ghl(`/opportunities/`, {
+  method: "POST",
+  body: JSON.stringify({
+    locationId: LOCATION_ID,
+    pipelineId: process.env.GHL_PIPELINE_ID,
+    pipelineStageId: process.env.GHL_STAGE_NEW_LEAD,
+    name: `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
+    contactId,
+    status: "open",
+    monetaryValue: 0,
+    source: body.utm?.source || "Website",
+  }),
+});
 
     // Email front desk (unchanged)
     if (process.env.RESEND_API_KEY) {
