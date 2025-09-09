@@ -70,9 +70,53 @@ const cf = (id: string, value: any) =>
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    if (!body.contactId) return NextResponse.json({ error: "contactId required" }, { status: 400 });
 
-    // Optional: resolve selected class name via your classes API
+    // --- helper to get or create a contact id (duplicate-safe, same headers/base as quick-capture) ---
+    async function getOrCreateContactId() {
+      // if we got one from the client, use it
+      if (body.contactId) return body.contactId;
+
+      // otherwise, try to upsert with the info we likely have from the form
+      if (!body.parentFirst || !body.parentLast || !body.email || !body.parentPhone) {
+        throw new Error("contactId required (and not enough fields to upsert)");
+      }
+
+      try {
+        const upsert = await ghl(`/contacts/`, {
+          method: "POST",
+          body: JSON.stringify({
+            locationId: LOCATION_ID,
+            firstName: body.parentFirst,
+            lastName: body.parentLast,
+            email: body.email,
+            phone: body.parentPhone,
+            tags: ["EliteLead", "DanceInterest"],
+            source: body.utm?.source || "Website",
+          }),
+        });
+        return upsert.contact?.id || upsert.id;
+      } catch (e: any) {
+        const msg = String(e?.message || "");
+        try {
+          const start = msg.indexOf("{");
+          const j = start >= 0 ? JSON.parse(msg.slice(start)) : null;
+          if (
+            j?.statusCode === 400 &&
+            typeof j?.message === "string" &&
+            j.message.includes("does not allow duplicated contacts") &&
+            j?.meta?.contactId
+          ) {
+            return j.meta.contactId;
+          }
+        } catch {}
+        throw e;
+      }
+    }
+
+    // Resolve/ensure a contactId first (fallback handles missing)
+    const contactId = await getOrCreateContactId();
+
+    // Optional: resolve selected class name via your classes API (unchanged)
     let selectedClassName = body.selectedClassName || "";
     if (!selectedClassName && body.selectedClassId) {
       try {
@@ -85,30 +129,21 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // 1) Update tags + custom fields directly by ID (no /custom-fields lookup)
+    // Build customFields by ID (unchanged)
     const customFields = [
       cf(CF.DANCER_FIRST, body.dancerFirst),
       cf(CF.DANCER_LAST,  body.dancerLast || ""),
       cf(CF.DANCER_AGE,   body.age || ""),
-
-      // branch specifics
       Number(body.age || 0) < 7
         ? cf(CF.U7_RECS_CSV, (body.classOptionsU7 || []).join(", "))
         : cf(CF.STYLE_CSV,   (body.stylePreference || []).join(", ")),
-
-      Number(body.age || 0) < 7
-        ? null
-        : cf(CF.EXPERIENCE, body.experienceYears || body.experience || ""),
-
+      Number(body.age || 0) < 7 ? null : cf(CF.EXPERIENCE, body.experienceYears || body.experience || ""),
       cf(CF.TEAM_INT,   body.wantsTeam ? "Yes" : "No"),
       cf(CF.WANTS_RECS, body.wantsRecs ? "Yes" : "No"),
-
       cf(CF.CLASS_ID,   body.selectedClassId || ""),
       cf(CF.CLASS_NAME, selectedClassName || ""),
-
       cf(CF.SMS_CONSENT, body.smsConsent ? "Yes" : "No"),
       cf(CF.NOTES,       body.notes || ""),
-
       cf(CF.UTM_SOURCE,  body.utm?.source || ""),
       cf(CF.UTM_MEDIUM,  body.utm?.medium || ""),
       cf(CF.UTM_CAMPAIGN,body.utm?.campaign || ""),
@@ -119,17 +154,18 @@ export async function POST(req: NextRequest) {
     if (body.wantsTeam) tags.push("DanceTeamInterest");
     if (body.hasQuestions || body.action === "inquiry") tags.push("NeedHelp");
 
+    // Update contact with CFs + tags
     await ghl(`/contacts/`, {
       method: "POST",
       body: JSON.stringify({
-        id: body.contactId,
+        id: contactId,
         locationId: LOCATION_ID,
         tags,
         customFields,
       }),
     });
 
-    // 2) Email front desk (non-blocking if resend is not set)
+    // Email front desk (unchanged)
     if (process.env.RESEND_API_KEY) {
       const subject = body.action === "inquiry" ? "Trial Class Inquiry" : "Trial Class Registration";
       const html = `
@@ -145,21 +181,16 @@ export async function POST(req: NextRequest) {
         <p><strong>Dance Team:</strong> ${body.wantsTeam ? "Yes" : "No"}</p>
         <p><strong>Notes:</strong><br>${(body.notes || "").replace(/\n/g,"<br>")}</p>
         <hr/>
-        <p><em>GHL Contact ID:</em> ${body.contactId}</p>
+        <p><em>GHL Contact ID:</em> ${contactId}</p>
       `;
       try {
-        await resend.emails.send({
-          from: EMAIL_FROM,
-          to: FRONTDESK_TO,
-          subject,
-          html,
-        });
+        await resend.emails.send({ from: EMAIL_FROM, to: FRONTDESK_TO, subject, html });
       } catch (e) {
         console.warn("Resend email failed (non-blocking):", e);
       }
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, contactId });
   } catch (err: any) {
     console.error("lead-complete error:", err);
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
