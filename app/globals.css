@@ -1,4 +1,1 @@
-@import "tailwindcss";
-
-/* optional: quick sanity style to verify it's working */
-:root { color-scheme: light; }
+@tailwind utilities;
