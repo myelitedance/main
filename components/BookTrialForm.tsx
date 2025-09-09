@@ -115,46 +115,13 @@ export default function BookTrialForm() {
     return api7.length ? api7 : classes.slice(0, 5);
   };
 
-  const toStep2 = async () => {
-    setMsg(null);
-    setBusy(true);
-    try {
-      // UTM
-      let utm = { source: "", medium: "", campaign: "" };
-      if (typeof window !== "undefined") {
-        const u = new URL(window.location.href);
-        utm = {
-          source: u.searchParams.get("utm_source") || "",
-          medium: u.searchParams.get("utm_medium") || "",
-          campaign: u.searchParams.get("utm_campaign") || "",
-        };
-      }
-      // Quick capture (creates contact + opp)
-      const res = await fetch("/api/elite/quick-capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          parentFirst: s1.parentFirst,
-          parentLast: s1.parentLast,
-          email: s1.email,
-          dancerFirst: s1.dancerFirst,
-          age: s1.dancerAge,
-          experience: s1.experience,
-          page: typeof window !== "undefined" ? window.location.pathname : "",
-          utm,
-        }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const j = await res.json();
-      setContactId(j.contactId);
-      setS2(prev => ({ ...prev, suggested: buildSuggestions() }));
-      setStep(1);
-    } catch (e: any) {
-      setMsg(e?.message || "Couldn’t save. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Replace your current toStep2 with this:
+const toStep2 = async () => {
+  setMsg(null);
+  // just build suggestions and go to step 2; no GHL calls here
+  setS2(prev => ({ ...prev, suggested: buildSuggestions() }));
+  setStep(1);
+};
 
   const submitFinal = async () => {
     setMsg(null);
