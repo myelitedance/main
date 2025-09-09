@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 export const runtime = "nodejs";
 
-const GHL_API = "https://rest.gohighlevel.com/v1";
+const GHL_API = "https://rest.gohighlevel.com/v2";
 const requireEnv = (k: string) => {
   const v = process.env[k];
   if (!v) throw new Error(`Missing env: ${k}`);
