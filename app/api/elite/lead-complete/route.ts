@@ -131,36 +131,43 @@ export async function POST(req: NextRequest) {
         }
       } catch {}
     }
-// --- type-aware set helpers ---
+// --- type-aware set helpers for CONTACT update: use { id, value } ---
 const setText = (id?: string, v?: any) =>
-  id && v != null && String(v).trim() !== "" ? { customFieldId: id, field_value: String(v) } : null;
+  id && v != null && String(v).trim() !== "" ? { id, value: String(v) } : null;
 
 const setNumber = (id?: string, v?: any) => {
-  if (!id || v == null || v === "") return null;
+  if (!id) return null;
   const n = Number(v);
-  if (Number.isNaN(n)) return null;
-  return { customFieldId: id, field_value: n };
+  return Number.isFinite(n) ? { id, value: n } : null;
 };
 
 const setBool = (id?: string, v?: any) =>
-  id && typeof v === "boolean" ? { customFieldId: id, field_value: v } : null;
+  id && typeof v === "boolean" ? { id, value: v } : null;
 
 const setCSV = (id?: string, arr?: any[]) =>
-  id && Array.isArray(arr) && arr.length
-    ? { customFieldId: id, field_value: arr.join(", ") }
-    : null;
-    const ageNum = Number(body.age || 0);
+  id && Array.isArray(arr) && arr.length ? { id, value: arr.join(", ") } : null;
+
+// normalize experience to match your picklist: ["0","1-2","3-4","5+"]
+function normalizeExperience(raw?: string): string {
+  if (!raw) return "";
+  const t = String(raw).trim().replace("–", "-"); // swap en–dash to hyphen
+  if (t === "0") return "0";
+  if (t === "1-2" || t === "1-2 years") return "1-2";
+  if (t === "3+" || t === "3-4" || t === "3-4 years") return "3-4";
+  if (t === "5+" || t === "5-plus") return "5+";
+  return ""; // ignore non-matching
+}
+
+const ageNum = Number(body.age || 0);
 const experienceFixed =
-  body.experienceYears && ["0","1-2","3-4","5+"].includes(body.experienceYears)
-    ? body.experienceYears
-    : ""; // ignore mismatched values
+  normalizeExperience(body.experienceYears || body.experience);
 
 const customFields = [
   setText(CF.DANCER_FIRST, body.dancerFirst),
   setText(CF.DANCER_LAST,  body.dancerLast || ""),
   setNumber(CF.DANCER_AGE, ageNum),
 
-  // Under-7 vs 7+ branches
+  // U7 vs 7+ branches
   ageNum > 0 && ageNum < 7
     ? setCSV(CF.U7_RECS_CSV, body.classOptionsU7 || [])
     : setCSV(CF.STYLE_CSV,   body.stylePreference || []),
@@ -168,10 +175,10 @@ const customFields = [
   // Experience only for 7+
   ageNum >= 7 ? setText(CF.EXPERIENCE, experienceFixed) : null,
 
-  // Checkboxes as booleans
-  setBool(CF.TEAM_INT,   !!body.wantsTeam),
-  setBool(CF.WANTS_RECS, !!body.wantsRecs),
-  setBool(CF.SMS_CONSENT,!!body.smsConsent),
+  // Checkboxes -> booleans
+  setBool(CF.TEAM_INT,    !!body.wantsTeam),
+  setBool(CF.WANTS_RECS,  !!body.wantsRecs),
+  setBool(CF.SMS_CONSENT, !!body.smsConsent),
 
   // Misc
   setText(CF.CLASS_ID,     body.selectedClassId || ""),
@@ -181,19 +188,16 @@ const customFields = [
   setText(CF.UTM_MEDIUM,   body.utm?.medium || ""),
   setText(CF.UTM_CAMPAIGN, body.utm?.campaign || ""),
   setText(CF.PAGE_PATH,    body.page || ""),
-].filter(Boolean) as Array<{ customFieldId: string; field_value: string | number | boolean }>;
+].filter(Boolean) as Array<{ id: string; value: string | number | boolean }>;
+
     const tags: string[] = ["DanceInterest", "Lead-Completed"];
     if (body.wantsTeam) tags.push("DanceTeamInterest");
     if (body.hasQuestions || body.action === "inquiry") tags.push("NeedHelp");
 
-    // Update contact PUT to /contacts/{id}, no "id" in body
-    await ghl(`/contacts/${contactId}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        tags,
-        customFields,
-      }),
-    });
+ await ghl(`/contacts/${contactId}`, {
+  method: "PUT",
+  body: JSON.stringify({ tags, customFields }),
+});
 
     // Optional: create the Opportunity here if you want it at Step 2
 await ghl(`/opportunities/`, {
