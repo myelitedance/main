@@ -16,7 +16,9 @@ async function ghl(path: string, init: RequestInit = {}) {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${GHL_KEY}`,
+      "Accept": "application/json",
+      "Authorization": `Bearer ${process.env.GHL_API_KEY}`, // or access_token
+      "Version": "2021-07-28",
       ...(init.headers || {}),
     },
     cache: "no-store",
