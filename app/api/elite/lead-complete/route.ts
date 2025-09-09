@@ -64,8 +64,11 @@ async function ghl(path: string, init: RequestInit = {}) {
   return res.json();
 }
 
+// for CONTACT updates, use { id, value } (not field_value)
 const cf = (id: string, value: any) =>
-  value === undefined || value === null || value === "" ? null : ({ customFieldId: id, field_value: String(value) });
+  value === undefined || value === null || value === ""
+    ? null
+    : ({ id, value: String(value) });
 
 export async function POST(req: NextRequest) {
   try {
