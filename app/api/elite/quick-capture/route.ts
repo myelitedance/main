@@ -1,22 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
-
 export const runtime = "nodejs";
 
-// Use the same base + headers you already had working
-const requireEnv = (k: string) => {
+const need = (k: string) => {
   const v = process.env[k];
   if (!v) throw new Error(`Missing env: ${k}`);
   return v;
 };
 
-const GHL_BASE       = process.env.GHL_BASE || "https://services.leadconnectorhq.com"; // or your working host
-const GHL_API_KEY    = requireEnv("GHL_API_KEY");
-const GHL_VERSION    = process.env.GHL_VERSION || ""; // only set if you needed it working
-const LOCATION_ID    = requireEnv("GHL_LOCATION_ID");
-const PIPELINE_ID    = requireEnv("GHL_PIPELINE_ID");
-const STAGE_NEW_LEAD = requireEnv("GHL_STAGE_NEW_LEAD");
+const GHL_BASE       = "https://services.leadconnectorhq.com"; // your proven host
+const GHL_API_KEY    = need("GHL_API_KEY");
+const GHL_VERSION    = "2021-07-28"; // set if your curl needed it
+const LOCATION_ID    = need("GHL_LOCATION_ID");
+const PIPELINE_ID    = need("GHL_PIPELINE_ID");
+const STAGE_NEW_LEAD = need("GHL_STAGE_NEW_LEAD");
 
-// Your custom-field IDs (from your curl)
+// Custom field IDs you retrieved via curl:
 const CF = {
   DANCER_FIRST_NAME: "scpp296TInQvCwknlSXt",
   DANCER_LAST_NAME:  "O6sOZkoTVHW1qjcwQlDm",
@@ -28,22 +26,24 @@ const CF = {
   PAGE_PATH:         "f1bLQiSnX2HtnY0vjLAe",
 } as const;
 
-async function ghl(path: string, init: RequestInit = {}) {
-  const headers: Record<string, string> = {
+function baseHeaders() {
+  const h: Record<string,string> = {
+    "Authorization": `Bearer ${GHL_API_KEY}`,
     "Content-Type": "application/json",
     "Accept": "application/json",
-    "Authorization": `Bearer ${GHL_API_KEY}`,
   };
-  if (GHL_VERSION) headers["Version"] = GHL_VERSION; // preserve the working header if you needed it
+  if (GHL_VERSION) h["Version"] = GHL_VERSION;
+  return h;
+}
 
+async function ghl(path: string, init: RequestInit = {}) {
   const res = await fetch(`${GHL_BASE}/v1${path}`, {
     ...init,
-    headers: { ...headers, ...(init.headers || {}) },
+    headers: { ...baseHeaders(), ...(init.headers || {}) },
     cache: "no-store",
   });
-
   if (!res.ok) {
-    const txt = await res.text();
+    const txt = await res.text().catch(()=> "");
     throw new Error(`GHL ${path} ${res.status}: ${txt}`);
   }
   return res.json();
@@ -56,12 +56,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
+    // Required fields
     const required = ["parentFirst","parentLast","email","phone","smsConsent","dancerFirst","age"] as const;
     for (const k of required) {
       if (!body?.[k]) return NextResponse.json({ error: `Missing field: ${k}` }, { status: 400 });
     }
 
-    // 1) Upsert contact (core)
+    // 1) Upsert contact
     const upsert = await ghl(`/contacts/`, {
       method: "POST",
       body: JSON.stringify({
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
     });
     const contactId = upsert.contact?.id || upsert.id;
 
-    // 2) Apply initial custom fields (by ID)
+    // 2) Initial custom fields (by ID)
     const customFields = [
       cf(CF.DANCER_FIRST_NAME, body.dancerFirst),
       cf(CF.DANCER_LAST_NAME,  body.dancerLast || ""),
@@ -99,23 +100,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3) Create Opportunity (this is the same endpoint/shape that worked for you)
+    // 3) Create opportunity (same endpoint/shape as your working call)
     await ghl(`/opportunities/`, {
       method: "POST",
       body: JSON.stringify({
-        locationId:     LOCATION_ID,
-        pipelineId:     PIPELINE_ID,
+        locationId:      LOCATION_ID,
+        pipelineId:      PIPELINE_ID,
         pipelineStageId: STAGE_NEW_LEAD,
-        name:           `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
+        name:            `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
         contactId,
-        status:         "open",
-        monetaryValue:  0,
-        source:         body.utm?.source || "Website",
+        status:          "open",
+        monetaryValue:   0,
+        source:          body.utm?.source || "Website",
       }),
     });
 
     return NextResponse.json({ ok: true, contactId });
-  } catch (err: any) {
+  } catch (err:any) {
     console.error("quick-capture error:", err);
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }

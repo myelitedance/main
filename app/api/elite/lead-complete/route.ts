@@ -1,18 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 export const runtime = "nodejs";
 
-const requireEnv = (k: string) => {
+const need = (k: string) => {
   const v = process.env[k];
   if (!v) throw new Error(`Missing env: ${k}`);
   return v;
 };
 
-const GHL_BASE    = process.env.GHL_BASE || "https://services.leadconnectorhq.com";
-const GHL_API_KEY = requireEnv("GHL_API_KEY");
-const GHL_VERSION = process.env.GHL_VERSION || "";
-const LOCATION_ID = requireEnv("GHL_LOCATION_ID");
+const GHL_BASE    = "https://services.leadconnectorhq.com";
+const GHL_API_KEY = need("GHL_API_KEY");
+const GHL_VERSION = "2021-07-28";
+const LOCATION_ID = need("GHL_LOCATION_ID");
 
-// Custom-field IDs
+// Custom field IDs (from your curl)
 const CF = {
   U7_RECS_CSV:        "IRFoGYtxrdlerisKdi1o",
   EXPERIENCE_YEARS:   "SrUlABm2OX3HEgSDJgBG",
@@ -24,22 +24,24 @@ const CF = {
   NOTES:              "2JKj9HTS7Hhu0NUxuswN",
 } as const;
 
-async function ghl(path: string, init: RequestInit = {}) {
-  const headers: Record<string, string> = {
+function baseHeaders() {
+  const h: Record<string,string> = {
+    "Authorization": `Bearer ${GHL_API_KEY}`,
     "Content-Type": "application/json",
     "Accept": "application/json",
-    "Authorization": `Bearer ${GHL_API_KEY}`,
   };
-  if (GHL_VERSION) headers["Version"] = GHL_VERSION;
+  if (GHL_VERSION) h["Version"] = GHL_VERSION;
+  return h;
+}
 
+async function ghl(path: string, init: RequestInit = {}) {
   const res = await fetch(`${GHL_BASE}/v1${path}`, {
     ...init,
-    headers: { ...headers, ...(init.headers || {}) },
+    headers: { ...baseHeaders(), ...(init.headers || {}) },
     cache: "no-store",
   });
-
   if (!res.ok) {
-    const txt = await res.text();
+    const txt = await res.text().catch(()=> "");
     throw new Error(`GHL ${path} ${res.status}: ${txt}`);
   }
   return res.json();
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "contactId required" }, { status: 400 });
     }
 
-    // Optionally resolve class name from your classes endpoint
+    // Optionally resolve class name from /api/elite/classes
     let selectedClassName = body.selectedClassName || "";
     if (!selectedClassName && body.selectedClassId) {
       try {
@@ -96,7 +98,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (err:any) {
     console.error("lead-complete error:", err);
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
