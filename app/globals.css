@@ -1,2 +1,31 @@
 /* Tailwind v4 single import */
 @import "tailwindcss";
+/* app/globals.css */
+
+/* Brand tokens */
+:root{
+  --dance-purple:#8B5CF6;
+  --dance-pink:#EC4899;
+  --dance-blue:#3B82F6;
+  --dance-gold:#F59E0B;
+  --dance-green:#32B486;
+}
+
+/* Simple utility shims so your component classes work */
+.bg-dance-purple{ background-color: var(--dance-purple) !important; }
+.bg-dance-pink{ background-color: var(--dance-pink) !important; }
+.bg-dance-blue{ background-color: var(--dance-blue) !important; }
+.text-dance-purple{ color: var(--dance-purple) !important; }
+.text-dance-pink{ color: var(--dance-pink) !important; }
+.text-dance-blue{ color: var(--dance-blue) !important; }
+.border-dance-blue{ border-color: var(--dance-blue) !important; }
+.border-dance-pink{ border-color: var(--dance-pink) !important; }
+
+/* Nice default button look in your form */
+button.inline-flex.items-center.px-5.py-3.rounded-2xl.font-medium {
+  transition: opacity .15s ease, transform .15s ease;
+}
+button.inline-flex.items-center.px-5.py-3.rounded-2xl.font-medium:hover{
+  opacity:.92;
+  transform: translateY(-1px);
+}
