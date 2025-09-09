@@ -895,34 +895,7 @@
         });
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9671270647ac676a',t:'MTc1MzgzOTY3My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
-<script>
-  document.getElementById('message-form').addEventListener('submit', async function (e) {
-    e.preventDefault();
 
-    const form = e.target;
-    const data = {
-      parent: form.parent.value,
-      phone: form.phone.value,
-      email: form.email.value,
-      dancer: form.dancer.value,
-      interest: form.interest.value,
-      message: form.message.value,
-    };
-
-    const res = await fetch('/api/contact-form', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-
-    if (res.ok) {
-      document.getElementById('form-response').classList.remove('hidden');
-      form.reset();
-    } else {
-      alert('Something went wrong. Please try again.');
-    }
-  });
-</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -945,5 +918,6 @@
   ]
 }
 </script>
+<script src="/assets/js/contact-form.js" defer></script>
 </body>
 </html>
