@@ -12,7 +12,8 @@ const need = (k: string) => {
   return v;
 };
 
-const GHL_KEY        = need("GHL_API_KEY");
+const GHL_KEY        = need("GHL_API_KEY");            // the key you've been using for contacts/opps
+const GHL_CF_KEY     = process.env.GHL_CF_KEY || GHL_KEY; // optional: use the same token you used in the successful curl
 const LOCATION_ID    = need("GHL_LOCATION_ID");
 const PIPELINE_ID    = need("GHL_PIPELINE_ID");
 const STAGE_NEW_LEAD = need("GHL_STAGE_NEW_LEAD");
@@ -22,14 +23,34 @@ const FRONTDESK_TO   = process.env.FRONTDESK_TO || "frontdesk@myelitedance.com";
 const resend         = new Resend(process.env.RESEND_API_KEY || "");
 const ASSIGNED_TO    = process.env.GHL_USER_TASHARA_ID || ""; // optional
 
+function headersWith(key: string) {
+  return {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    Authorization: `Bearer ${key}`,
+    Version: "2021-07-28",
+  };
+}
+
 async function ghl(path: string, init: RequestInit = {}) {
   const res = await fetch(`${GHL_API}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${GHL_KEY}`,
-      Version: "2021-07-28",
+      ...headersWith(GHL_KEY),
+      ...(init.headers || {}),
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`GHL ${path} ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function ghlCF(path: string, init: RequestInit = {}) {
+  // Same base, but allows a different token for custom-fields if needed
+  const res = await fetch(`${GHL_API}${path}`, {
+    ...init,
+    headers: {
+      ...headersWith(GHL_CF_KEY),
       ...(init.headers || {}),
     },
     cache: "no-store",
@@ -42,8 +63,10 @@ async function ghl(path: string, init: RequestInit = {}) {
 let FIELD_MAP: Record<string, string> | null = null;
 async function getFieldMap(): Promise<Record<string, string>> {
   if (FIELD_MAP) return FIELD_MAP;
-  // ✅ working endpoint for your tenant:
-  const data = await ghl(`/custom-fields?locationId=${encodeURIComponent(LOCATION_ID)}`);
+
+  // ✅ Use the endpoint that worked in your curl
+  // If your tenant sometimes needs a trailing slash, this still works without one.
+  const data = await ghlCF(`/custom-fields?locationId=${encodeURIComponent(LOCATION_ID)}`);
   const list = (data.customFields || []) as Array<{ id: string; name: string }>;
   const map: Record<string, string> = {};
   for (const f of list) map[f.name] = f.id;
@@ -60,13 +83,12 @@ function cf(customFieldId: string | undefined, value: any) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    // body.action: "trial" | "inquiry"
+    // "trial" or "inquiry"
     if (!body.action || !["trial", "inquiry"].includes(body.action)) {
       return NextResponse.json({ error: "action must be 'trial' or 'inquiry'" }, { status: 400 });
     }
 
-    // Gather UTM from query string on client (already sent in older code – optional to add later)
-    // Resolve class name (optional)
+    // OPTIONAL: resolve selected class name via your classes API
     let selectedClassName = body.selectedClassName || "";
     if (!selectedClassName && body.selectedClassId) {
       try {
@@ -79,64 +101,91 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // 1) Create/Update contact at final submit
-    //    We do a simple create; if you later need a true "find-or-update", we can add a search by email.
-    const upsertRes = await ghl(`/contacts/`, {
-      method: "POST",
-      body: JSON.stringify({
-        locationId: LOCATION_ID,
-        firstName: body.parentFirst,
-        lastName: body.parentLast,
-        email: body.email,
-        phone: body.parentPhone || undefined,
-        tags: ["EliteLead", "DanceInterest", "Lead-Completed", ...(body.action === "inquiry" ? ["NeedHelp"] : [])],
-        source: "Website",
-      }),
-    });
-    const contactId = upsertRes.contact?.id || upsertRes.id;
-
-    // 2) Create Opportunity (New Lead)
-    await ghl(`/opportunities/`, {
-      method: "POST",
-      body: JSON.stringify({
-        locationId: LOCATION_ID,
-        pipelineId: PIPELINE_ID,
-        pipelineStageId: STAGE_NEW_LEAD,
-        name: `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
-        contactId,
-        status: "open",
-        monetaryValue: 0,
-        source: "Website",
-      }),
-    });
-
-    // 3) Custom fields
-    const map = await getFieldMap();
-    const toPush = (label: string, value: any) => cf(map[label], value);
-
-    const cfPayload = [
-      toPush("EDM - Dancer First Name", body.dancerFirst),
-      toPush("EDM - Dancer Last Name", body.dancerLast || ""),
-      toPush("EDM - Dancer Age", body.age || ""),
-      toPush("EDM - Experience (Years)", body.experience || ""),
-      toPush("EDM - Selected Class ID", body.selectedClassId || ""),
-      toPush("EDM - Selected Class Name", selectedClassName || ""),
-      toPush("EDM - SMS Consent", body.smsConsent ? "Yes" : "No"),
-      toPush("EDM - Notes", body.notes || ""),
-    ].filter(Boolean) as Array<{ customFieldId: string; field_value: string }>;
-
-    if (cfPayload.length) {
-      await ghl(`/contacts/`, {
+    // 1) Create/Update contact at final submit with graceful duplicate handling
+    let contactId: string | undefined;
+    try {
+      const upsertRes = await ghl(`/contacts/`, {
         method: "POST",
         body: JSON.stringify({
-          id: contactId,
           locationId: LOCATION_ID,
-          customFields: cfPayload,
+          firstName: body.parentFirst,
+          lastName: body.parentLast,
+          email: body.email,
+          phone: body.parentPhone || undefined,
+          tags: ["EliteLead", "DanceInterest", "Lead-Completed", ...(body.action === "inquiry" ? ["NeedHelp"] : [])],
+          source: "Website",
         }),
       });
+      contactId = upsertRes.contact?.id || upsertRes.id;
+    } catch (e: any) {
+      // Handle "no duplicates" -> pull meta.contactId and continue
+      const msg = String(e?.message || "");
+      try {
+        const jsonStart = msg.indexOf("{");
+        const json = jsonStart >= 0 ? JSON.parse(msg.slice(jsonStart)) : null;
+        const maybeId = json?.meta?.contactId;
+        if (maybeId) {
+          contactId = maybeId; // proceed as update
+        } else {
+          throw e;
+        }
+      } catch {
+        throw e;
+      }
+    }
+    if (!contactId) throw new Error("No contactId available");
+
+    // 2) Create Opportunity (New Lead) — idempotent enough for our flow
+    try {
+      await ghl(`/opportunities/`, {
+        method: "POST",
+        body: JSON.stringify({
+          locationId: LOCATION_ID,
+          pipelineId: PIPELINE_ID,
+          pipelineStageId: STAGE_NEW_LEAD,
+          name: `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
+          contactId,
+          status: "open",
+          monetaryValue: 0,
+          source: "Website",
+        }),
+      });
+    } catch (e) {
+      // not fatal for the user; log and continue
+      console.warn("Opportunity create failed:", e);
     }
 
-    // 4) Email front desk
+    // 3) Custom fields — try; if CF endpoint 404s, skip without failing the submit
+    try {
+      const map = await getFieldMap();
+      const toPush = (label: string, value: any) => cf(map[label], value);
+
+      const cfPayload = [
+        toPush("EDM - Dancer First Name", body.dancerFirst),
+        toPush("EDM - Dancer Last Name", body.dancerLast || ""),
+        toPush("EDM - Dancer Age", body.age || ""),
+        toPush("EDM - Experience (Years)", body.experience || ""),
+        toPush("EDM - Selected Class ID", body.selectedClassId || ""),
+        toPush("EDM - Selected Class Name", selectedClassName || ""),
+        toPush("EDM - SMS Consent", body.smsConsent ? "Yes" : "No"),
+        toPush("EDM - Notes", body.notes || ""),
+      ].filter(Boolean) as Array<{ customFieldId: string; field_value: string }>;
+
+      if (cfPayload.length) {
+        await ghl(`/contacts/`, {
+          method: "POST",
+          body: JSON.stringify({
+            id: contactId,
+            locationId: LOCATION_ID,
+            customFields: cfPayload,
+          }),
+        });
+      }
+    } catch (e) {
+      console.warn("Custom field update skipped (non-blocking):", e);
+    }
+
+    // 4) Email front desk (non-blocking if fails)
     if (process.env.RESEND_API_KEY) {
       const subject = body.action === "trial" ? "Trial Class Registration" : "Trial Class Inquiry";
       const html = `
@@ -165,7 +214,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5) Optional task for “inquiry”
+    // 5) Optional: task for “inquiry”
     if (body.action === "inquiry") {
       try {
         const due = new Date();
