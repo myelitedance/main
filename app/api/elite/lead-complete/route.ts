@@ -1,104 +1,69 @@
+// /app/api/elite/lead-complete/route.ts
 import { NextResponse, type NextRequest } from "next/server";
 export const runtime = "nodejs";
 
-const need = (k: string) => {
+const GHL_API = "https://services.leadconnectorhq.com";
+
+const requireEnv = (k: string) => {
   const v = process.env[k];
   if (!v) throw new Error(`Missing env: ${k}`);
   return v;
 };
 
-const GHL_BASE    = "https://services.leadconnectorhq.com";
-const GHL_API_KEY = need("GHL_API_KEY");
-const GHL_VERSION = "2021-07-28";
-const LOCATION_ID = need("GHL_LOCATION_ID");
-
-// Custom field IDs (from your curl)
-const CF = {
-  U7_RECS_CSV:        "IRFoGYtxrdlerisKdi1o",
-  EXPERIENCE_YEARS:   "SrUlABm2OX3HEgSDJgBG",
-  STYLE_PREF_CSV:     "uoAhDKEmTR2k7PcxCcag",
-  TEAM_INTEREST:      "pTnjhy6ilHaY1ykoPly4",
-  WANTS_RECOMMEND:    "gxIoT6RSun7KL9KDu0Qs",
-  SELECTED_CLASS_ID:  "seWdQbk6ZOerhIjAdI7d",
-  SELECTED_CLASS_NM:  "Zd88pTAbiEKK08JdDQNj",
-  NOTES:              "2JKj9HTS7Hhu0NUxuswN",
-} as const;
-
-function baseHeaders() {
-  const h: Record<string,string> = {
-    "Authorization": `Bearer ${GHL_API_KEY}`,
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-  };
-  if (GHL_VERSION) h["Version"] = GHL_VERSION;
-  return h;
-}
+const GHL_KEY     = requireEnv("GHL_API_KEY");
+const LOCATION_ID = requireEnv("GHL_LOCATION_ID");
 
 async function ghl(path: string, init: RequestInit = {}) {
-  const res = await fetch(`${GHL_BASE}${path}`, {
+  const res = await fetch(`${GHL_API}${path}`, {
     ...init,
-    headers: { ...baseHeaders(), ...(init.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": `Bearer ${GHL_KEY}`,
+      "Version": "2021-07-28",
+      ...(init.headers || {}),
+    },
     cache: "no-store",
   });
-  if (!res.ok) {
-    const txt = await res.text().catch(()=> "");
-    throw new Error(`GHL ${path} ${res.status}: ${txt}`);
-  }
+  if (!res.ok) throw new Error(`GHL ${path} ${res.status}: ${await res.text()}`);
   return res.json();
 }
-
-const cf = (id: string, value: any) =>
-  value === undefined || value === null || value === "" ? null : ({ id, value: String(value) });
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    if (!body.contactId) {
-      return NextResponse.json({ error: "contactId required" }, { status: 400 });
-    }
+    if (!body.contactId) return NextResponse.json({ error: "contactId required" }, { status: 400 });
 
-    // Optionally resolve class name from /api/elite/classes
+    // Optional: resolve selected class name via your classes API
     let selectedClassName = body.selectedClassName || "";
     if (!selectedClassName && body.selectedClassId) {
       try {
-        const base = process.env.NEXT_PUBLIC_BASE_URL || "";
-        const r = await fetch(`${base}/api/elite/classes`, { cache: "no-store" });
-        if (r.ok) {
-          const j = await r.json();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/elite/classes`, { cache: "no-store" });
+        if (res.ok) {
+          const j = await res.json();
           const hit = (j.classes || []).find((c: any) => c.id === body.selectedClassId);
           if (hit) selectedClassName = hit.name;
         }
       } catch {}
     }
 
-    const ageNum = Number(body.age || 0);
-    const fields = [
-      cf(CF.WANTS_RECOMMEND, body.wantsRecs ? "Yes" : "No"),
-      cf(CF.NOTES, body.notes || ""),
-      cf(CF.SELECTED_CLASS_ID, body.selectedClassId || ""),
-      cf(CF.SELECTED_CLASS_NM, selectedClassName || ""),
-      ...(ageNum && ageNum < 7
-        ? [cf(CF.U7_RECS_CSV, (body.classOptionsU7 || []).join(", "))]
-        : [
-            cf(CF.EXPERIENCE_YEARS, body.experienceYears || ""),
-            cf(CF.STYLE_PREF_CSV, (body.stylePreference || []).join(", ")),
-            cf(CF.TEAM_INTEREST, body.wantsTeam ? "Yes" : "No"),
-          ]),
-    ].filter(Boolean) as Array<{ id: string; value: string }>;
+    // Simple tag updates (no custom fields to avoid 404s for now)
+    const tags: string[] = ["DanceInterest", "Lead-Completed"];
+    if (body.wantsTeam) tags.push("DanceTeamInterest");
+    if (body.hasQuestions) tags.push("NeedHelp");
 
-    if (fields.length) {
-      await ghl(`/locations/${LOCATION_ID}/contacts`, {
-        method: "POST",
-        body: JSON.stringify({
-          id: body.contactId,
-          locationId: LOCATION_ID,
-          customFields: fields,
-        }),
-      });
-    }
+    await ghl(`/contacts/`, {
+      method: "POST",
+      body: JSON.stringify({
+        id: body.contactId,
+        locationId: LOCATION_ID,
+        tags,
+        // You can later add a `customFields` block here after we confirm your CF IDs
+      }),
+    });
 
     return NextResponse.json({ ok: true });
-  } catch (err:any) {
+  } catch (err: any) {
     console.error("lead-complete error:", err);
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
