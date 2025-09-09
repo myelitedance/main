@@ -76,6 +76,17 @@ const quickCapture = async () => {
   setBusy(true); setMsg(null);
   try {
     const phone = data.phone.replace(/[^\d+]/g, "");
+
+    let utm = { source:"", medium:"", campaign:"" };
+    if (typeof window !== "undefined") {
+      const u = new URL(window.location.href);
+      utm = {
+        source: u.searchParams.get("utm_source") || "",
+        medium: u.searchParams.get("utm_medium") || "",
+        campaign: u.searchParams.get("utm_campaign") || ""
+      };
+    }
+
     const res = await fetch("/api/elite/quick-capture", {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
@@ -88,14 +99,10 @@ const quickCapture = async () => {
         dancerFirst: data.dancerFirst,
         age: data.age,
         page: typeof window !== "undefined" ? window.location.pathname : "",
-        utm: {
-          source: (window as any).utm_source || "",
-          medium: (window as any).utm_medium || "",
-          campaign: (window as any).utm_campaign || ""
-        }
+        utm
       })
     });
-
+    // ...rest unchanged
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `HTTP ${res.status}`);
