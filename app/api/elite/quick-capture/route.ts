@@ -112,19 +112,21 @@ export async function POST(req: NextRequest) {
     }
 
     // 3) Create opportunity at New Lead
-    await ghl(`/opportunities/`, {
-      method: "POST",
-      body: JSON.stringify({
-        locationId: LOCATION_ID,
-        pipelineId: PIPELINE_ID,
-        stageId: STAGE_NEW_LEAD,
-        name: `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
-        contactId,
-        status: "open",
-        monetaryValue: 0,
-        source: body.utm?.source || "Website",
-      }),
-    });
+// 3) Create opportunity at New Lead
+await ghl(`/opportunities/`, {
+  method: "POST",
+  body: JSON.stringify({
+    locationId: LOCATION_ID,
+    pipelineId: PIPELINE_ID,
+    // v2 expects pipelineStageId (not stageId)
+    pipelineStageId: STAGE_NEW_LEAD,
+    name: `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
+    contactId,
+    status: "open",
+    monetaryValue: 0,
+    source: body.utm?.source || "Website",
+  }),
+});
 
     return NextResponse.json({ ok: true, contactId });
   } catch (err: any) {
