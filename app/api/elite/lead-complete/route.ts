@@ -158,8 +158,6 @@ export async function POST(req: NextRequest) {
     await ghl(`/contacts/${contactId}`, {
       method: "PUT",
       body: JSON.stringify({
-        id: contactId,
-        locationId: LOCATION_ID,
         tags,
         customFields,
       }),
