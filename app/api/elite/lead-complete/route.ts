@@ -128,28 +128,57 @@ export async function POST(req: NextRequest) {
         }
       } catch {}
     }
+// --- type-aware set helpers ---
+const setText = (id?: string, v?: any) =>
+  id && v != null && String(v).trim() !== "" ? { customFieldId: id, field_value: String(v) } : null;
 
-    // Build customFields by ID (unchanged)
-    const customFields = [
-      cf(CF.DANCER_FIRST, body.dancerFirst),
-      cf(CF.DANCER_LAST,  body.dancerLast || ""),
-      cf(CF.DANCER_AGE,   body.age || ""),
-      Number(body.age || 0) < 7
-        ? cf(CF.U7_RECS_CSV, (body.classOptionsU7 || []).join(", "))
-        : cf(CF.STYLE_CSV,   (body.stylePreference || []).join(", ")),
-      Number(body.age || 0) < 7 ? null : cf(CF.EXPERIENCE, body.experienceYears || body.experience || ""),
-      cf(CF.TEAM_INT,   body.wantsTeam ? "Yes" : "No"),
-      cf(CF.WANTS_RECS, body.wantsRecs ? "Yes" : "No"),
-      cf(CF.CLASS_ID,   body.selectedClassId || ""),
-      cf(CF.CLASS_NAME, selectedClassName || ""),
-      cf(CF.SMS_CONSENT, body.smsConsent ? "Yes" : "No"),
-      cf(CF.NOTES,       body.notes || ""),
-      cf(CF.UTM_SOURCE,  body.utm?.source || ""),
-      cf(CF.UTM_MEDIUM,  body.utm?.medium || ""),
-      cf(CF.UTM_CAMPAIGN,body.utm?.campaign || ""),
-      cf(CF.PAGE_PATH,   body.page || ""),
-    ].filter(Boolean) as Array<{ customFieldId: string; field_value: string }>;
+const setNumber = (id?: string, v?: any) => {
+  if (!id || v == null || v === "") return null;
+  const n = Number(v);
+  if (Number.isNaN(n)) return null;
+  return { customFieldId: id, field_value: n };
+};
 
+const setBool = (id?: string, v?: any) =>
+  id && typeof v === "boolean" ? { customFieldId: id, field_value: v } : null;
+
+const setCSV = (id?: string, arr?: any[]) =>
+  id && Array.isArray(arr) && arr.length
+    ? { customFieldId: id, field_value: arr.join(", ") }
+    : null;
+    const ageNum = Number(body.age || 0);
+const experienceFixed =
+  body.experienceYears && ["0","1-2","3-4","5+"].includes(body.experienceYears)
+    ? body.experienceYears
+    : ""; // ignore mismatched values
+
+const customFields = [
+  setText(CF.DANCER_FIRST, body.dancerFirst),
+  setText(CF.DANCER_LAST,  body.dancerLast || ""),
+  setNumber(CF.DANCER_AGE, ageNum),
+
+  // Under-7 vs 7+ branches
+  ageNum > 0 && ageNum < 7
+    ? setCSV(CF.U7_RECS_CSV, body.classOptionsU7 || [])
+    : setCSV(CF.STYLE_CSV,   body.stylePreference || []),
+
+  // Experience only for 7+
+  ageNum >= 7 ? setText(CF.EXPERIENCE, experienceFixed) : null,
+
+  // Checkboxes as booleans
+  setBool(CF.TEAM_INT,   !!body.wantsTeam),
+  setBool(CF.WANTS_RECS, !!body.wantsRecs),
+  setBool(CF.SMS_CONSENT,!!body.smsConsent),
+
+  // Misc
+  setText(CF.CLASS_ID,     body.selectedClassId || ""),
+  setText(CF.CLASS_NAME,   selectedClassName || ""),
+  setText(CF.NOTES,        body.notes || ""),
+  setText(CF.UTM_SOURCE,   body.utm?.source || ""),
+  setText(CF.UTM_MEDIUM,   body.utm?.medium || ""),
+  setText(CF.UTM_CAMPAIGN, body.utm?.campaign || ""),
+  setText(CF.PAGE_PATH,    body.page || ""),
+].filter(Boolean) as Array<{ customFieldId: string; field_value: string | number | boolean }>;
     const tags: string[] = ["DanceInterest", "Lead-Completed"];
     if (body.wantsTeam) tags.push("DanceTeamInterest");
     if (body.hasQuestions || body.action === "inquiry") tags.push("NeedHelp");
