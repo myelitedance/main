@@ -12,22 +12,44 @@ const need = (k: string) => {
   return v;
 };
 
-const GHL_KEY        = need("GHL_API_KEY");            // the key you've been using for contacts/opps
-const GHL_CF_KEY     = process.env.GHL_CF_KEY || GHL_KEY; // optional: use the same token you used in the successful curl
+const GHL_KEY        = need("GHL_API_KEY");
 const LOCATION_ID    = need("GHL_LOCATION_ID");
 const PIPELINE_ID    = need("GHL_PIPELINE_ID");
 const STAGE_NEW_LEAD = need("GHL_STAGE_NEW_LEAD");
 
-const EMAIL_FROM     = need("EMAIL_FROM");
-const FRONTDESK_TO   = process.env.FRONTDESK_TO || "frontdesk@myelitedance.com";
-const resend         = new Resend(process.env.RESEND_API_KEY || "");
-const ASSIGNED_TO    = process.env.GHL_USER_TASHARA_ID || ""; // optional
+const EMAIL_FROM   = need("EMAIL_FROM");
+const FRONTDESK_TO = process.env.FRONTDESK_TO || "frontdesk@myelitedance.com";
+const resend       = new Resend(process.env.RESEND_API_KEY || "");
 
-function headersWith(key: string) {
+// ======== Custom Field IDs (from your curl) ========
+const CF = {
+  DANCER_FIRST: "scpp296TInQvCwknlSXt",
+  DANCER_LAST:  "O6sOZkoTVHW1qjcwQlDm",
+  DANCER_AGE:   "HtGv4RUuffIl4UJeXmjT",
+
+  U7_RECS_CSV:  "IRFoGYtxrdlerisKdi1o",
+  EXPERIENCE:   "SrUlABm2OX3HEgSDJgBG",
+  STYLE_CSV:    "uoAhDKEmTR2k7PcxCcag",
+  TEAM_INT:     "pTnjhy6ilHaY1ykoPly4",
+  WANTS_RECS:   "gxIoT6RSun7KL9KDu0Qs",
+
+  CLASS_ID:     "seWdQbk6ZOerhIjAdI7d",
+  CLASS_NAME:   "Zd88pTAbiEKK08JdDQNj",
+
+  SMS_CONSENT:  "vZb6JlxDCWfTParnzInw",
+  NOTES:        "2JKj9HTS7Hhu0NUxuswN",
+
+  UTM_SOURCE:   "CSCvFURGpjVT3QQq4zMj",
+  UTM_MEDIUM:   "DSr9AU4sDkgbCp4EX7XR",
+  UTM_CAMPAIGN: "griR53QgvqlnnXDbd1Qi",
+  PAGE_PATH:    "f1bLQiSnX2HtnY0vjLAe",
+};
+
+function headers() {
   return {
     "Content-Type": "application/json",
     Accept: "application/json",
-    Authorization: `Bearer ${key}`,
+    Authorization: `Bearer ${GHL_KEY}`,
     Version: "2021-07-28",
   };
 }
@@ -35,60 +57,22 @@ function headersWith(key: string) {
 async function ghl(path: string, init: RequestInit = {}) {
   const res = await fetch(`${GHL_API}${path}`, {
     ...init,
-    headers: {
-      ...headersWith(GHL_KEY),
-      ...(init.headers || {}),
-    },
+    headers: { ...headers(), ...(init.headers || {}) },
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`GHL ${path} ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
-async function ghlCF(path: string, init: RequestInit = {}) {
-  // Same base, but allows a different token for custom-fields if needed
-  const res = await fetch(`${GHL_API}${path}`, {
-    ...init,
-    headers: {
-      ...headersWith(GHL_CF_KEY),
-      ...(init.headers || {}),
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`GHL ${path} ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-// cache name->id
-let FIELD_MAP: Record<string, string> | null = null;
-async function getFieldMap(): Promise<Record<string, string>> {
-  if (FIELD_MAP) return FIELD_MAP;
-
-  // ✅ Use the endpoint that worked in your curl
-  // If your tenant sometimes needs a trailing slash, this still works without one.
-  const data = await ghlCF(`/custom-fields?locationId=${encodeURIComponent(LOCATION_ID)}`);
-  const list = (data.customFields || []) as Array<{ id: string; name: string }>;
-  const map: Record<string, string> = {};
-  for (const f of list) map[f.name] = f.id;
-  FIELD_MAP = map;
-  return map;
-}
-
-function cf(customFieldId: string | undefined, value: any) {
-  if (!customFieldId) return null;
-  if (value === undefined || value === null) return null;
-  return { customFieldId, field_value: String(value) };
-}
+const cf = (id: string, value: any) =>
+  value === undefined || value === null || value === "" ? null : ({ customFieldId: id, field_value: String(value) });
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    // "trial" or "inquiry"
-    if (!body.action || !["trial", "inquiry"].includes(body.action)) {
-      return NextResponse.json({ error: "action must be 'trial' or 'inquiry'" }, { status: 400 });
-    }
+    if (!body.contactId) return NextResponse.json({ error: "contactId required" }, { status: 400 });
 
-    // OPTIONAL: resolve selected class name via your classes API
+    // Optional: resolve selected class name via your classes API
     let selectedClassName = body.selectedClassName || "";
     if (!selectedClassName && body.selectedClassId) {
       try {
@@ -101,93 +85,53 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // 1) Create/Update contact at final submit with graceful duplicate handling
-    let contactId: string | undefined;
-    try {
-      const upsertRes = await ghl(`/contacts/`, {
-        method: "POST",
-        body: JSON.stringify({
-          locationId: LOCATION_ID,
-          firstName: body.parentFirst,
-          lastName: body.parentLast,
-          email: body.email,
-          phone: body.parentPhone || undefined,
-          tags: ["EliteLead", "DanceInterest", "Lead-Completed", ...(body.action === "inquiry" ? ["NeedHelp"] : [])],
-          source: "Website",
-        }),
-      });
-      contactId = upsertRes.contact?.id || upsertRes.id;
-    } catch (e: any) {
-      // Handle "no duplicates" -> pull meta.contactId and continue
-      const msg = String(e?.message || "");
-      try {
-        const jsonStart = msg.indexOf("{");
-        const json = jsonStart >= 0 ? JSON.parse(msg.slice(jsonStart)) : null;
-        const maybeId = json?.meta?.contactId;
-        if (maybeId) {
-          contactId = maybeId; // proceed as update
-        } else {
-          throw e;
-        }
-      } catch {
-        throw e;
-      }
-    }
-    if (!contactId) throw new Error("No contactId available");
+    // 1) Update tags + custom fields directly by ID (no /custom-fields lookup)
+    const customFields = [
+      cf(CF.DANCER_FIRST, body.dancerFirst),
+      cf(CF.DANCER_LAST,  body.dancerLast || ""),
+      cf(CF.DANCER_AGE,   body.age || ""),
 
-    // 2) Create Opportunity (New Lead) — idempotent enough for our flow
-    try {
-      await ghl(`/opportunities/`, {
-        method: "POST",
-        body: JSON.stringify({
-          locationId: LOCATION_ID,
-          pipelineId: PIPELINE_ID,
-          pipelineStageId: STAGE_NEW_LEAD,
-          name: `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
-          contactId,
-          status: "open",
-          monetaryValue: 0,
-          source: "Website",
-        }),
-      });
-    } catch (e) {
-      // not fatal for the user; log and continue
-      console.warn("Opportunity create failed:", e);
-    }
+      // branch specifics
+      Number(body.age || 0) < 7
+        ? cf(CF.U7_RECS_CSV, (body.classOptionsU7 || []).join(", "))
+        : cf(CF.STYLE_CSV,   (body.stylePreference || []).join(", ")),
 
-    // 3) Custom fields — try; if CF endpoint 404s, skip without failing the submit
-    try {
-      const map = await getFieldMap();
-      const toPush = (label: string, value: any) => cf(map[label], value);
+      Number(body.age || 0) < 7
+        ? null
+        : cf(CF.EXPERIENCE, body.experienceYears || body.experience || ""),
 
-      const cfPayload = [
-        toPush("EDM - Dancer First Name", body.dancerFirst),
-        toPush("EDM - Dancer Last Name", body.dancerLast || ""),
-        toPush("EDM - Dancer Age", body.age || ""),
-        toPush("EDM - Experience (Years)", body.experience || ""),
-        toPush("EDM - Selected Class ID", body.selectedClassId || ""),
-        toPush("EDM - Selected Class Name", selectedClassName || ""),
-        toPush("EDM - SMS Consent", body.smsConsent ? "Yes" : "No"),
-        toPush("EDM - Notes", body.notes || ""),
-      ].filter(Boolean) as Array<{ customFieldId: string; field_value: string }>;
+      cf(CF.TEAM_INT,   body.wantsTeam ? "Yes" : "No"),
+      cf(CF.WANTS_RECS, body.wantsRecs ? "Yes" : "No"),
 
-      if (cfPayload.length) {
-        await ghl(`/contacts/`, {
-          method: "POST",
-          body: JSON.stringify({
-            id: contactId,
-            locationId: LOCATION_ID,
-            customFields: cfPayload,
-          }),
-        });
-      }
-    } catch (e) {
-      console.warn("Custom field update skipped (non-blocking):", e);
-    }
+      cf(CF.CLASS_ID,   body.selectedClassId || ""),
+      cf(CF.CLASS_NAME, selectedClassName || ""),
 
-    // 4) Email front desk (non-blocking if fails)
+      cf(CF.SMS_CONSENT, body.smsConsent ? "Yes" : "No"),
+      cf(CF.NOTES,       body.notes || ""),
+
+      cf(CF.UTM_SOURCE,  body.utm?.source || ""),
+      cf(CF.UTM_MEDIUM,  body.utm?.medium || ""),
+      cf(CF.UTM_CAMPAIGN,body.utm?.campaign || ""),
+      cf(CF.PAGE_PATH,   body.page || ""),
+    ].filter(Boolean) as Array<{ customFieldId: string; field_value: string }>;
+
+    const tags: string[] = ["DanceInterest", "Lead-Completed"];
+    if (body.wantsTeam) tags.push("DanceTeamInterest");
+    if (body.hasQuestions || body.action === "inquiry") tags.push("NeedHelp");
+
+    await ghl(`/contacts/`, {
+      method: "POST",
+      body: JSON.stringify({
+        id: body.contactId,
+        locationId: LOCATION_ID,
+        tags,
+        customFields,
+      }),
+    });
+
+    // 2) Email front desk (non-blocking if resend is not set)
     if (process.env.RESEND_API_KEY) {
-      const subject = body.action === "trial" ? "Trial Class Registration" : "Trial Class Inquiry";
+      const subject = body.action === "inquiry" ? "Trial Class Inquiry" : "Trial Class Registration";
       const html = `
         <h2>${subject}</h2>
         <p><strong>Parent:</strong> ${body.parentFirst || ""} ${body.parentLast || ""}</p>
@@ -195,12 +139,13 @@ export async function POST(req: NextRequest) {
         ${body.parentPhone ? `<p><strong>Phone:</strong> ${body.parentPhone}</p>` : ""}
         <p><strong>Dancer:</strong> ${body.dancerFirst || ""} ${body.dancerLast || ""}</p>
         <p><strong>Age:</strong> ${body.age || ""}</p>
-        <p><strong>Experience:</strong> ${body.experience || ""}</p>
+        <p><strong>Experience:</strong> ${body.experienceYears || body.experience || ""}</p>
         <p><strong>Selected Class:</strong> ${selectedClassName || body.selectedClassId || "—"}</p>
-        <p><strong>SMS Consent:</strong> ${body.smsConsent ? "Yes" : "No"}</p>
-        <p><strong>Notes:</strong><br>${(body.notes || "").replace(/\n/g, "<br>")}</p>
+        <p><strong>Wants Recs:</strong> ${body.wantsRecs ? "Yes" : "No"}</p>
+        <p><strong>Dance Team:</strong> ${body.wantsTeam ? "Yes" : "No"}</p>
+        <p><strong>Notes:</strong><br>${(body.notes || "").replace(/\n/g,"<br>")}</p>
         <hr/>
-        <p><em>GHL Contact ID:</em> ${contactId}</p>
+        <p><em>GHL Contact ID:</em> ${body.contactId}</p>
       `;
       try {
         await resend.emails.send({
@@ -214,30 +159,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5) Optional: task for “inquiry”
-    if (body.action === "inquiry") {
-      try {
-        const due = new Date();
-        due.setDate(due.getDate() + 1);
-        await ghl(`/tasks/`, {
-          method: "POST",
-          body: JSON.stringify({
-            locationId: LOCATION_ID,
-            title: "Follow up: Trial Class Inquiry",
-            description: `Please reach out to ${body.parentFirst} ${body.parentLast} (Contact ${contactId}).`,
-            contactId,
-            dueDate: due.toISOString(),
-            assignedTo: ASSIGNED_TO || undefined,
-            status: "open",
-            priority: "high",
-          }),
-        });
-      } catch (e) {
-        console.warn("Task create failed (non-blocking):", e);
-      }
-    }
-
-    return NextResponse.json({ ok: true, contactId });
+    return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error("lead-complete error:", err);
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
