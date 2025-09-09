@@ -1,4 +1,3 @@
-// /components/BookTrialForm.tsx
 "use client";
 import { useEffect, useMemo, useState } from "react";
 
@@ -12,25 +11,20 @@ const AGE_CLASSES = [
 ];
 const STYLES_7_PLUS = ["Ballet","Tap","Jazz/Lyrical","Hip Hop","Contemporary","Acro","Musical Theatre"];
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat"];
+const EXPERIENCE_OPTIONS = ["0","1-2","3-4","5+"] as const;
 
 type ClassItem = { id: string; name: string; ageMin?: number; ageMax?: number; day?: string; time?: string };
-
 type Data = {
-  // quick capture
   parentFirst: string; parentLast: string; email: string; phone: string; smsConsent: boolean;
   dancerFirst: string; age: string;
-
-  // details
   classOptionsU7: string[];
-  experienceYears: "" | "0" | "1–2" | "3+";
+  experienceYears: "" | typeof EXPERIENCE_OPTIONS[number];
   stylePreference: string[];
   wantsRecs: boolean; wantsTeam: boolean;
   preferDays: string[];
   selectedClassId: string;
   notes: string;
   hasQuestions: boolean;
-
-  // internal
   contactId?: string;
 };
 
@@ -49,11 +43,7 @@ export default function BookTrialForm() {
 
   const ageNum = Number(data.age || 0);
   const isU7 = ageNum > 0 && ageNum < 7;
-
-  const recommendedU7 = useMemo(
-    () => AGE_CLASSES.filter(c => ageNum >= c.min && ageNum <= c.max).map(c => c.label),
-    [ageNum]
-  );
+  const recommendedU7 = useMemo(() => AGE_CLASSES.filter(c => ageNum >= c.min && ageNum <= c.max).map(c => c.label), [ageNum]);
 
   useEffect(() => {
     (async () => {
@@ -68,55 +58,48 @@ export default function BookTrialForm() {
   }, []);
 
   const chip = (active:boolean) =>
-    `px-3 py-2 rounded-2xl border ${active ? "bg-dance-blue text-white border-dance-blue" : "border-gray-300"}`;
-  const btn = "inline-flex items-center px-5 py-3 rounded-2xl font-medium bg-dance-pink text-white hover:opacity-90";
+    `px-3 py-2 rounded-2xl border transition
+     ${active ? "bg-dance-blue text-white border-dance-blue" : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"}`;
 
-  // In /components/BookTrialForm.tsx
-const quickCapture = async () => {
-  setBusy(true); setMsg(null);
-  try {
-    const phone = data.phone.replace(/[^\d+]/g, "");
+  const btnPrimary =
+    "inline-flex items-center justify-center px-5 py-3 rounded-2xl font-semibold text-white " +
+    "bg-gradient-to-r from-dance-purple to-dance-pink shadow hover:opacity-95 focus:outline-none";
 
-    let utm = { source:"", medium:"", campaign:"" };
-    if (typeof window !== "undefined") {
-      const u = new URL(window.location.href);
-      utm = {
-        source: u.searchParams.get("utm_source") || "",
-        medium: u.searchParams.get("utm_medium") || "",
-        campaign: u.searchParams.get("utm_campaign") || ""
-      };
+  const quickCapture = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const phone = (data.phone || "").replace(/[^\d+]/g, "");
+      const res = await fetch("/api/elite/quick-capture", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          parentFirst: data.parentFirst,
+          parentLast: data.parentLast,
+          email: data.email,
+          phone,
+          smsConsent: data.smsConsent,
+          dancerFirst: data.dancerFirst,
+          age: data.age,
+          page: typeof window !== "undefined" ? window.location.pathname : "",
+          utm: {
+            source: (window as any).utm_source || "",
+            medium: (window as any).utm_medium || "",
+            campaign: (window as any).utm_campaign || ""
+          }
+        })
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const j = await res.json();
+      setData(d => ({ ...d, contactId: j.contactId }));
+      setStep(1);
+    } catch (e:any) {
+      setMsg(e?.message || "Couldn’t save. Please try again.");
+    } finally {
+      setBusy(false);
     }
+  };
 
-    const res = await fetch("/api/elite/quick-capture", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        parentFirst: data.parentFirst,
-        parentLast: data.parentLast,
-        email: data.email,
-        phone,
-        smsConsent: data.smsConsent,
-        dancerFirst: data.dancerFirst,
-        age: data.age,
-        page: typeof window !== "undefined" ? window.location.pathname : "",
-        utm
-      })
-    });
-    // ...rest unchanged
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || `HTTP ${res.status}`);
-    }
-    const j = await res.json();
-    setData(d => ({ ...d, contactId: j.contactId }));
-    setStep(1);
-  } catch (e:any) {
-    console.error(e);
-    setMsg(e?.message || "Couldn’t save. Please try again.");
-  } finally {
-    setBusy(false);
-  }
-};
   const finalize = async () => {
     setBusy(true); setMsg(null);
     try {
@@ -133,7 +116,7 @@ const quickCapture = async () => {
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-3xl shadow">
-      <h2 className="text-2xl font-bold mb-1">Book Your Free Trial</h2>
+      <h2 className="text-2xl font-bold mb-1 text-dance-purple">Book Your Free Trial</h2>
       <p className="text-gray-600 mb-6">We’ll match you to the perfect class in seconds.</p>
 
       <div className="flex gap-2 mb-6">
@@ -155,8 +138,8 @@ const quickCapture = async () => {
           <div className="grid md:grid-cols-2 gap-4">
             <input className="border rounded-xl p-3" placeholder="Mobile (for scheduling text) *"
               value={data.phone} onChange={e=>setData({...data,phone:e.target.value})}/>
-            <label className="flex items-start gap-3 text-sm text-gray-600">
-              <input type="checkbox" checked={data.smsConsent}
+            <label className="flex items-start gap-3 text-sm text-gray-700">
+              <input type="checkbox" className="mt-1" checked={data.smsConsent}
                 onChange={e=>setData({...data,smsConsent:e.target.checked})}/>
               <span>I agree to receive SMS from Elite Dance & Music. Msg/data rates may apply. Reply STOP to opt out.</span>
             </label>
@@ -169,9 +152,10 @@ const quickCapture = async () => {
           </div>
           <button
             disabled={busy || !data.parentFirst || !data.parentLast || !data.email || !data.phone || !data.smsConsent || !data.dancerFirst || !data.age}
-            onClick={quickCapture} className={btn}>
+            onClick={quickCapture} className={btnPrimary}>
             {busy ? "Saving..." : "Continue"}
           </button>
+          {msg && <p className="text-sm text-red-600">{msg}</p>}
         </div>
       )}
 
@@ -195,19 +179,19 @@ const quickCapture = async () => {
                   })}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <label className="flex items-center gap-3 text-gray-800">
                 <input type="checkbox" checked={data.wantsRecs}
                   onChange={e=>setData({...data,wantsRecs:e.target.checked})}/>
                 <span>Would you like recommendations from our team?</span>
-              </div>
+              </label>
             </>
           ) : (
             <>
               <div className="grid md:grid-cols-2 gap-4">
                 <select className="border rounded-xl p-3" value={data.experienceYears}
-                        onChange={e=>setData({...data,experienceYears:e.target.value as any})}>
+                        onChange={e=>setData({...data,experienceYears:e.target.value as Data["experienceYears"]})}>
                   <option value="">Years of experience</option>
-                  <option value="0">0</option><option>1–2</option><option>3+</option>
+                  {EXPERIENCE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
                 <div>
                   <p className="mb-2 text-gray-700">Style preference</p>
@@ -224,16 +208,18 @@ const quickCapture = async () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+
+              <label className="flex items-center gap-3 text-gray-800">
                 <input type="checkbox" checked={data.wantsTeam}
                   onChange={e=>setData({...data,wantsTeam:e.target.checked})}/>
                 <span>Interested in Dance Team?</span>
-              </div>
-              <div className="flex items-center gap-3">
+              </label>
+
+              <label className="flex items-center gap-3 text-gray-800">
                 <input type="checkbox" checked={data.wantsRecs}
                   onChange={e=>setData({...data,wantsRecs:e.target.checked})}/>
                 <span>Would you like recommendations from our team?</span>
-              </div>
+              </label>
             </>
           )}
 
@@ -278,15 +264,16 @@ const quickCapture = async () => {
           </div>
 
           <div className="flex justify-between">
-            <button onClick={()=>setStep(0)} className="text-gray-600">Back</button>
-            <button onClick={()=>setStep(2)} className={btn}>Review</button>
+            <button onClick={()=>setStep(0)} className="text-gray-700 hover:text-dance-purple">Back</button>
+            <button onClick={()=>setStep(2)} className={btnPrimary}>Review</button>
           </div>
+          {msg && <p className="text-sm text-red-600">{msg}</p>}
         </div>
       )}
 
       {step === 2 && (
         <div className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-2xl text-sm text-gray-700">
+          <div className="bg-gray-50 p-4 rounded-2xl text-sm text-gray-800">
             <p><strong>Parent:</strong> {data.parentFirst} {data.parentLast} • {data.email} • {data.phone}</p>
             <p><strong>Dancer:</strong> {data.dancerFirst} • Age {data.age}</p>
             {isU7 ? (
@@ -305,15 +292,14 @@ const quickCapture = async () => {
             <p><strong>Notes:</strong> {data.notes || "—"}</p>
           </div>
           <div className="flex justify-between">
-            <button onClick={()=>setStep(1)} className="text-gray-600">Back</button>
-            <button disabled={busy} onClick={finalize} className={btn}>
+            <button onClick={()=>setStep(1)} className="text-gray-700 hover:text-dance-purple">Back</button>
+            <button disabled={busy} onClick={finalize} className={btnPrimary}>
               {busy ? "Submitting..." : "Submit"}
             </button>
           </div>
+          {msg && <p className="text-sm">{msg}</p>}
         </div>
       )}
-
-      {msg && <p className="mt-4 text-sm">{msg}</p>}
     </div>
   );
 }
