@@ -2,36 +2,39 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 
-const steps = ["Quick Capture", "Details", "Review"];
-const AGE_CLASSES = [
-  { label: "Mini Movers", min: 3, max: 6 },
-  { label: "Pre-Ballet", min: 3, max: 5 },
-  { label: "Combo Pre (Ballet/Tap)", min: 5, max: 6 },
-  { label: "Hip Hop Kids", min: 5, max: 6 },
-  { label: "Acro Tots", min: 4, max: 6 },
-];
-const STYLES_7_PLUS = ["Ballet","Tap","Jazz/Lyrical","Hip Hop","Contemporary","Acro","Musical Theatre"];
-const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat"];
+type ClassItem = { id: string; name: string; level?: number; day?: string; time?: string; ageMin?: number; ageMax?: number };
 
-type ClassItem = { id: string; name: string; ageMin?: number; ageMax?: number; day?: string; time?: string };
+const AGE_CLASSES_UNDER7 = [
+  { id: "tumbling_tots", name: "Tumbling Tots (3–4)", level: 0 },
+  { id: "peewee_combo", name: "PeeWee Combo (5–6)", level: 0 },
+]; // placeholder list; your /api/elite/classes can override
 
-type Data = {
-  // quick capture
-  parentFirst: string; parentLast: string; email: string; phone: string; smsConsent: boolean;
-  dancerFirst: string; age: string;
+const styles = {
+  chip: (on: boolean) =>
+    `px-3 py-2 rounded-2xl border ${on ? "bg-dance-blue text-white border-dance-blue" : "border-gray-300"}`,
+  btn: "inline-flex items-center px-5 py-3 rounded-2xl font-medium bg-dance-pink text-white hover:opacity-90",
+  btnGhost: "inline-flex items-center px-4 py-2 rounded-xl font-medium text-dance-purple hover:underline",
+  bar: (active: number, i: number) => `h-2 flex-1 rounded-full ${i <= active ? "bg-dance-pink" : "bg-gray-200"}`,
+};
 
-  // details
-  classOptionsU7: string[];
-  experienceYears: "" | "0" | "1–2" | "3+";
-  stylePreference: string[];
-  wantsRecs: boolean; wantsTeam: boolean;
-  preferDays: string[];
-  selectedClassId: string;
+type Step1Data = {
+  parentFirst: string;
+  parentLast: string;
+  email: string;
+  dancerFirst: string;
+  dancerAge: string; // numeric text
+  experience: "" | "0" | "1-2" | "3-4" | "5+";
+};
+type Step2Data = {
+  suggested: ClassItem[];     // rendered options
+  selectedClassId: string;    // chosen trial class
+  decision: "" | "trial" | "inquiry";
+  // If "trial" (Yes)
+  parentPhone: string;
+  smsConsent: boolean;
+  dancerLast?: string;
+  // Notes for both
   notes: string;
-  hasQuestions: boolean;
-
-  // internal
-  contactId?: string;
 };
 
 export default function BookTrialForm() {
@@ -39,275 +42,348 @@ export default function BookTrialForm() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [data, setData] = useState<Data>({
-    parentFirst:"", parentLast:"", email:"", phone:"", smsConsent:false,
-    dancerFirst:"", age:"",
-    classOptionsU7:[], experienceYears:"", stylePreference:[],
-    wantsRecs:true, wantsTeam:false, preferDays:[],
-    selectedClassId:"", notes:"", hasQuestions:false
+  const [contactId, setContactId] = useState<string | undefined>(undefined);
+
+  const [s1, setS1] = useState<Step1Data>({
+    parentFirst: "",
+    parentLast: "",
+    email: "",
+    dancerFirst: "",
+    dancerAge: "",
+    experience: "",
   });
 
-  const ageNum = Number(data.age || 0);
-  const isU7 = ageNum > 0 && ageNum < 7;
+  const [s2, setS2] = useState<Step2Data>({
+    suggested: [],
+    selectedClassId: "",
+    decision: "",
+    parentPhone: "",
+    smsConsent: false,
+    dancerLast: "",
+    notes: "",
+  });
 
-  const recommendedU7 = useMemo(
-    () => AGE_CLASSES.filter(c => ageNum >= c.min && ageNum <= c.max).map(c => c.label),
-    [ageNum]
-  );
+  const ageNum = Number(s1.dancerAge || 0);
+  const isUnder7 = ageNum > 0 && ageNum < 7;
 
+  // Load classes (placeholder-friendly: if API absent, keep fallback for U7)
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/elite/classes", { cache: "no-store" });
-        if (res.ok) {
-          const j = await res.json();
-          setClasses(j.classes || []);
-        }
-      } catch {}
+        const r = await fetch("/api/elite/classes", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (Array.isArray(j.classes)) setClasses(j.classes);
+      } catch {
+        /* ignore */
+      }
     })();
   }, []);
 
-  const chip = (active:boolean) =>
-    `px-3 py-2 rounded-2xl border ${active ? "bg-dance-blue text-white border-dance-blue" : "border-gray-300"}`;
-  const btn = "inline-flex items-center px-5 py-3 rounded-2xl font-medium bg-dance-pink text-white hover:opacity-90";
-
-  // In /components/BookTrialForm.tsx
-const quickCapture = async () => {
-  setBusy(true); setMsg(null);
-  try {
-    const phone = data.phone.replace(/[^\d+]/g, "");
-
-    let utm = { source:"", medium:"", campaign:"" };
-    if (typeof window !== "undefined") {
-      const u = new URL(window.location.href);
-      utm = {
-        source: u.searchParams.get("utm_source") || "",
-        medium: u.searchParams.get("utm_medium") || "",
-        campaign: u.searchParams.get("utm_campaign") || ""
-      };
+  // Build suggestions when going to Step 2
+  const buildSuggestions = (): ClassItem[] => {
+    if (isUnder7) {
+      // Under 7 → show Tumbling / PeeWee (placeholder or filter from API)
+      const apiUnder7 = classes.filter(
+        c =>
+          (c.ageMin && c.ageMax ? ageNum >= (c.ageMin ?? 0) && ageNum <= (c.ageMax ?? 99) : true) &&
+          /tumble|acro|peewee|mini|pre/i.test(c.name)
+      );
+      return apiUnder7.length ? apiUnder7 : AGE_CLASSES_UNDER7;
     }
+    // 7+ route by experience
+    let targetLevel = 1;
+    if (s1.experience === "0" || s1.experience === "1-2") targetLevel = 1;
+    else if (s1.experience === "3-4") targetLevel = 2; // 2/3 bucket
+    else if (s1.experience === "5+") targetLevel = 4;
 
-    const res = await fetch("/api/elite/quick-capture", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        parentFirst: data.parentFirst,
-        parentLast: data.parentLast,
-        email: data.email,
-        phone,
-        smsConsent: data.smsConsent,
-        dancerFirst: data.dancerFirst,
-        age: data.age,
-        page: typeof window !== "undefined" ? window.location.pathname : "",
-        utm
-      })
+    // Heuristic: look for "Level X" in class name, else fall back to a simple filter
+    const api7 = classes.filter(c => {
+      if (/level\s*1/i.test(c.name) && targetLevel === 1) return true;
+      if (/level\s*(2|3)/i.test(c.name) && targetLevel === 2) return true;
+      if (/level\s*4/i.test(c.name) && targetLevel === 4) return true;
+      // fallback by inferred level property if present
+      if (typeof c.level === "number") {
+        if (targetLevel === 1 && c.level === 1) return true;
+        if (targetLevel === 2 && (c.level === 2 || c.level === 3)) return true;
+        if (targetLevel === 4 && c.level >= 4) return true;
+      }
+      return false;
     });
-    // ...rest unchanged
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || `HTTP ${res.status}`);
-    }
-    const j = await res.json();
-    setData(d => ({ ...d, contactId: j.contactId }));
-    setStep(1);
-  } catch (e:any) {
-    console.error(e);
-    setMsg(e?.message || "Couldn’t save. Please try again.");
-  } finally {
-    setBusy(false);
-  }
-};
-  const finalize = async () => {
-    setBusy(true); setMsg(null);
-    try {
-      const res = await fetch("/api/elite/lead-complete", {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ ...data })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setMsg("Thanks! We’ll text/email you with next steps for your free trial.");
-    } catch (e:any) {
-      setMsg(e.message || "Something went wrong. Please try again.");
-    } finally { setBusy(false); }
+
+    // If nothing matched, return a top slice of classes so page isn’t empty.
+    return api7.length ? api7 : classes.slice(0, 5);
   };
 
+  const toStep2 = async () => {
+    setMsg(null);
+    setBusy(true);
+    try {
+      // UTM
+      let utm = { source: "", medium: "", campaign: "" };
+      if (typeof window !== "undefined") {
+        const u = new URL(window.location.href);
+        utm = {
+          source: u.searchParams.get("utm_source") || "",
+          medium: u.searchParams.get("utm_medium") || "",
+          campaign: u.searchParams.get("utm_campaign") || "",
+        };
+      }
+      // Quick capture (creates contact + opp)
+      const res = await fetch("/api/elite/quick-capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parentFirst: s1.parentFirst,
+          parentLast: s1.parentLast,
+          email: s1.email,
+          dancerFirst: s1.dancerFirst,
+          age: s1.dancerAge,
+          experience: s1.experience,
+          page: typeof window !== "undefined" ? window.location.pathname : "",
+          utm,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const j = await res.json();
+      setContactId(j.contactId);
+      setS2(prev => ({ ...prev, suggested: buildSuggestions() }));
+      setStep(1);
+    } catch (e: any) {
+      setMsg(e?.message || "Couldn’t save. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitFinal = async () => {
+    setMsg(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/elite/lead-complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: s2.decision, // "trial" | "inquiry"
+          contactId,
+          // summary
+          parentFirst: s1.parentFirst,
+          parentLast: s1.parentLast,
+          email: s1.email,
+          // trial details (when applicable)
+          parentPhone: s2.parentPhone,
+          smsConsent: s2.smsConsent,
+          dancerFirst: s1.dancerFirst,
+          dancerLast: s2.dancerLast || "",
+          age: s1.dancerAge,
+          experience: s1.experience,
+          selectedClassId: s2.selectedClassId || "",
+          notes: s2.notes || "",
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setMsg(
+        s2.decision === "trial"
+          ? "Awesome! We’ve sent your trial request to our front desk. Watch for a confirmation."
+          : "Thanks! We’ve sent your question to our front desk and will follow up shortly."
+      );
+      // soft reset decision button visibility
+    } catch (e: any) {
+      setMsg(e?.message || "Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // UI
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-3xl shadow">
-      <h2 className="text-2xl font-bold mb-1">Book Your Free Trial</h2>
-      <p className="text-gray-600 mb-6">We’ll match you to the perfect class in seconds.</p>
+      <h2 className="text-2xl font-bold mb-1">Find the Perfect Class</h2>
+      <p className="text-gray-600 mb-6">
+        A few quick questions so we can match your dancer for their best first experience.
+      </p>
 
       <div className="flex gap-2 mb-6">
-        {steps.map((_, i) => (
-          <div key={i} className={`h-2 flex-1 rounded-full ${i <= step ? "bg-dance-pink" : "bg-gray-200"}`} />
-        ))}
+        {[0, 1].map((i) => <div key={i} className={styles.bar(step, i)} />)}
       </div>
 
       {step === 0 && (
         <div className="grid gap-4">
           <div className="grid md:grid-cols-2 gap-4">
-            <input className="border rounded-xl p-3" placeholder="Parent First Name *"
-              value={data.parentFirst} onChange={e=>setData({...data,parentFirst:e.target.value})}/>
-            <input className="border rounded-xl p-3" placeholder="Parent Last Name *"
-              value={data.parentLast} onChange={e=>setData({...data,parentLast:e.target.value})}/>
+            <input
+              className="border rounded-xl p-3"
+              placeholder="Parent First Name *"
+              value={s1.parentFirst}
+              onChange={(e) => setS1({ ...s1, parentFirst: e.target.value })}
+            />
+            <input
+              className="border rounded-xl p-3"
+              placeholder="Parent Last Name *"
+              value={s1.parentLast}
+              onChange={(e) => setS1({ ...s1, parentLast: e.target.value })}
+            />
           </div>
-          <input className="border rounded-xl p-3" placeholder="Email *" type="email"
-            value={data.email} onChange={e=>setData({...data,email:e.target.value})}/>
+          <input
+            className="border rounded-xl p-3"
+            placeholder="Email Address *"
+            type="email"
+            value={s1.email}
+            onChange={(e) => setS1({ ...s1, email: e.target.value })}
+          />
           <div className="grid md:grid-cols-2 gap-4">
-            <input className="border rounded-xl p-3" placeholder="Mobile (for scheduling text) *"
-              value={data.phone} onChange={e=>setData({...data,phone:e.target.value})}/>
-            <label className="flex items-start gap-3 text-sm text-gray-600">
-              <input type="checkbox" checked={data.smsConsent}
-                onChange={e=>setData({...data,smsConsent:e.target.checked})}/>
-              <span>I agree to receive SMS from Elite Dance & Music. Msg/data rates may apply. Reply STOP to opt out.</span>
-            </label>
+            <input
+              className="border rounded-xl p-3"
+              placeholder="Dancer First Name *"
+              value={s1.dancerFirst}
+              onChange={(e) => setS1({ ...s1, dancerFirst: e.target.value })}
+            />
+            <input
+              className="border rounded-xl p-3"
+              placeholder="Dancer Age *"
+              inputMode="numeric"
+              value={s1.dancerAge}
+              onChange={(e) =>
+                setS1({ ...s1, dancerAge: e.target.value.replace(/\D/g, "") })
+              }
+            />
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <input className="border rounded-xl p-3" placeholder="Dancer First Name *"
-              value={data.dancerFirst} onChange={e=>setData({...data,dancerFirst:e.target.value})}/>
-            <input className="border rounded-xl p-3" placeholder="Age *" inputMode="numeric"
-              value={data.age} onChange={e=>setData({...data,age:e.target.value.replace(/\D/g,"")})}/>
+
+          <select
+            className="border rounded-xl p-3"
+            value={s1.experience}
+            onChange={(e) =>
+              setS1({ ...s1, experience: e.target.value as Step1Data["experience"] })
+            }
+          >
+            <option value="">Years of Experience *</option>
+            <option value="0">0</option>
+            <option value="1-2">1–2</option>
+            <option value="3-4">3–4</option>
+            <option value="5+">5+</option>
+          </select>
+
+          <div className="flex justify-end">
+            <button
+              disabled={
+                busy ||
+                !s1.parentFirst ||
+                !s1.parentLast ||
+                !s1.email ||
+                !s1.dancerFirst ||
+                !s1.dancerAge ||
+                !s1.experience
+              }
+              onClick={toStep2}
+              className={styles.btn}
+            >
+              Next
+            </button>
           </div>
-          <button
-            disabled={busy || !data.parentFirst || !data.parentLast || !data.email || !data.phone || !data.smsConsent || !data.dancerFirst || !data.age}
-            onClick={quickCapture} className={btn}>
-            {busy ? "Saving..." : "Continue"}
-          </button>
         </div>
       )}
 
       {step === 1 && (
         <div className="space-y-6">
-          {isU7 ? (
-            <>
-              <div>
-                <p className="mb-2 text-gray-700">Recommended classes for age {data.age}:</p>
-                <div className="flex flex-wrap gap-2">
-                  {recommendedU7.map(opt => {
-                    const active = data.classOptionsU7.includes(opt);
-                    return (
-                      <button key={opt} type="button" className={chip(active)}
-                        onClick={() => setData(d => ({...d,
-                          classOptionsU7: active ? d.classOptionsU7.filter(o=>o!==opt) : [...d.classOptionsU7,opt]
-                        }))}>
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <input type="checkbox" checked={data.wantsRecs}
-                  onChange={e=>setData({...data,wantsRecs:e.target.checked})}/>
-                <span>Would you like recommendations from our team?</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="grid md:grid-cols-2 gap-4">
-                <select className="border rounded-xl p-3" value={data.experienceYears}
-                        onChange={e=>setData({...data,experienceYears:e.target.value as any})}>
-                  <option value="">Years of experience</option>
-                  <option value="0">0</option><option>1–2</option><option>3+</option>
-                </select>
-                <div>
-                  <p className="mb-2 text-gray-700">Style preference</p>
-                  <div className="flex flex-wrap gap-2">
-                    {STYLES_7_PLUS.map(s=>{
-                      const active = data.stylePreference.includes(s);
-                      return (
-                        <button key={s} type="button" className={chip(active)}
-                          onClick={()=>setData(d=>({...d, stylePreference: active ? d.stylePreference.filter(x=>x!==s) : [...d.stylePreference,s]}))}>
-                          {s}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <input type="checkbox" checked={data.wantsTeam}
-                  onChange={e=>setData({...data,wantsTeam:e.target.checked})}/>
-                <span>Interested in Dance Team?</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <input type="checkbox" checked={data.wantsRecs}
-                  onChange={e=>setData({...data,wantsRecs:e.target.checked})}/>
-                <span>Would you like recommendations from our team?</span>
-              </div>
-            </>
-          )}
-
           <div>
-            <p className="mb-2 text-gray-700">Preferred days</p>
-            <div className="flex flex-wrap gap-2">
-              {DAYS.map(d=>{
-                const active = data.preferDays.includes(d);
-                return (
-                  <button key={d} className={chip(active)} type="button"
-                    onClick={()=>setData(x=>({...x, preferDays: active ? x.preferDays.filter(v=>v!==d) : [...x.preferDays,d]}))}>
-                    {d}
-                  </button>
-                );
-              })}
+            <p className="mb-2 text-gray-700">
+              Great! Here are some class options based on age and experience.
+            </p>
+            <div className="grid gap-2">
+              <select
+                className="border rounded-xl p-3"
+                value={s2.selectedClassId}
+                onChange={(e) => setS2({ ...s2, selectedClassId: e.target.value })}
+              >
+                <option value="">
+                  {isUnder7
+                    ? "Choose a Tumbling or PeeWee class"
+                    : "Choose a recommended Level class"}
+                </option>
+                {s2.suggested.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.day && c.time ? ` — ${c.day} ${c.time}` : ""}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <label className="text-gray-700">Select a class you’d like to try</label>
-            <select className="border rounded-xl p-3" value={data.selectedClassId}
-                    onChange={e=>setData({...data,selectedClassId:e.target.value})}>
-              <option value="">Choose a class (optional)</option>
-              {classes
-                .filter(c => !ageNum || !c.ageMin || !c.ageMax || (ageNum >= (c.ageMin || 0) && ageNum <= (c.ageMax || 99)))
-                .map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}{c.day && c.time ? ` — ${c.day} ${c.time}` : ""}
-                  </option>
-                ))}
-            </select>
-          </div>
+          <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+            <p className="font-medium text-gray-800">
+              Would you like to sign up for a free trial class today?
+            </p>
+            <div className="flex gap-3">
+              <button
+                className={styles.chip(s2.decision === "trial")}
+                onClick={() => setS2((d) => ({ ...d, decision: "trial" }))}
+                type="button"
+              >
+                Yes
+              </button>
+              <button
+                className={styles.chip(s2.decision === "inquiry")}
+                onClick={() => setS2((d) => ({ ...d, decision: "inquiry" }))}
+                type="button"
+              >
+                I need more information first
+              </button>
+            </div>
 
-          <div className="grid gap-3">
-            <textarea className="border rounded-xl p-3" placeholder="Anything we should know?"
-              value={data.notes} onChange={e=>setData({...data,notes:e.target.value})}/>
-            <label className="flex items-start gap-3 text-sm text-gray-600">
-              <input type="checkbox" checked={data.hasQuestions}
-                     onChange={e=>setData({...data,hasQuestions:e.target.checked})}/>
-              <span>I have more questions (please have the front desk reach out)</span>
-            </label>
-          </div>
-
-          <div className="flex justify-between">
-            <button onClick={()=>setStep(0)} className="text-gray-600">Back</button>
-            <button onClick={()=>setStep(2)} className={btn}>Review</button>
-          </div>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-2xl text-sm text-gray-700">
-            <p><strong>Parent:</strong> {data.parentFirst} {data.parentLast} • {data.email} • {data.phone}</p>
-            <p><strong>Dancer:</strong> {data.dancerFirst} • Age {data.age}</p>
-            {isU7 ? (
-              <p><strong>Under-7 Classes:</strong> {data.classOptionsU7.join(", ") || "—"}</p>
-            ) : (
-              <>
-                <p><strong>Experience:</strong> {data.experienceYears || "—"}</p>
-                <p><strong>Styles:</strong> {data.stylePreference.join(", ") || "—"}</p>
-                <p><strong>Dance Team:</strong> {data.wantsTeam ? "Yes" : "No"}</p>
-              </>
+            {/* If "Yes", collect last name + phone + sms consent */}
+            {s2.decision === "trial" && (
+              <div className="grid gap-3 pt-2">
+                <div className="grid md:grid-cols-2 gap-3">
+                  <input
+                    className="border rounded-xl p-3"
+                    placeholder="Dancer Last Name (optional)"
+                    value={s2.dancerLast}
+                    onChange={(e) => setS2({ ...s2, dancerLast: e.target.value })}
+                  />
+                  <input
+                    className="border rounded-xl p-3"
+                    placeholder="Parent Mobile (for scheduling text) *"
+                    value={s2.parentPhone}
+                    onChange={(e) => setS2({ ...s2, parentPhone: e.target.value })}
+                  />
+                </div>
+                <label className="flex items-start gap-3 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={s2.smsConsent}
+                    onChange={(e) => setS2({ ...s2, smsConsent: e.target.checked })}
+                  />
+                  <span>
+                    I agree to receive SMS from Elite Dance &amp; Music. Msg/data rates may
+                    apply. Reply STOP to opt out.
+                  </span>
+                </label>
+              </div>
             )}
-            <p><strong>Preferred Days:</strong> {data.preferDays.join(", ") || "—"}</p>
-            <p><strong>Selected Class:</strong> {classes.find(c=>c.id===data.selectedClassId)?.name || "—"}</p>
-            <p><strong>Wants Recs:</strong> {data.wantsRecs ? "Yes" : "No"}</p>
-            <p><strong>Has Questions:</strong> {data.hasQuestions ? "Yes" : "No"}</p>
-            <p><strong>Notes:</strong> {data.notes || "—"}</p>
           </div>
+
+          <textarea
+            className="border rounded-xl p-3 w-full"
+            placeholder="Anything we should know?"
+            value={s2.notes}
+            onChange={(e) => setS2({ ...s2, notes: e.target.value })}
+          />
+
           <div className="flex justify-between">
-            <button onClick={()=>setStep(1)} className="text-gray-600">Back</button>
-            <button disabled={busy} onClick={finalize} className={btn}>
-              {busy ? "Submitting..." : "Submit"}
+            <button onClick={() => setStep(0)} className={styles.btnGhost}>
+              Back
+            </button>
+            <button
+              disabled={
+                busy ||
+                !s2.decision ||
+                (s2.decision === "trial" &&
+                  (!s2.parentPhone || !s2.smsConsent))
+              }
+              onClick={submitFinal}
+              className={styles.btn}
+            >
+              Submit
             </button>
           </div>
         </div>
