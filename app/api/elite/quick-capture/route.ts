@@ -37,7 +37,7 @@ function baseHeaders() {
 }
 
 async function ghl(path: string, init: RequestInit = {}) {
-  const res = await fetch(`${GHL_BASE}/v1${path}`, {
+  const res = await fetch(`${GHL_BASE}${path}`, {
     ...init,
     headers: { ...baseHeaders(), ...(init.headers || {}) },
     cache: "no-store",
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1) Upsert contact
-    const upsert = await ghl(`/contacts/`, {
+    const upsert = await ghl(`/locations/${LOCATION_ID}/contacts`, {
       method: "POST",
       body: JSON.stringify({
         locationId: LOCATION_ID,
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean);
 
     if (customFields.length) {
-      await ghl(`/contacts/`, {
+      await ghl(`/locations/${LOCATION_ID}/contacts`, {
         method: "POST",
         body: JSON.stringify({
           id: contactId,
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3) Create opportunity (same endpoint/shape as your working call)
-    await ghl(`/opportunities/`, {
+    await ghl(`/locations/${LOCATION_ID}/opportunities`, {
       method: "POST",
       body: JSON.stringify({
         locationId:      LOCATION_ID,

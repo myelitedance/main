@@ -35,7 +35,7 @@ function baseHeaders() {
 }
 
 async function ghl(path: string, init: RequestInit = {}) {
-  const res = await fetch(`${GHL_BASE}/v1${path}`, {
+  const res = await fetch(`${GHL_BASE}${path}`, {
     ...init,
     headers: { ...baseHeaders(), ...(init.headers || {}) },
     cache: "no-store",
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean) as Array<{ id: string; value: string }>;
 
     if (fields.length) {
-      await ghl(`/contacts/`, {
+      await ghl(`/locations/${LOCATION_ID}/contacts`, {
         method: "POST",
         body: JSON.stringify({
           id: body.contactId,
