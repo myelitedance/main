@@ -1,1 +1,2 @@
-@tailwind utilities;
+/* Tailwind v4 single import */
+@import "tailwindcss";
