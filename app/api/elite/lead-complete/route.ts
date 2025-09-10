@@ -75,49 +75,70 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     // --- helper to get or create a contact id (duplicate-safe, same headers/base as quick-capture) ---
-    async function getOrCreateContactId() {
-      // if we got one from the client, use it
-      if (body.contactId) return body.contactId;
+   type ContactResolution =
+  | { contactId: string; policy: "safe-update" }      // ok to update fields
+  | { contactId: string; policy: "conflict-phone" };  // don't update fields
 
-      // otherwise, try to upsert with the info we likely have from the form
-      if (!body.parentFirst || !body.parentLast || !body.email || !body.parentPhone) {
-        throw new Error("contactId required (and not enough fields to upsert)");
-      }
+async function getOrCreateContact(): Promise<ContactResolution> {
+  // if client already has one, assume it's safe
+  if (body.contactId) return { contactId: body.contactId, policy: "safe-update" };
 
+  if (!body.parentFirst || !body.parentLast || !body.email || !body.parentPhone) {
+    throw new Error("contactId required (and not enough fields to upsert)");
+  }
+
+  try {
+    const upsert = await ghl(`/contacts/`, {
+      method: "POST",
+      body: JSON.stringify({
+        locationId: LOCATION_ID,
+        firstName: body.parentFirst,
+        lastName: body.parentLast,
+        email: body.email,
+        phone: body.parentPhone,
+        tags: ["EliteLead", "DanceInterest"],
+        source: body.utm?.source || "Website",
+      }),
+    });
+    const id = upsert.contact?.id || upsert.id;
+    return { contactId: id, policy: "safe-update" };
+  } catch (e: any) {
+    // Duplicate handling
+    const msg = String(e?.message || "");
+    const start = msg.indexOf("{");
+    const j = start >= 0 ? JSON.parse(msg.slice(start)) : null;
+
+    const dupId = j?.meta?.contactId as string | undefined;
+    const matchingField = j?.meta?.matchingField as string | undefined;
+
+    if (j?.statusCode === 400 && dupId) {
+      // Optionally fetch the existing contact to compare email
+      let existingEmail = "";
       try {
-        const upsert = await ghl(`/contacts/`, {
-          method: "POST",
-          body: JSON.stringify({
-            locationId: LOCATION_ID,
-            firstName: body.parentFirst,
-            lastName: body.parentLast,
-            email: body.email,
-            phone: body.parentPhone,
-            tags: ["EliteLead", "DanceInterest"],
-            source: body.utm?.source || "Website",
-          }),
-        });
-        return upsert.contact?.id || upsert.id;
-      } catch (e: any) {
-        const msg = String(e?.message || "");
-        try {
-          const start = msg.indexOf("{");
-          const j = start >= 0 ? JSON.parse(msg.slice(start)) : null;
-          if (
-            j?.statusCode === 400 &&
-            typeof j?.message === "string" &&
-            j.message.includes("does not allow duplicated contacts") &&
-            j?.meta?.contactId
-          ) {
-            return j.meta.contactId;
-          }
-        } catch {}
-        throw e;
+        const existing = await ghl(`/contacts/${dupId}`, { method: "GET" });
+        existingEmail = existing?.contact?.email || existing?.email || "";
+      } catch {}
+
+      // if duplicate by email, we can safely update this contact
+      if (matchingField === "email") {
+        return { contactId: dupId, policy: "safe-update" };
       }
+
+      // if duplicate by phone and email mismatches, DON'T update fields — flag instead
+      if (matchingField === "phone" && existingEmail && existingEmail.toLowerCase() !== String(body.email || "").toLowerCase()) {
+        return { contactId: dupId, policy: "conflict-phone" };
+      }
+
+      // fallback: safe-update
+      return { contactId: dupId, policy: "safe-update" };
     }
 
+    throw e;
+  }
+}
+
     // Resolve/ensure a contactId first (fallback handles missing)
-    const contactId = await getOrCreateContactId();
+    const { contactId, policy } = await getOrCreateContact();
 
     // Optional: resolve selected class name via your classes API (unchanged)
     let selectedClassName = body.selectedClassName || "";
@@ -192,15 +213,30 @@ const customFields = [
   setText(CF.PAGE_PATH,    body.page || ""),
 ].filter(Boolean) as Array<{ id: string; value: string | number | boolean }>;
 
-    const tags: string[] = ["DanceInterest", "Lead-Completed"];
-    if (body.wantsTeam) tags.push("DanceTeamInterest");
-    if (body.hasQuestions || body.action === "inquiry") tags.push("NeedHelp");
+    // ...build selectedClassName and customFields as before ...
 
- await ghl(`/contacts/${contactId}`, {
-  method: "PUT",
-  body: JSON.stringify({ tags, customFields }),
-});
+const tags: string[] = ["DanceInterest", "Lead-Completed"];
+if (body.wantsTeam) tags.push("DanceTeamInterest");
+if (body.hasQuestions || body.action === "inquiry") tags.push("NeedHelp");
 
+// Only update fields when policy says it's safe
+if (policy === "safe-update") {
+  await ghl(`/contacts/${contactId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      tags,
+      customFields, // see fix for SMS below
+    }),
+  });
+} else {
+  // conflict-phone: don't touch existing fields — just add a safety tag
+  await ghl(`/contacts/${contactId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      tags: Array.from(new Set([...tags, "Needs-Manual-Review", "Phone-Dupe"])),
+    }),
+  });
+}
     // Optional: create the Opportunity here if you want it at Step 2
 await ghl(`/opportunities/`, {
   method: "POST",
