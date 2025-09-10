@@ -35,6 +35,7 @@ type Step1Data = {
 type Step2Data = {
   suggested: ClassItem[];
   selectedClassId: string;
+  selectedClassName?: string;
   decision: "" | "trial" | "inquiry";
   parentPhone: string;
   smsConsent: boolean;
@@ -154,6 +155,7 @@ export default function BookTrialForm() {
           age: s1.dancerAge,
           experience: s1.experience,
           selectedClassId: s2.selectedClassId || "",
+          selectedClassName: s2.selectedClassName || "",
           notes: s2.notes || "",
         }),
       });
@@ -280,10 +282,14 @@ export default function BookTrialForm() {
 
             <div className="grid gap-2">
               <select
-                className="border rounded-xl p-3"
-                value={s2.selectedClassId}
-                onChange={(e) => setS2({ ...s2, selectedClassId: e.target.value })}
-              >
+  className="border rounded-xl p-3"
+  value={s2.selectedClassId}
+  onChange={(e) => {
+    const id = e.target.value;
+    const c = classes.find(x => x.id === id);
+    setS2({ ...s2, selectedClassId: id, ...(c ? { selectedClassName: c.name } : {}) });
+  }}
+>
                 <option value="">Choose a class (optional)</option>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>

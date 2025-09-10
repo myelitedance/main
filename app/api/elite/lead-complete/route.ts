@@ -182,7 +182,7 @@ const customFields = [
 
   // Misc
   setText(CF.CLASS_ID,     body.selectedClassId || ""),
-  setText(CF.CLASS_NAME,   selectedClassName || ""),
+  setText(CF.CLASS_NAME,   body.selectedClassName || ""),
   setText(CF.NOTES,        body.notes || ""),
   setText(CF.UTM_SOURCE,   body.utm?.source || ""),
   setText(CF.UTM_MEDIUM,   body.utm?.medium || ""),
