@@ -4,11 +4,16 @@ import { NextResponse, NextRequest } from "next/server";
 export const runtime = "nodejs";
 
 const AKADA_API = "https://app.akadadance.com/api/v3/studio";
+const need = (k: string) => {
+  const v = process.env[k];
+  if (!v) throw new Error(`Missing env: ${k}`);
+  return v;
+};
 
-const AKADA_API_KEY    = process.env.AKADA_API_KEY || "";
-const AKADA_AUTH_TOKEN = process.env.AKADA_AUTH_TOKEN || "";
+const AKADA_API_KEY    = need("AKADA_API_KEY");
+const AKADA_AUTH_TOKEN = need("AKADA_AUTH_TOKEN"); // Akada user-token
 
-/** Map Akada levelDescription to a numeric-ish rank for simple filtering */
+/** Map Akada levelDescription to a numeric-ish rank for optional experience filtering */
 function levelRank(levelDesc?: string | null): number {
   const s = (levelDesc || "").toUpperCase().trim();
   if (s.includes("1/2")) return 1.5;
@@ -16,42 +21,27 @@ function levelRank(levelDesc?: string | null): number {
   if (s === "II" || s === "2") return 2;
   if (s === "III" || s === "3") return 3;
   if (s.includes("4")) return 4;
-  if (["N/A", "FLX", "ALL", "SOL", "PW", "PRE"].includes(s)) return 2;
-  if (["2YR", "3-4", "4-5", "MM"].includes(s)) return 0.5;
-  return 2;
+  if (s === "2YR" || s === "3-4" || s === "4-5" || s === "MM" || s === "PW" || s === "PRE") return 0.5;
+  return 2; // mid/default
 }
 
 function firstDayString(c: any): string {
   const map: [keyof any, string][] = [
-    ["monday", "Mon"],
-    ["tuesday", "Tue"],
-    ["wednesday", "Wed"],
-    ["thursday", "Thu"],
-    ["friday", "Fri"],
-    ["saturday", "Sat"],
-    ["sunday", "Sun"],
+    ["monday", "Mon"], ["tuesday", "Tue"], ["wednesday", "Wed"],
+    ["thursday", "Thu"], ["friday", "Fri"], ["saturday", "Sat"], ["sunday", "Sun"],
   ];
   const found = map.find(([k]) => !!c[k]);
   return found?.[1] || "";
 }
 
 export async function GET(req: NextRequest) {
-  const started = Date.now();
-  const { searchParams } = new URL(req.url);
-  const debug = searchParams.get("debug") === "1";
-
-  const ageParam = searchParams.get("age");
-  const expParam = searchParams.get("experience"); // "0", "1-2", "3-4", "5+"
-
-  if (!AKADA_API_KEY || !AKADA_AUTH_TOKEN) {
-    const msg = `Missing Akada env: ${!AKADA_API_KEY ? "AKADA_API_KEY " : ""}${!AKADA_AUTH_TOKEN ? "AKADA_AUTH_TOKEN " : ""}`;
-    return NextResponse.json({ error: msg.trim() }, { status: 500 });
-  }
-
-  const url = new URL(`${AKADA_API}/classes`);
-  url.searchParams.set("pageSize", "500");
-
   try {
+    const { searchParams } = new URL(req.url);
+    const ageParam = searchParams.get("age");
+    const expParam = searchParams.get("experience"); // optional: "0", "1-2", "3-4", "5+"
+
+    const url = new URL(`${AKADA_API}/classes`);
+
     const res = await fetch(url.toString(), {
       headers: {
         AkadaApiKey: AKADA_API_KEY,
@@ -62,63 +52,56 @@ export async function GET(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const txt = await res.text().catch(() => "(no body)");
-      return NextResponse.json(
-        debug
-          ? { status: res.status, statusText: res.statusText, body: txt }
-          : { error: `Akada error ${res.status}` },
-        { status: 502 }
-      );
+      const txt = await res.text();
+      throw new Error(`Akada classes ${res.status}: ${txt}`);
     }
 
     const j = await res.json();
     const raw: any[] = j?.returnValue?.currentPageItems || [];
 
+    // Normalize + carry through sunday + levelDescription
     const normalized = raw.map((c) => {
       const day = firstDayString(c);
       const time = `${(c.startTimeDisplay || "").trim()} - ${(c.stopTimeDisplay || "").trim()}`;
       return {
         id: String(c.id),
         name: String(c.description || "").trim(),
-        level: String(c.levelDescription || "").trim(),
+        level: String(c.levelDescription || "").trim(), // keep raw for filtering
         type: String(c.typeDescription || "").trim(),
         ageMin: Number(c.lowerAgeLimit ?? 0),
         ageMax: Number(c.upperAgeLimit ?? 99),
         day,
         time,
+        sunday: !!c.sunday, // keep raw boolean
         currentEnrollment: c.currentEnrollment,
         maxEnrollment: c.maxEnrollment,
       };
     });
 
-    // --- Age filter: within lowerAgeLimit and <= lowerAgeLimit+2, capped by upperAgeLimit
     let filtered = normalized;
+
+    // Age filter: within lowerAgeLimit..upperAgeLimit
     const age = ageParam ? Number(ageParam) : NaN;
     if (!Number.isNaN(age)) {
-      // Keep only classes that have a day/time
-filtered = filtered.filter(c => c.day || c.time.trim() !== "-");
-
-// NEW: drop Sunday classes and any Dance Team / TEAM
-filtered = filtered.filter((c: any) => {
-  const name = (c.name || "").toString();
-  const type = (c.type || "").toString();
-
-  // The raw Akada object has sunday: true/false
-  const isSunday = c.sunday === true;
-
-  const looksLikeTeam =
-    /dance\s*team/i.test(name) || /\bteam\b/i.test(name) || type.toUpperCase() === "TEAM";
-
-  return !isSunday && !looksLikeTeam;
-});
+      filtered = filtered.filter((c) => {
+        const lower = Number.isFinite(c.ageMin) ? c.ageMin : 0;
+        const upper = Number.isFinite(c.ageMax) ? c.ageMax : 99;
+        return age >= lower && age <= upper;
+      });
     }
 
-    // --- Experience filter
+    // Exclude Sunday classes
+    filtered = filtered.filter((c) => c.sunday !== true);
+
+    // Exclude levelDescription === "N/A"
+    filtered = filtered.filter((c) => (c.level || "").trim().toUpperCase() !== "N/A");
+
+    // (Optional) Experience buckets — keep if you still want it
     if (expParam) {
       const want = (() => {
         if (expParam === "0" || expParam === "1-2") return { min: 0, max: 1.6 };
         if (expParam === "3-4") return { min: 1.6, max: 3.6 };
-        return { min: 3.6, max: 99 };
+        return { min: 3.6, max: 99 }; // "5+"
       })();
       filtered = filtered.filter((c) => {
         const r = levelRank(c.level);
@@ -126,16 +109,12 @@ filtered = filtered.filter((c: any) => {
       });
     }
 
+    // Keep only classes that have a day/time (optional polish)
     filtered = filtered.filter((c) => c.day || c.time.trim() !== "-");
 
-    return NextResponse.json({
-      ok: true,
-      count: filtered.length,
-      classes: filtered,
-      elapsedMs: Date.now() - started,
-      ...(debug ? { totalFromAkada: raw.length, url: url.toString() } : {}),
-    });
+    return NextResponse.json({ classes: filtered });
   } catch (err: any) {
+    console.error("classes API error:", err);
     return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
 }
