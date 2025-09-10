@@ -36,6 +36,32 @@ type Step2Data = {
   // Notes for both
   notes: string;
 };
+type Data = {
+  // quick capture
+  parentFirst: string;
+  parentLast: string;
+  email: string;
+  phone: string;
+  smsConsent: boolean;
+  dancerFirst: string;
+  age: string;
+
+  // details
+  classOptionsU7: string[];
+  /** Use regular hyphens here to match the rest of your code */
+  experienceYears: "" | "0" | "1-2" | "3-4" | "5+";
+  stylePreference: string[];
+  wantsRecs: boolean;
+  wantsTeam: boolean;
+  preferDays: string[];
+  selectedClassId: string;
+  notes: string;
+  hasQuestions: boolean;
+
+  // internal
+  contactId?: string;
+};
+
 
 export default function BookTrialForm() {
   const [step, setStep] = useState(0);
@@ -66,19 +92,41 @@ export default function BookTrialForm() {
   const ageNum = Number(s1.dancerAge || 0);
   const isUnder7 = ageNum > 0 && ageNum < 7;
 
+  const [data, setData] = useState<Data>({
+    parentFirst:"", parentLast:"", email:"", phone:"", smsConsent:false,
+    dancerFirst:"", age:"",
+    classOptionsU7:[], experienceYears:"", stylePreference:[],
+    wantsRecs:true, wantsTeam:false, preferDays:[],
+    selectedClassId:"", notes:"", hasQuestions:false
+  });
+
   // Load classes (placeholder-friendly: if API absent, keep fallback for U7)
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch("/api/elite/classes", { cache: "no-store" });
-        if (!r.ok) return;
-        const j = await r.json();
-        if (Array.isArray(j.classes)) setClasses(j.classes);
-      } catch {
-        /* ignore */
+  // inside BookTrialForm.tsx
+useEffect(() => {
+  // only fetch when we have enough to filter
+  const a = Number(data.age || 0);
+  if (!a) return;
+
+  const exp = data.experienceYears || (a < 7 ? "" : "1-2"); // default for 7+ if blank
+  const q = new URLSearchParams();
+  q.set("age", String(a));
+  if (exp) q.set("experience", exp);
+
+  (async () => {
+    try {
+      const res = await fetch(`/api/elite/classes?${q.toString()}`, { cache: "no-store" });
+      if (res.ok) {
+        const j = await res.json();
+        setClasses(j.classes || []);
+      } else {
+        console.warn("classes fetch failed", await res.text());
       }
-    })();
-  }, []);
+    } catch (e) {
+      console.warn(e);
+    }
+  })();
+  // re-run when age/experience changes
+}, [data.age, data.experienceYears]);
 
   // Build suggestions when going to Step 2
   const buildSuggestions = (): ClassItem[] => {
@@ -257,22 +305,17 @@ const toStep2 = async () => {
             </p>
             <div className="grid gap-2">
               <select
-                className="border rounded-xl p-3"
-                value={s2.selectedClassId}
-                onChange={(e) => setS2({ ...s2, selectedClassId: e.target.value })}
-              >
-                <option value="">
-                  {isUnder7
-                    ? "Choose a Tumbling or PeeWee class"
-                    : "Choose a recommended Level class"}
-                </option>
-                {s2.suggested.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.day && c.time ? ` — ${c.day} ${c.time}` : ""}
-                  </option>
-                ))}
-              </select>
+  className="border rounded-xl p-3"
+  value={data.selectedClassId}
+  onChange={e => setData({ ...data, selectedClassId: e.target.value })}
+>
+  <option value="">Choose a class (optional)</option>
+  {classes.map(c => (
+    <option key={c.id} value={c.id}>
+      {c.name} {c.level ? `(${c.level})` : ""} {c.day && c.time ? `— ${c.day} ${c.time}` : ""}
+    </option>
+  ))}
+</select>
             </div>
           </div>
 
