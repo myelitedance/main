@@ -93,9 +93,15 @@ export async function GET(req: NextRequest) {
     let filtered = normalized;
     const age = ageParam ? Number(ageParam) : NaN;
 
-    if (!Number.isNaN(age)) {
-      filtered = filtered.filter((c) => age >= c.ageMin && age <= c.ageMax);
-    }
+    // --- Age filter: within lowerAgeLimit and no more than 2 years above it, capped by upperAgeLimit
+if (!Number.isNaN(age)) {
+  filtered = filtered.filter((c) => {
+    const lower = Number.isFinite(c.ageMin!) ? (c.ageMin as number) : 0;
+    const upper = Number.isFinite(c.ageMax!) ? (c.ageMax as number) : 99;
+    const cap   = Math.min(upper, lower + 2); // <= 2 years above lower, but never past upper
+    return age >= lower && age <= cap;
+  });
+}
 
     if (expParam) {
       // Your rule:
