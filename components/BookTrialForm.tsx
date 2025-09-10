@@ -30,6 +30,7 @@ type Step1Data = {
   dancerFirst: string;
   dancerAge: string; // numeric text
   experience: "" | "0" | "1-2" | "3-4" | "5+";
+  wantsTeam: boolean;
 };
 
 type Step2Data = {
@@ -59,6 +60,7 @@ export default function BookTrialForm() {
     dancerFirst: "",
     dancerAge: "",
     experience: "",
+    wantsTeam: false,
   });
 
   const [s2, setS2] = useState<Step2Data>({
@@ -202,6 +204,7 @@ const abandoned = async () => {
           selectedClassId: s2.selectedClassId || "",
           selectedClassName: s2.selectedClassName || "",
           notes: s2.notes || "",
+          wantsTeam: s1.wantsTeam,
         }),
       });
       const text = await res.text();
@@ -287,6 +290,16 @@ const abandoned = async () => {
             <option value="3-4">3–4</option>
             <option value="5+">5+</option>
           </select>
+          {Number(s1.dancerAge || 0) >= 7 && (s1.experience === "3-4" || s1.experience === "5+") && (
+  <label className="flex items-start gap-3 text-sm text-gray-700">
+    <input
+      type="checkbox"
+      checked={s1.wantsTeam}
+      onChange={(e) => setS1({ ...s1, wantsTeam: e.target.checked })}
+    />
+    <span>Interested in Dance Team?</span>
+  </label>
+)}
 
           <div className="flex justify-end">
             <button
