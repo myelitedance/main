@@ -126,7 +126,7 @@ useEffect(() => {
     }
   })();
   // re-run when age/experience changes
-}, [data.age, data.experienceYears]);
+}, [s1.dancerAge, s1.experience]);
 
   // Build suggestions when going to Step 2
   const buildSuggestions = (): ClassItem[] => {
@@ -306,8 +306,8 @@ const toStep2 = async () => {
             <div className="grid gap-2">
               <select
   className="border rounded-xl p-3"
-  value={data.selectedClassId}
-  onChange={e => setData({ ...data, selectedClassId: e.target.value })}
+  value={s2.selectedClassId}
+  onChange={e => setS2(prev => ({ ...prev, selectedClassId: e.target.value }))}
 >
   <option value="">Choose a class (optional)</option>
   {classes.map(c => (
