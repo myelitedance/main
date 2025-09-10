@@ -64,16 +64,58 @@ export default function BookTrialForm() {
     selectedClassId: "",
     decision: "",
     parentPhone: "",
-    smsConsent: false,
+    smsConsent: true,
     dancerLast: "",
     notes: "",
   });
 
+  // --- validation helpers ---
+const emailOk = (e: string) => /\S+@\S+\.\S+/.test(e);
+const phoneOk = (p: string) => {
+  const digits = (p || "").replace(/[^\d]/g, "");
+  return digits.length >= 10 && digits.length <= 15;
+};
+const req = (s: string) => s.trim().length > 0;
+
+// --- show-error flags ---
+const [attemptedNext, setAttemptedNext] = useState(false);
+const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+const handleNext = () => {
+  setAttemptedNext(true);
+  const ageNum = Number(s1.dancerAge);
+  const valid =
+    req(s1.parentFirst) &&
+    req(s1.parentLast) &&
+    emailOk(s1.email) &&
+    req(s1.dancerFirst) &&
+    !Number.isNaN(ageNum) &&
+    req(s1.experience);
+
+  if (!valid) return; // show errors; don't advance
+  toStep2();          // your existing function
+};
   const ageNum = Number(s1.dancerAge || 0);
   const isUnder7 = ageNum > 0 && ageNum < 7;
-
+const abandoned = async () => {
+    if (!s1.email || !s1.parentFirst || !s1.parentLast) return;
+    try {
+      await fetch("/api/elite/abandon-capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true, // important for page close
+        body: JSON.stringify({
+          parentFirst: s1.parentFirst,
+          parentLast: s1.parentLast,
+          email: s1.email,
+          parentPhone: s2.parentPhone || "",
+          dancerFirst: s1.dancerFirst || "",
+          age: s1.dancerAge || "",
+        }),
+      });
+    } catch {}
+  };
   // --- DEBUG: set to true to also show a small summary in the UI
-  const DEBUG = true;
+  const DEBUG = false;
 
   // Fetch classes whenever age/experience change (and we have a valid age)
   useEffect(() => {
@@ -254,7 +296,7 @@ export default function BookTrialForm() {
                 !s1.dancerAge ||
                 !s1.experience
               }
-              onClick={toStep2}
+              onClick={handleNext}
               className={styles.btn}
             >
               Next

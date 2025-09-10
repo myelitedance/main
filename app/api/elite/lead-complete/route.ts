@@ -161,6 +161,8 @@ function normalizeExperience(raw?: string): string {
 const ageNum = Number(body.age || 0);
 const experienceFixed =
   normalizeExperience(body.experienceYears || body.experience);
+const setYesNo = (id?: string, v?: boolean) =>
+  id == null ? null : ({ customFieldId: id, field_value: v ? "Yes" : "No" });
 
 const customFields = [
   setText(CF.DANCER_FIRST, body.dancerFirst),
@@ -178,7 +180,7 @@ const customFields = [
   // Checkboxes -> booleans
   setBool(CF.TEAM_INT,    !!body.wantsTeam),
   setBool(CF.WANTS_RECS,  !!body.wantsRecs),
-  setBool(CF.SMS_CONSENT, !!body.smsConsent),
+  setYesNo(CF.SMS_CONSENT, !!body.smsConsent),
 
   // Misc
   setText(CF.CLASS_ID,     body.selectedClassId || ""),
