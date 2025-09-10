@@ -42,7 +42,9 @@ type Step2Data = {
   dancerLast?: string;
   notes: string;
 };
-
+type BookTrialFormProps = {
+  onClose?: () => void; // <-- add this
+};
 export default function BookTrialForm() {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -114,6 +116,7 @@ const abandoned = async () => {
       });
     } catch {}
   };
+  
   // --- DEBUG: set to true to also show a small summary in the UI
   const DEBUG = false;
 

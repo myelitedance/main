@@ -1,5 +1,6 @@
 // /app/book-trial/page.tsx
 import BookTrialForm from "../../components/BookTrialForm";
+import TrialButton from "../../components/TrialButton";
 
 export default function BookTrialPage() {
   return (
@@ -8,7 +9,7 @@ export default function BookTrialPage() {
         <h1 className="text-3xl font-bold mb-8 text-center text-dance-purple">
           Book a Free Trial Class
         </h1>
-        <BookTrialForm />
+        <TrialButton />
       </div>
     </main>
   );
