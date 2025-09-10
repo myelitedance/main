@@ -217,7 +217,6 @@ if (policy === "safe-update") {
     body: JSON.stringify({
       tags,
       customFields, // see fix for SMS below
-      dnd: { sms: !Boolean(body.smsConsent) }, // consent=true -> sms allowed (dnd=false)
     }),
   });
 } else {

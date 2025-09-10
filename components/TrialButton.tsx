@@ -8,7 +8,7 @@ export default function TrialButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button className="px-5 py-3 rounded-2xl bg-dance-pink text-white" onClick={() => setOpen(true)}>
+      <button className="px-5 py-3 rounded-2xl bg-dance-purple text-white" onClick={() => setOpen(true)}>
         Book a Free Trial
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Find the Perfect Class">
