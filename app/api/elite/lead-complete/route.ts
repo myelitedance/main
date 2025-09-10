@@ -80,13 +80,6 @@ export async function POST(req: NextRequest) {
   | { contactId: string; policy: "conflict-phone" };  // don't update fields
 
 async function getOrCreateContact(): Promise<ContactResolution> {
-  // if client already has one, assume it's safe
-  if (body.contactId) return { contactId: body.contactId, policy: "safe-update" };
-
-  if (!body.parentFirst || !body.parentLast || !body.email || !body.parentPhone) {
-    throw new Error("contactId required (and not enough fields to upsert)");
-  }
-
   try {
     const upsert = await ghl(`/contacts/`, {
       method: "POST",
@@ -103,37 +96,35 @@ async function getOrCreateContact(): Promise<ContactResolution> {
     const id = upsert.contact?.id || upsert.id;
     return { contactId: id, policy: "safe-update" };
   } catch (e: any) {
-    // Duplicate handling
     const msg = String(e?.message || "");
     const start = msg.indexOf("{");
     const j = start >= 0 ? JSON.parse(msg.slice(start)) : null;
 
-    const dupId = j?.meta?.contactId as string | undefined;
-    const matchingField = j?.meta?.matchingField as string | undefined;
+    if (j?.statusCode === 400 && j?.meta?.contactId) {
+      const dupId = j.meta.contactId as string;
+      const matchingField = j.meta.matchingField as string | undefined;
 
-    if (j?.statusCode === 400 && dupId) {
-      // Optionally fetch the existing contact to compare email
-      let existingEmail = "";
-      try {
-        const existing = await ghl(`/contacts/${dupId}`, { method: "GET" });
-        existingEmail = existing?.contact?.email || existing?.email || "";
-      } catch {}
+      // 👇 Human-friendly error for duplicate phone number
+      if (matchingField === "phone") {
+        throw new Error(
+          "That phone number is already in our system under a different contact. " +
+          "Please double-check the phone number you entered, or use a different one."
+        );
+      }
 
-      // if duplicate by email, we can safely update this contact
+      // If duplicate by email, allow safe update
       if (matchingField === "email") {
         return { contactId: dupId, policy: "safe-update" };
       }
 
-      // if duplicate by phone and email mismatches, DON'T update fields — flag instead
-      if (matchingField === "phone" && existingEmail && existingEmail.toLowerCase() !== String(body.email || "").toLowerCase()) {
-        return { contactId: dupId, policy: "conflict-phone" };
-      }
-
-      // fallback: safe-update
+      // Fallback: safe update
       return { contactId: dupId, policy: "safe-update" };
     }
 
-    throw e;
+    // If not a duplicate, just bubble a generic user-friendly error
+    throw new Error(
+      "Something went wrong saving your info. Please try again or contact our front desk."
+    );
   }
 }
 
@@ -162,8 +153,8 @@ const setNumber = (id?: string, v?: any) => {
   return Number.isFinite(n) ? { id, value: n } : null;
 };
 
-const setBool = (id?: string, v?: any) =>
-  id && typeof v === "boolean" ? { id, value: v } : null;
+const setYesNoText = (id?: string, v?: boolean) =>
+  id == null ? null : ({ id, value: v ? "Yes" : "No" });
 
 const setCSV = (id?: string, arr?: any[]) =>
   id && Array.isArray(arr) && arr.length ? { id, value: arr.join(", ") } : null;
@@ -199,9 +190,9 @@ const customFields = [
   ageNum >= 7 ? setText(CF.EXPERIENCE, experienceFixed) : null,
 
   // Checkboxes -> booleans
-  setBool(CF.TEAM_INT,    !!body.wantsTeam),
-  setBool(CF.WANTS_RECS,  !!body.wantsRecs),
-  setYesNo(CF.SMS_CONSENT, !!body.smsConsent),
+  setYesNoText(CF.TEAM_INT,    !!body.wantsTeam),
+  setYesNoText(CF.WANTS_RECS,  !!body.wantsRecs),
+  setYesNoText(CF.SMS_CONSENT, !!body.smsConsent),
 
   // Misc
   setText(CF.CLASS_ID,     body.selectedClassId || ""),
@@ -226,6 +217,7 @@ if (policy === "safe-update") {
     body: JSON.stringify({
       tags,
       customFields, // see fix for SMS below
+      dnd: { sms: !Boolean(body.smsConsent) }, // consent=true -> sms allowed (dnd=false)
     }),
   });
 } else {
