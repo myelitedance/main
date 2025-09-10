@@ -95,12 +95,22 @@ export async function GET(req: NextRequest) {
     let filtered = normalized;
     const age = ageParam ? Number(ageParam) : NaN;
     if (!Number.isNaN(age)) {
-      filtered = filtered.filter((c) => {
-        const lower = c.ageMin ?? 0;
-        const upper = c.ageMax ?? 99;
-        const cap = Math.min(upper, lower + 2);
-        return age >= lower && age <= cap;
-      });
+      // Keep only classes that have a day/time
+filtered = filtered.filter(c => c.day || c.time.trim() !== "-");
+
+// NEW: drop Sunday classes and any Dance Team / TEAM
+filtered = filtered.filter((c: any) => {
+  const name = (c.name || "").toString();
+  const type = (c.type || "").toString();
+
+  // The raw Akada object has sunday: true/false
+  const isSunday = c.sunday === true;
+
+  const looksLikeTeam =
+    /dance\s*team/i.test(name) || /\bteam\b/i.test(name) || type.toUpperCase() === "TEAM";
+
+  return !isSunday && !looksLikeTeam;
+});
     }
 
     // --- Experience filter
