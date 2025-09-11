@@ -132,17 +132,22 @@ async function getOrCreateContact(): Promise<ContactResolution> {
     const { contactId, policy } = await getOrCreateContact();
 
   // Gather selected class names/ids (support single or multiple)
-const selectedNamesArr: string[] = Array.isArray(body.selectedClassNames)
-  ? body.selectedClassNames
-  : body.selectedClassName
-  ? [String(body.selectedClassName)]
-  : [];
+// Gather selected class names/ids (support single OR multi, and both key names)
+const selectedNamesArr: string[] =
+  Array.isArray(body.selectedClassNames)
+    ? body.selectedClassNames
+    : Array.isArray(body.selectedClassLabels)
+    ? body.selectedClassLabels
+    : body.selectedClassName
+    ? [String(body.selectedClassName)]
+    : [];
 
-const selectedIdsArr: string[] = Array.isArray(body.selectedClassIds)
-  ? body.selectedClassIds.map(String)
-  : body.selectedClassId
-  ? [String(body.selectedClassId)]
-  : [];
+const selectedIdsArr: string[] =
+  Array.isArray(body.selectedClassIds)
+    ? body.selectedClassIds.map(String)
+    : body.selectedClassId
+    ? [String(body.selectedClassId)]
+    : [];
 
 // Fallback: if we only got IDs, try to resolve display names from your classes API
 let selectedNames = selectedNamesArr.slice();
@@ -168,6 +173,10 @@ if (!selectedNames.length && selectedIdsArr.length) {
 // Final CSVs for GHL
 const selectedNamesCSV = selectedNames.join(", ");
 const selectedIdsCSV   = selectedIdsArr.join(", ");
+const classesHtml =
+  selectedNamesArr.length
+    ? selectedNamesArr.map((n) => `<li>${n}</li>`).join("")
+    : (selectedIdsArr.length ? selectedIdsArr.map((id)=>`<li>${id}</li>`).join("") : "<li>—</li>");
 
 // --- type-aware set helpers for CONTACT update: use { id, value } ---
 const setText = (id?: string, v?: any) =>
@@ -280,7 +289,7 @@ await ghl(`/opportunities/`, {
         <p><strong>Dancer:</strong> ${body.dancerFirst || ""} ${body.dancerLast || ""}</p>
         <p><strong>Age:</strong> ${body.age || ""}</p>
         <p><strong>Experience:</strong> ${body.experienceYears || body.experience || ""}</p>
-        <p><strong>Selected Class:</strong> ${selectedNamesCSV || body.selectedClassId || "—"}</p>
+        <p><strong>Selected Class:</strong></p><ul>${classesHtml}</ul>
         <p><strong>Wants Recs:</strong> ${body.wantsRecs ? "Yes" : "No"}</p>
         <p><strong>Dance Team:</strong> ${body.wantsTeam ? "Yes" : "No"}</p>
         <p><strong>Notes:</strong><br>${(body.notes || "").replace(/\n/g,"<br>")}</p>
