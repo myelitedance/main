@@ -370,50 +370,59 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
               </div>
             )}
 
-            <p className="text-sm text-gray-600">Pick any classes that look interesting (you can choose multiple):</p>
+            <p className="text-sm text-gray-600 mb-2">
+  Pick any classes that look interesting (you can choose multiple):
+</p>
 
-            <div className="space-y-2">
-              {classes.map((c) => {
-                const label = formatClassLabel(c);
-                const checked = s2.selectedClassIds.includes(c.id);
-                return (
-                  <label
-                    key={c.id}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${
-                      checked ? "border-dance-pink bg-pink-50" : "border-gray-200 hover:bg-gray-50"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-1 w-5 h-5 accent-dance-pink"
-                      checked={checked}
-                      onChange={(e) => {
-                        setS2((prev) => {
-                          const nextIds = new Set(prev.selectedClassIds);
-                          const nextLabels = new Set(prev.selectedClassLabels);
-                          if (e.target.checked) {
-                            nextIds.add(c.id);
-                            nextLabels.add(label);
-                          } else {
-                            nextIds.delete(c.id);
-                            nextLabels.delete(label);
-                          }
-                          return {
-                            ...prev,
-                            selectedClassIds: Array.from(nextIds),
-                            selectedClassLabels: Array.from(nextLabels),
-                          };
-                        });
-                      }}
-                    />
-                    <div>
-                      <div className="font-medium text-gray-900">{c.name}</div>
-                      {(c.day || c.time) && <div className="text-sm text-gray-600">{[c.day, c.time].filter(Boolean).join(" ")}</div>}
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
+{/* 👇 Make only the list scrollable */}
+<div className="max-h-80 md:max-h-96 overflow-y-auto pr-2">
+  <div className="space-y-2">
+    {classes.map((c) => {
+      const label = formatClassLabel(c);
+      const checked = s2.selectedClassIds.includes(c.id);
+      return (
+        <label
+          key={c.id}
+          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${
+            checked ? "border-dance-pink bg-pink-50" : "border-gray-200 hover:bg-gray-50"
+          }`}
+        >
+          <input
+            type="checkbox"
+            className="mt-1 w-5 h-5 accent-dance-pink"
+            checked={checked}
+            onChange={(e) => {
+              setS2((prev) => {
+                const nextIds = new Set(prev.selectedClassIds);
+                const nextLabels = new Set(prev.selectedClassLabels);
+                if (e.target.checked) {
+                  nextIds.add(c.id);
+                  nextLabels.add(label);
+                } else {
+                  nextIds.delete(c.id);
+                  nextLabels.delete(label);
+                }
+                return {
+                  ...prev,
+                  selectedClassIds: Array.from(nextIds),
+                  selectedClassLabels: Array.from(nextLabels),
+                };
+              });
+            }}
+          />
+          <div>
+            <div className="font-medium text-gray-900">{c.name}</div>
+            {(c.day || c.time) && (
+              <div className="text-sm text-gray-600">
+                {[c.day, c.time].filter(Boolean).join(" ")}
+              </div>
+            )}
+          </div>
+        </label>
+      );
+    })}
+  </div>
+</div>
 
             {s2.decision === "trial" && s2.selectedClassIds.length === 0 && (
               <p className="text-sm text-red-600 mt-2">Please select at least one class for your trial.</p>
