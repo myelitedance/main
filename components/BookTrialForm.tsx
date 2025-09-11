@@ -291,14 +291,15 @@ const abandoned = async () => {
             <option value="5+">5+</option>
           </select>
           {Number(s1.dancerAge || 0) >= 7 && (s1.experience === "3-4" || s1.experience === "5+") && (
-  <label className="flex items-start gap-3 text-sm text-gray-700">
-    <input
-      type="checkbox"
-      checked={s1.wantsTeam}
-      onChange={(e) => setS1({ ...s1, wantsTeam: e.target.checked })}
-    />
-    <span>Interested in Dance Team?</span>
-  </label>
+  <label className="flex items-center gap-3 text-lg font-medium text-gray-800">
+  <input
+    type="checkbox"
+    className="w-6 h-6 accent-dance-pink"
+    checked={s1.wantsTeam}
+    onChange={(e) => setS1({ ...s1, wantsTeam: e.target.checked })}
+  />
+  <span>Are you interested in Dance Team?</span>
+</label>
 )}
 
           <div className="flex justify-end">
