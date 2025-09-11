@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
     // Exclude levelDescription === "N/A"
     filtered = filtered.filter((c) => (c.level || "").trim().toUpperCase() !== "N/A");
 
-    // (Optional) Experience buckets — keep if you still want it
+    /* (Optional) Experience buckets — keep if you still want it
     if (expParam) {
       const want = (() => {
         if (expParam === "0" || expParam === "1-2") return { min: 0, max: 1.6 };
@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
         const r = levelRank(c.level);
         return r >= want.min && r < want.max;
       });
-    }
+    }*/
 
     // Keep only classes that have a day/time (optional polish)
     filtered = filtered.filter((c) => c.day || c.time.trim() !== "-");
