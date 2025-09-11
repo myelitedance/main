@@ -329,7 +329,7 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
           </div>
 
           {Number(s1.dancerAge || 0) >= 7 && (s1.experience === "3-4" || s1.experience === "5+") && (
-            <label className="flex items-center gap-3 text-lg font-medium text-gray-800">
+            <label className="flex items-center gap-3 text-gray-600 mb-6">
               <input
                 type="checkbox"
                 className="w-6 h-6 accent-dance-pink"
