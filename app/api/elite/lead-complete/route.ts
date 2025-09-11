@@ -131,18 +131,44 @@ async function getOrCreateContact(): Promise<ContactResolution> {
     // Resolve/ensure a contactId first (fallback handles missing)
     const { contactId, policy } = await getOrCreateContact();
 
-    // Optional: resolve selected class name via your classes API (unchanged)
-    let selectedClassName = body.selectedClassName || "";
-    if (!selectedClassName && body.selectedClassId) {
-      try {
-        const r = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/elite/classes`, { cache: "no-store" });
-        if (r.ok) {
-          const j = await r.json();
-          const hit = (j.classes || []).find((c: any) => c.id === body.selectedClassId);
-          if (hit) selectedClassName = hit.name;
-        }
-      } catch {}
+  // Gather selected class names/ids (support single or multiple)
+const selectedNamesArr: string[] = Array.isArray(body.selectedClassNames)
+  ? body.selectedClassNames
+  : body.selectedClassName
+  ? [String(body.selectedClassName)]
+  : [];
+
+const selectedIdsArr: string[] = Array.isArray(body.selectedClassIds)
+  ? body.selectedClassIds.map(String)
+  : body.selectedClassId
+  ? [String(body.selectedClassId)]
+  : [];
+
+// Fallback: if we only got IDs, try to resolve display names from your classes API
+let selectedNames = selectedNamesArr.slice();
+if (!selectedNames.length && selectedIdsArr.length) {
+  try {
+    const r = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/elite/classes`, { cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json();
+      const catalog = (j.classes || []) as Array<{ id: string; name: string; day?: string; time?: string }>;
+      const labels = selectedIdsArr
+        .map((id) => {
+          const c = catalog.find((x) => String(x.id) === String(id));
+          if (!c) return null;
+          const when = [c.day, c.time].filter(Boolean).join(" ");
+          return when ? `${c.name} — ${when}` : c.name;
+        })
+        .filter(Boolean) as string[];
+      if (labels.length) selectedNames = labels;
     }
+  } catch {}
+}
+
+// Final CSVs for GHL
+const selectedNamesCSV = selectedNames.join(", ");
+const selectedIdsCSV   = selectedIdsArr.join(", ");
+
 // --- type-aware set helpers for CONTACT update: use { id, value } ---
 const setText = (id?: string, v?: any) =>
   id && v != null && String(v).trim() !== "" ? { id, value: String(v) } : null;
@@ -195,8 +221,8 @@ const customFields = [
   setYesNoText(CF.SMS_CONSENT, !!body.smsConsent),
 
   // Misc
-  setText(CF.CLASS_ID,     body.selectedClassId || ""),
-  setText(CF.CLASS_NAME,   body.selectedClassName || ""),
+  setText(CF.CLASS_ID,   selectedIdsCSV),
+  setText(CF.CLASS_NAME, selectedNamesCSV), 
   setText(CF.NOTES,        body.notes || ""),
   setText(CF.UTM_SOURCE,   body.utm?.source || ""),
   setText(CF.UTM_MEDIUM,   body.utm?.medium || ""),
@@ -254,7 +280,7 @@ await ghl(`/opportunities/`, {
         <p><strong>Dancer:</strong> ${body.dancerFirst || ""} ${body.dancerLast || ""}</p>
         <p><strong>Age:</strong> ${body.age || ""}</p>
         <p><strong>Experience:</strong> ${body.experienceYears || body.experience || ""}</p>
-        <p><strong>Selected Class:</strong> ${selectedClassName || body.selectedClassId || "—"}</p>
+        <p><strong>Selected Class:</strong> ${selectedNamesCSV || body.selectedClassId || "—"}</p>
         <p><strong>Wants Recs:</strong> ${body.wantsRecs ? "Yes" : "No"}</p>
         <p><strong>Dance Team:</strong> ${body.wantsTeam ? "Yes" : "No"}</p>
         <p><strong>Notes:</strong><br>${(body.notes || "").replace(/\n/g,"<br>")}</p>

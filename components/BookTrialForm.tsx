@@ -2,17 +2,16 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 
+// near the top
 type ClassItem = {
   id: string;
   name: string;
-  level?: string; // normalized text from Akada, e.g. "I", "II", "1/2"
-  type?: string;
-  ageMin?: number;
-  ageMax?: number;
   day?: string;
   time?: string;
-  currentEnrollment?: number;
-  maxEnrollment?: number;
+  ageMin?: number;
+  ageMax?: number;
+  level?: string;   // (optional) if you still use it elsewhere
+  sunday?: boolean; // already provided by your API
 };
 
 const styles = {
@@ -33,15 +32,19 @@ type Step1Data = {
   wantsTeam: boolean;
 };
 
+
+// Step 2 state: add arrays for multi-select
 type Step2Data = {
   suggested: ClassItem[];
-  selectedClassId: string;
-  selectedClassName?: string;
   decision: "" | "trial" | "inquiry";
   parentPhone: string;
   smsConsent: boolean;
   dancerLast?: string;
   notes: string;
+
+  // NEW:
+  selectedClassIds: string[];
+  selectedClassLabels: string[]; // "Name — Day Time"
 };
 type BookTrialFormProps = {
   onClose?: () => void; // <-- add this
@@ -63,15 +66,16 @@ export default function BookTrialForm() {
     wantsTeam: false,
   });
 
-  const [s2, setS2] = useState<Step2Data>({
-    suggested: [],
-    selectedClassId: "",
-    decision: "",
-    parentPhone: "",
-    smsConsent: true,
-    dancerLast: "",
-    notes: "",
-  });
+const [s2, setS2] = useState<Step2Data>({
+  suggested: [],
+  decision: "",
+  parentPhone: "",
+  smsConsent: false,
+  dancerLast: "",
+  notes: "",
+  selectedClassIds: [],
+  selectedClassLabels: [],
+});
 
   // --- validation helpers ---
 const emailOk = (e: string) => /\S+@\S+\.\S+/.test(e);
@@ -118,7 +122,10 @@ const abandoned = async () => {
       });
     } catch {}
   };
-  
+  const formatClassLabel = (c: ClassItem) => {
+  const when = [c.day, c.time].filter(Boolean).join(" ");
+  return when ? `${c.name} — ${when}` : c.name;
+};
   // --- DEBUG: set to true to also show a small summary in the UI
   const DEBUG = false;
 
@@ -188,24 +195,24 @@ const abandoned = async () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: s2.decision, // "trial" | "inquiry"
-          contactId,
-          // summary (make sure your lead-complete route expects these names)
-          parentFirst: s1.parentFirst,
-          parentLast: s1.parentLast,
-          email: s1.email,
+  action: s2.decision,            // "trial" | "inquiry"
+  contactId,
+  parentFirst: s1.parentFirst,
+  parentLast: s1.parentLast,
+  email: s1.email,
+  parentPhone: s2.parentPhone,
+  smsConsent: s2.smsConsent,
+  dancerFirst: s1.dancerFirst,
+  dancerLast: s2.dancerLast || "",
+  age: s1.dancerAge,
+  experience: s1.experience,
 
-          parentPhone: s2.parentPhone,
-          smsConsent: s2.smsConsent,
-          dancerFirst: s1.dancerFirst,
-          dancerLast: s2.dancerLast || "",
-          age: s1.dancerAge,
-          experience: s1.experience,
-          selectedClassId: s2.selectedClassId || "",
-          selectedClassName: s2.selectedClassName || "",
-          notes: s2.notes || "",
-          wantsTeam: s1.wantsTeam,
-        }),
+  // NEW: arrays (IDs + friendly labels)
+  selectedClassIds: s2.selectedClassIds,
+  selectedClassNames: s2.selectedClassLabels,
+
+  notes: s2.notes || "",
+}),
       });
       const text = await res.text();
       if (!res.ok) throw new Error(text);
@@ -340,25 +347,57 @@ const abandoned = async () => {
             )}
 
             <div className="grid gap-2">
-              <select
-  className="border rounded-xl p-3"
-  value={s2.selectedClassId}
-  onChange={(e) => {
-    const id = e.target.value;
-    const c = classes.find(x => x.id === id);
-    setS2({ ...s2, selectedClassId: id, ...(c ? { selectedClassName: c.name } : {}) });
-  }}
->
-                <option value="">Choose a class (optional)</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.level ? ` (${c.level})` : ""}
-                    {c.day && c.time ? ` — ${c.day} ${c.time}` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+  <p className="text-sm text-gray-600">
+    Pick any classes that look interesting (you can choose multiple):
+  </p>
+
+  <div className="space-y-2">
+    {classes.map((c) => {
+      const label = formatClassLabel(c);
+      const checked = s2.selectedClassIds.includes(c.id);
+      return (
+        <label
+          key={c.id}
+          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer ${
+            checked ? "border-dance-pink bg-pink-50" : "border-gray-200 hover:bg-gray-50"
+          }`}
+        >
+          <input
+            type="checkbox"
+            className="mt-1 w-5 h-5 accent-dance-pink"
+            checked={checked}
+            onChange={(e) => {
+              setS2((prev) => {
+                const nextIds = new Set(prev.selectedClassIds);
+                const nextLabels = new Set(prev.selectedClassLabels);
+                if (e.target.checked) {
+                  nextIds.add(c.id);
+                  nextLabels.add(label);
+                } else {
+                  nextIds.delete(c.id);
+                  nextLabels.delete(label);
+                }
+                return {
+                  ...prev,
+                  selectedClassIds: Array.from(nextIds),
+                  selectedClassLabels: Array.from(nextLabels),
+                };
+              });
+            }}
+          />
+          <div>
+            <div className="font-medium text-gray-900">{c.name}</div>
+            {(c.day || c.time) && (
+              <div className="text-sm text-gray-600">
+                {[c.day, c.time].filter(Boolean).join(" ")}
+              </div>
+            )}
+          </div>
+        </label>
+      );
+    })}
+  </div>
+</div>
           </div>
 
           <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
@@ -428,7 +467,7 @@ const abandoned = async () => {
               disabled={
                 busy ||
                 !s2.decision ||
-                (s2.decision === "trial" && (!s2.parentPhone || !s2.smsConsent))
+                (s2.decision === "trial" && (!s2.parentPhone || !s2.smsConsent || s2.selectedClassIds.length === 0))
               }
               onClick={submitFinal}
               className={styles.btn}
@@ -438,7 +477,9 @@ const abandoned = async () => {
           </div>
         </div>
       )}
-
+      {s2.decision === "trial" && s2.selectedClassIds.length === 0 && (
+        <p className="text-sm text-red-600">Please select at least one class for your trial.</p>
+      )}
       {msg && <p className="mt-4 text-sm">{msg}</p>}
     </div>
   );
