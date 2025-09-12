@@ -1,24 +1,19 @@
+// Example usage
 "use client";
 import { useState } from "react";
+import Modal from "./Modal";
 import BookTrialForm from "./BookTrialForm";
 
 export default function TrialButton() {
   const [open, setOpen] = useState(false);
-
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="bg-gradient-to-r from-dance-purple to-dance-pink text-white
-                   px-8 py-4 rounded-full font-semibold text-xl
-                   hover:scale-105 transition-all dance-shadow"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        Book your FREE trial class
+      <button className="px-5 py-3 rounded-2xl bg-dance-pink text-white" onClick={() => setOpen(true)}>
+        Book a Free Trial
       </button>
-
-      {open && <BookTrialForm onClose={() => setOpen(false)} />}
+      <Modal open={open} onClose={() => setOpen(false)} title="Find the Perfect Class">
+        <BookTrialForm />
+      </Modal>
     </>
   );
 }
