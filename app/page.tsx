@@ -1,30 +1,6 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import TrialButton from "../components/TrialButton";
-
-/** SEO for the home page */
-export const metadata = {
-  title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
-  description:
-    "Elite Dance & Music in Nolensville, TN offers ballet, tap, jazz, hip hop, acro, and Mini-Movers preschool dance. Supportive, high-quality training for ages 2–18.",
-  alternates: { canonical: "https://www.myelitedance.com/" },
-  openGraph: {
-    type: "website",
-    title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
-    description:
-      "Professional, high-quality dance training in an uplifting, supportive environment where every student is seen, challenged, and celebrated.",
-    url: "https://www.myelitedance.com/",
-    siteName: "Elite Dance & Music",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
-    description:
-      "Dance classes for ages 2–18 in Nolensville: ballet, tap, jazz, hip hop, acro, and more.",
-  },
-};
 
 /* Simple FAQ model */
 type FAQ = { q: string; a: string };
@@ -201,7 +177,7 @@ export default function HomePage() {
 
         {/* Floating collage */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="hidden md:block absolute top-28 left-[12%] -rotate-12">
+          <div className="hidden md:block absolute top-28 left-[12%] -rotate-[12deg]">
             <div className="bg-gradient-to-br from-dance-purple via-dance-pink to-dance-blue p-1 rounded-2xl shadow-2xl">
               <img
                 src="/assets/mini-movers.jpg"
@@ -212,7 +188,7 @@ export default function HomePage() {
               />
             </div>
           </div>
-          <div className="hidden md:block absolute top-20 right-[15%] rotate-10">
+          <div className="hidden md:block absolute top-20 right-[15%] rotate-[10deg]">
             <div className="bg-gradient-to-br from-dance-blue via-dance-purple to-dance-pink p-1 rounded-2xl shadow-2xl">
               <img
                 src="/assets/jazz-class.jpg"
@@ -223,7 +199,7 @@ export default function HomePage() {
               />
             </div>
           </div>
-          <div className="hidden md:block absolute bottom-20 left-[18%] rotate-15">
+          <div className="hidden md:block absolute bottom-20 left-[18%] rotate-[15deg]">
             <div className="bg-gradient-to-br from-dance-green via-dance-blue to-dance-purple p-1 rounded-2xl shadow-2xl">
               <img
                 src="/assets/ballet-barre.jpg"
@@ -234,7 +210,7 @@ export default function HomePage() {
               />
             </div>
           </div>
-          <div className="hidden lg:block absolute bottom-16 right-[20%] -rotate-18">
+          <div className="hidden lg:block absolute bottom-16 right-[20%] -rotate-[18deg]">
             <div className="bg-gradient-to-br from-dance-pink via-dance-gold to-dance-purple p-1 rounded-2xl shadow-2xl">
               <img
                 src="/assets/hiphop-kids.jpg"
