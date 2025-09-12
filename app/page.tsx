@@ -884,6 +884,7 @@ function ContactMessageForm() {
           value={form.message}
           onChange={(e) => setForm({ ...form, message: e.target.value })}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dance-purple focus:border-transparent"
+          placeholder="Tell us about your dancer's experience level, interests, or any questions you have..."
         />
       </div>
       <button
