@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import TrialButton from "../components/TrialButton";
+import LoginModal from "../components/LoginModal";
 
 /* Simple FAQ model */
 type FAQ = { q: string; a: string };
@@ -92,6 +93,7 @@ export default function HomePage() {
                 >
                   Contact
                 </button>
+                <div className="m1-4"><LoginModal /></div>
               </div>
             </div>
 
