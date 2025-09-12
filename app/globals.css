@@ -1,7 +1,6 @@
-/* app/globals.css */
-
-/* Load Tailwind v4 layers */
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Brand tokens */
 :root{
@@ -20,7 +19,7 @@ body {
   font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-/* Utilities/shims */
+/* Utilities compatible with your components */
 .bg-dance-purple{ background-color: var(--dance-purple) !important; }
 .bg-dance-pink{ background-color: var(--dance-pink) !important; }
 .bg-dance-blue{ background-color: var(--dance-blue) !important; }
@@ -30,6 +29,7 @@ body {
 .border-dance-blue{ border-color: var(--dance-blue) !important; }
 .border-dance-pink{ border-color: var(--dance-pink) !important; }
 
+/* Fix the shadow var name (it was --brand-shadow before) */
 .dance-shadow { box-shadow: var(--dance-shadow); }
 
 button.inline-flex.items-center.px-5.py-3.rounded-2xl.font-medium {
