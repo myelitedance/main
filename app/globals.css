@@ -9,8 +9,16 @@
   --dance-blue:#3B82F6;
   --dance-gold:#F59E0B;
   --dance-green:#32B486;
+  --brand-shadow:0 20px 40px rgba(139, 92, 246, 0.15);
 }
 
+/* Brand font (from your old index.html) */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+body { font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'; }
+
+/* Optional helper used in your old page */
+.dance-shadow { box-shadow: var(--brand-shadow); }
 /* Simple utility shims so your component classes work */
 .bg-dance-purple{ background-color: var(--dance-purple) !important; }
 .bg-dance-pink{ background-color: var(--dance-pink) !important; }

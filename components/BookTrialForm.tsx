@@ -233,7 +233,7 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-3xl shadow">
+    <div className="bg-gradient-to-r from-dance-purple to-dance-pink text-white px-6 py-4">
       <h2 className="text-2xl font-bold mb-1">Find the Perfect Class</h2>
       <p className="text-gray-600 mb-6">
         A few quick questions so we can match your dancer for their best first experience.
