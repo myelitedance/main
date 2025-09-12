@@ -29,3 +29,7 @@ button.inline-flex.items-center.px-5.py-3.rounded-2xl.font-medium:hover{
   opacity:.92;
   transform: translateY(-1px);
 }
+
+.dance-shadow {
+  box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15);
+}
