@@ -238,7 +238,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {/* Replaces “Register Now” with the modal trigger */}
-            <TrialButton />
+            <TrialButton variant="small"/>
             <button
               onClick={() => scrollTo("about")}
               className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-dance-purple transition-all"
@@ -497,9 +497,9 @@ export default function HomePage() {
 
             {/* Big CTA now uses the modal */}
             <div className="flex justify-center mt-12 px-4">
-              <div className="className=inline-block bg-gradient-to-r from-dance-purple to-dance-pink text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition">
-                <TrialButton />
-              </div>
+                <div className="flex justify-center mt-12 px-4">
+                    <TrialButton variant="big" />
+                </div>
             </div>
           </div>
         </div>

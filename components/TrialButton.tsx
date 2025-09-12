@@ -1,18 +1,36 @@
-// Example usage
+// /components/TrialButton.tsx
 "use client";
+
 import { useState } from "react";
 import Modal from "./Modal";
 import BookTrialForm from "./BookTrialForm";
 
-export default function TrialButton() {
+type Props = {
+  /** "small" = hero pill; "big" = wide CTA card */
+  variant?: "small" | "big";
+  /** Optional custom label */
+  label?: string;
+};
+
+export default function TrialButton({ variant = "small", label = "Book Your Free Trial" }: Props) {
   const [open, setOpen] = useState(false);
+
+  const base = "font-semibold transition-all transform hover:scale-105";
+  const styles =
+    variant === "small"
+      ? "bg-white text-dance-purple px-8 py-4 rounded-full text-lg hover:bg-gray-100 dance-shadow"
+      : "w-full max-w-2xl bg-gradient-to-r from-dance-purple to-dance-pink text-white py-5 px-8 rounded-2xl text-2xl text-center shadow-lg";
+
   return (
     <>
-      <button className="px-5 py-3 rounded-5xl bg-dance-while text-purple" onClick={() => setOpen(true)}>
-        Book a Free Trial
+      <button className={`${base} ${styles}`} onClick={() => setOpen(true)}>
+        {label}
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Find the Perfect Class">
-        <BookTrialForm />
+
+      <Modal open={open} onClose={() => setOpen(false)} title="Book Your Free Trial">
+        {/* BookTrialForm already manages its own state & submission */}
+        {/* If BookTrialForm accepts onClose, pass it to close after submit */}
+        <BookTrialForm /* onClose={() => setOpen(false)} */ />
       </Modal>
     </>
   );
