@@ -707,7 +707,7 @@ export default function HomePage() {
   );
 }
 
-/** CONTACT side form from the bottom of the page (posts to /api/contact like before) */
+/** CONTACT side form from the bottom of the page (posts to elite/lead-complete) */
 function ContactMessageForm() {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -721,20 +721,87 @@ function ContactMessageForm() {
       "Tell us about your dancer's experience level, interests, or any questions you have...",
   });
 
+  // --- helpers ---
+  function splitName(full: string): { first: string; last: string } {
+    const t = (full || "").trim().replace(/\s+/g, " ");
+    if (!t) return { first: "", last: "" };
+    const parts = t.split(" ");
+    if (parts.length === 1) return { first: parts[0], last: "" };
+    return { first: parts[0], last: parts.slice(1).join(" ") };
+  }
+
+  // Accepts inputs like: "Emma Smith, Age 8" | "Emma, 8" | "Emma Smith age: 8"
+  function parseDancer(input: string): { first: string; last: string; age?: number } {
+    const raw = (input || "").trim();
+    if (!raw) return { first: "", last: "" };
+
+    // try to pull an age number anywhere in the string
+    const ageMatch = raw.match(/(?:^|[\s,;()-])(\d{1,2})(?:\s*(?:yrs?|years?)\b)?/i);
+    const age = ageMatch ? parseInt(ageMatch[1], 10) : undefined;
+
+    // remove age phrases for name parsing
+    const nameOnly = raw
+      .replace(/\bage\b[:\s]*/i, "")
+      .replace(/\b(?:yrs?|years?)\b/gi, "")
+      .replace(/\b\d{1,2}\b/g, "")
+      .replace(/[,\s]{2,}/g, " ")
+      .trim();
+
+    // names like "Emma Smith" or "Emma"
+    const { first, last } = splitName(nameOnly);
+    return { first, last, age: Number.isFinite(age) ? age : undefined };
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await fetch("/api/contact", {
+      const parent = splitName(form.parent);
+      const dancer = parseDancer(form.dancer);
+
+      const utm = Object.fromEntries(new URLSearchParams(window.location.search).entries());
+      const payload = {
+        // what lead-complete/route.ts expects:
+        parentFirst: parent.first,
+        parentLast: parent.last,
+        parentPhone: form.phone,
+        email: form.email,
+
+        dancerFirst: dancer.first || undefined,
+        dancerLast: dancer.last || undefined,
+        age: dancer.age ?? undefined,
+
+        // store interest + message
+        interest: form.interest,
+        notes:
+          `Contact Us message:\n` +
+          `Interested In: ${form.interest}\n` +
+          `Phone: ${form.phone}\n` +
+          `Dancer: ${form.dancer}\n\n` +
+          `${form.message}`,
+
+        // identify this path as an info request
+        action: "inquiry",
+
+        // nice-to-haves used by your route
+        utm: {
+          source: utm.utm_source || utm.source || "",
+          medium: utm.utm_medium || "",
+          campaign: utm.utm_campaign || "",
+        },
+        page: typeof window !== "undefined" ? window.location.pathname : "/",
+        selectedClassName: undefined, // not used on Contact; route handles empty
+        selectedClassId: undefined,   // not used on Contact; route handles empty
+      };
+
+      const res = await fetch("/api/elite/lead-complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.parent,
-          email: form.email,
-          message: `Phone: ${form.phone}\nDancer: ${form.dancer}\nInterested In: ${form.interest}\n\n${form.message}`,
-        }),
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Submission failed");
+
+      if (!res.ok) throw new Error(await res.text());
+
       setDone(true);
       setForm({
         parent: "",
@@ -747,6 +814,7 @@ function ContactMessageForm() {
       });
       setTimeout(() => setDone(false), 4000);
     } catch (err) {
+      console.error(err);
       alert("Something went wrong. Please try again.");
     } finally {
       setBusy(false);
