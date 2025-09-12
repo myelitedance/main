@@ -718,7 +718,7 @@ function ContactMessageForm() {
     dancer: "",
     interest: "Trial Class",
     message:
-      "Tell us about your dancer's experience level, interests, or any questions you have...",
+      "",
   });
 
   // --- helpers ---
@@ -810,7 +810,7 @@ function ContactMessageForm() {
         dancer: "",
         interest: "Trial Class",
         message:
-          "Tell us about your dancer's experience level, interests, or any questions you have...",
+          "",
       });
       setTimeout(() => setDone(false), 4000);
     } catch (err) {
