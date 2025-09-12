@@ -497,7 +497,7 @@ export default function HomePage() {
 
             {/* Big CTA now uses the modal */}
             <div className="flex justify-center mt-12 px-4">
-              <div className="w-full max-w-2xl">
+              <div className="className=inline-block bg-gradient-to-r from-dance-purple to-dance-pink text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition">
                 <TrialButton />
               </div>
             </div>
