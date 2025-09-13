@@ -6,7 +6,7 @@ import {
   formatDateRange,
   formatPrice,
   WorkshopStatus,
-} from "../../lib/workshops";
+} from "@/lib/workshops";
 
 function StatusBadge({ status }: { status: WorkshopStatus }) {
   const map: Record<WorkshopStatus, { text: string; className: string }> = {

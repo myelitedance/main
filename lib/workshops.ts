@@ -65,15 +65,15 @@ export function formatPrice(cents?: number) {
 export const workshops: WorkshopTile[] = [
   // --- Sample placeholders (safe to remove) ---
   {
-    slug: 'sample-workshop-1',
-    title: 'Sample Workshop 1',
-    dateStart: '2025-10-06',
-    dateEnd: '2025-10-10',
-    location: 'Elite Dance & Music — Main Studio',
-    priceCents: 30000,
-    imageUrl: '/images/workshops/sample-1.jpg',
-    status: 'open',
-  },
+  "slug": "fall-break-musical-theater-workshop",
+  "title": "Fall Break - Musical Theater Workshop",
+  "dateStart": "2025-10-06",
+  "dateEnd": "2025-10-10",
+  "location": "Elite Dance & Music",
+  "priceCents": 30000,
+  "imageUrl": "/images/workshops/placeholder.jpg",
+  "status": "open"
+},
   {
     slug: 'sample-workshop-2',
     title: 'Sample Workshop 2',
