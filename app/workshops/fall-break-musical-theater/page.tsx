@@ -30,9 +30,7 @@ export default function WorkshopPage() {
           </h1>
           <p className="mt-2 text-gray-700">Increase your stage presence and prepare for you next audtittion</p>
           <div className="mt-5 relative w-full overlow-hidden rounded-xl bg-gray-100">
-            <div className="relative aspect-[16/9]">
-            <Image src="/images/workshops/fallworkshop.png" alt="Fall Break - Musical Theater Workshop" fill className="object-cover"/>
-            </div>
+            <Image src="/images/workshops/fallworkshop.png" alt="Fall Break - Musical Theater Workshop" fill className="object-contain"/>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-700">
             <span><strong>Dates:</strong> 5–Oct 9 2025</span>
