@@ -71,7 +71,7 @@ export const workshops: WorkshopTile[] = [
   "dateEnd": "2025-10-10",
   "location": "Elite Dance & Music",
   "priceCents": 30000,
-  "imageUrl": "/images/workshops/fallworkshop.png",
+  "imageUrl": "/images/workshops/fallbreakworkshop.png",
   "status": "open"
 },
   {
