@@ -80,7 +80,7 @@ export const workshops: WorkshopTile[] = [
     dateStart: '2025-11-17',
     dateEnd: '2025-11-21',
     location: 'Elite Dance & Music — Studio B',
-    imageUrl: '/images/workshops/sample-2.jpg',
+    imageUrl: '/images/workshops/comingsoon.png',
     status: 'coming_soon',
   },
 ];
