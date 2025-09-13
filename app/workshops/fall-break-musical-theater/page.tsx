@@ -39,7 +39,7 @@ export default function WorkshopPage() {
                 priority/>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-700">
-            <span><strong>Dates:</strong> Oct 6th-10th 9 2025</span>
+            <span><strong>Dates:</strong> Oct 6th-10th 2025</span>
             <span>• <strong>Times:</strong> Mon-Fri, 9:00 AM-2:00 PM</span>
             <span>• <strong>Location:</strong> Elite Dance &amp; Music</span>
             <span>• <strong>Price:</strong> $300.00</span>
