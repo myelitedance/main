@@ -31,7 +31,7 @@ export default function WorkshopPage() {
           <p className="mt-2 text-gray-700">Increase your stage presence and prepare for you next audtittion</p>
           <div className="mt-5 relative w-full overlow-hidden rounded-xl bg-gray-100 flex justify-center">
             <Image 
-                src="/images/workshops/fallworkshop.png" 
+                src="/images/workshops/fallbreakworkshop.png" 
                 alt="Fall Break - Musical Theater Workshop" 
                 width={1200}
                 height={1600}
