@@ -129,11 +129,6 @@ function buildWorkshopTSX(w: WorkshopInput) {
   lines.push(`    <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">`);
   lines.push(`      {/* Hero */}`);
   lines.push(`      <div className="relative overflow-hidden rounded-2xl border border-gray-200">`);
-  if (w.images.hero) {
-    lines.push(`        <div className="relative h-64 sm:h-80 md:h-96">`);
-    lines.push(`          <Image src="${esc(w.images.hero)}" alt="${esc(w.title)}" fill className="object-cover" />`);
-    lines.push(`        </div>`);
-  }
   lines.push(`        <div className="p-6 sm:p-8">`);
   lines.push(`          <p className="text-sm uppercase tracking-wide text-dance-blue">Workshop</p>`);
   lines.push(`          <h1 className="mt-1 text-3xl sm:text-4xl font-bold">`);
@@ -142,6 +137,14 @@ function buildWorkshopTSX(w: WorkshopInput) {
   lines.push(`            </span>`);
   lines.push(`          </h1>`);
   if (w.subtitle) lines.push(`          <p className="mt-2 text-gray-700">${escHtml(w.subtitle)}</p>`);
+
+  // ⬇️ Hero image MOVED to directly below the H1/subtitle
+  if (w.images.hero) {
+    lines.push(`          <div className="mt-5 relative w-full overflow-hidden rounded-xl bg-gray-100 flex justify-center">`);
+    lines.push(`              <Image src="${esc(w.images.hero)}" alt="${esc(w.title)}" width={1200} height={1600} className="h-auto w-full object-contain" priority />`);
+    lines.push(`          </div>`);
+  }
+
   lines.push(`          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-700">`);
   lines.push(`            <span><strong>Dates:</strong> ${escHtml(dateText)}</span>`);
   if (w.times) lines.push(`            <span>• <strong>Times:</strong> ${escHtml(w.times)}</span>`);
@@ -157,6 +160,7 @@ function buildWorkshopTSX(w: WorkshopInput) {
   }
   lines.push(`        </div>`);
   lines.push(`      </div>`);
+
   /* Overview */
   if (showOverview) {
     lines.push(`      <Section title="Overview">`);
@@ -227,7 +231,7 @@ function buildWorkshopTSX(w: WorkshopInput) {
     lines.push(`        <p className="text-gray-700">${escHtml(w.policies)}</p>`);
     lines.push(`      </Section>`);
   }
-  /* Back link */
+  /* Back */
   lines.push(`      <div className="mt-10">`);
   lines.push(`        <Link href="/workshops" className="text-dance-purple hover:text-dance-pink font-medium">← Back to Workshops</Link>`);
   lines.push(`      </div>`);
