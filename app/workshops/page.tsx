@@ -1,85 +1,12 @@
 // app/workshops/page.tsx
 import Image from "next/image";
 import Link from "next/link";
-
-type WorkshopStatus = "open" | "coming_soon" | "sold_out";
-
-type Workshop = {
-  slug: string;
-  title: string;
-  dateStart: string; // ISO date
-  dateEnd?: string;  // ISO date (optional; if single day, omit or match start)
-  location: string;
-  priceCents?: number; // if TBD, omit
-  imageUrl: string;
-  status: WorkshopStatus;
-};
-
-function formatDateRange(startISO: string, endISO?: string) {
-  const start = new Date(startISO);
-  const end = endISO ? new Date(endISO) : undefined;
-
-  const fmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-  const fmtYear = new Intl.DateTimeFormat("en-US", { year: "numeric" });
-
-  if (!end || start.toDateString() === end.toDateString()) {
-    return `${fmt.format(start)}, ${fmtYear.format(start)}`;
-  }
-
-  // Same month/year?
-  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
-  const sameYear = start.getFullYear() === end.getFullYear();
-
-  if (sameMonth) {
-    return `${fmt.format(start).replace(/[A-Za-z]+ /, "")}–${fmt.format(end)} ${fmtYear.format(end)}`; // "6–10 Oct 2025"
-  }
-  if (sameYear) {
-    return `${fmt.format(start)} – ${fmt.format(end)} ${fmtYear.format(end)}`; // "Sep 29 – Oct 3 2025"
-  }
-  return `${fmt.format(start)} ${fmtYear.format(start)} – ${fmt.format(end)} ${fmtYear.format(end)}`;
-}
-
-function formatPrice(cents?: number) {
-  if (typeof cents !== "number") return "TBD";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
-}
-
-// TODO: Replace this with actual data source (CMS, file, or API).
-// For now, these are placeholders to demonstrate the layout.
-// Note: Clicking a tile expects /workshops/[slug] to exist (we'll build in Step 2).
-const WORKSHOPS: Workshop[] = [
-  // Example items (safe placeholders; no real details)
-  {
-    slug: "sample-workshop-1",
-    title: "Sample Workshop 1",
-    dateStart: "2025-10-06",
-    dateEnd: "2025-10-10",
-    location: "Elite Dance & Music — Main Studio",
-    priceCents: 30000,
-    imageUrl: "/images/workshops/sample-1.jpg", // add an image to your public folder
-    status: "open",
-  },
-  {
-    slug: "sample-workshop-2",
-    title: "Sample Workshop 2",
-    dateStart: "2025-11-17",
-    dateEnd: "2025-11-21",
-    location: "Elite Dance & Music — Studio B",
-    priceCents: undefined, // TBD
-    imageUrl: "/images/workshops/sample-2.jpg",
-    status: "coming_soon",
-  },
-  {
-    slug: "sample-workshop-3",
-    title: "Sample Workshop 3",
-    dateStart: "2025-12-27",
-    dateEnd: "2025-12-27",
-    location: "Elite Dance & Music — Main Studio",
-    priceCents: 12500,
-    imageUrl: "/images/workshops/sample-3.jpg",
-    status: "sold_out",
-  },
-];
+import {
+  workshops as WORKSHOPS,
+  formatDateRange,
+  formatPrice,
+  WorkshopStatus,
+} from "../../lib/workshops";
 
 function StatusBadge({ status }: { status: WorkshopStatus }) {
   const map: Record<WorkshopStatus, { text: string; className: string }> = {
