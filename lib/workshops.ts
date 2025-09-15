@@ -75,11 +75,11 @@ export const workshops: WorkshopTile[] = [
   "status": "open"
 },
   {
-    slug: 'sample-workshop-2',
-    title: 'Sample Workshop 2',
-    dateStart: '2025-11-17',
-    dateEnd: '2025-11-21',
-    location: 'Elite Dance & Music — Studio B',
+    slug: '',
+    title: 'Summer Workshop 2026',
+    dateStart: '',
+    dateEnd: '',
+    location: 'Elite Dance & Music, Nolensville, TN',
     imageUrl: '/images/workshops/comingsoon.png',
     status: 'coming_soon',
   },
