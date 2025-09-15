@@ -73,16 +73,7 @@ export const workshops: WorkshopTile[] = [
   "priceCents": 30000,
   "imageUrl": "/images/workshops/fallbreakworkshop.png",
   "status": "open"
-},
-  {
-    slug: '',
-    title: 'Summer Workshop 2026',
-    dateStart: '',
-    dateEnd: '',
-    location: 'Elite Dance & Music, Nolensville, TN',
-    imageUrl: '/images/workshops/comingsoon.png',
-    status: 'coming_soon',
-  },
+}
 ];
 
 /* Optional async shape if you later swap to a DB/API */
