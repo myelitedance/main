@@ -3,6 +3,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Script from "next/script";
+import ClientAnalytics from "./client-analytics";
 
 export const metadata: Metadata = {
   title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
@@ -29,9 +31,30 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const isProd = process.env.NODE_ENV === "production";
+  const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
   return (
     <html lang="en">
-      <body className="scroll-smooth">{children}
+      <head>
+        {isProd && GA_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_ID}');
+              `}
+            </Script>
+          </>
+        )}
+      </head>
+      <body className="scroll-smooth">
+        <ClientAnalytics />
+        {children}
         {isProd && <Analytics />}
         {isProd && <SpeedInsights />}
       </body>
