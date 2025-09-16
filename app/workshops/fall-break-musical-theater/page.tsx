@@ -66,7 +66,7 @@ export default function WorkshopPage() {
         <p><strong>Elite Dance &amp; Music</strong><br/>7177 Nolensville Rd, Nolensville, TN </p>
       </Section>
       <Section title="Policies">
-        <p className="text-gray-700"><a href="https://lc.myelitedance.com/workshop-terms-and-conditions-page"></a></p>
+        <p className="text-gray-700"><a href="https://lc.myelitedance.com/workshop-terms-and-conditions-page">Terms and Conditions</a></p>
       </Section>
       <div className="mt-10">
         <Link href="/workshops" className="text-dance-purple hover:text-dance-pink font-medium">← Back to Workshops</Link>
