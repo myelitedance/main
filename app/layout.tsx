@@ -1,6 +1,8 @@
 // app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
@@ -26,9 +28,13 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const isProd = process.env.NODE_ENV === "production";
   return (
     <html lang="en">
-      <body className="scroll-smooth">{children}</body>
+      <body className="scroll-smooth">{children}
+        {isProd && <Analytics />}
+        {isProd && <SpeedInsights />}
+      </body>
     </html>
   );
 }
