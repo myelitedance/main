@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
 import ClientAnalytics from "./client-analytics";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
@@ -53,7 +54,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
       </head>
       <body className="scroll-smooth">
+        <Suspense fallback={null}>
         <ClientAnalytics />
+        </Suspense>
         {children}
         {isProd && <Analytics />}
         {isProd && <SpeedInsights />}
