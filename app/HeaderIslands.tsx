@@ -1,95 +1,73 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { createRoot } from "react-dom/client";
-//import TrialButton from "@/components/TrialButton";
 import LoginModal from "@/components/LoginModal";
 
-/**
- * Renders LoginModal + a visible "Login" button.
- * The button opens the modal by programmatically clicking the first
- * clickable element rendered by LoginModal (button or anchor).
- * Also listens for window "edm:open-login" so static fallback continues to work.
- */
-function LoginIsland({ withTrial = false }: { withTrial?: boolean }) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
-
-  // Find the internal trigger rendered by LoginModal
-  const findInternalTrigger = () => {
-    const host = hostRef.current;
-    if (!host) return null;
-    // Look for something clickable inside our island subtree,
-    // but ignore our own proxy button (data-proxy attr).
-    const trigger = host.querySelector(
-      "button:not([data-proxy-login]), a:not([data-proxy-login])"
-    ) as HTMLElement | null;
-    return trigger || null;
-  };
-
-  const openModal = () => {
-    const trigger = findInternalTrigger();
-    trigger?.click();
-  };
-
-  useEffect(() => {
-    // Bridge global fallback -> open modal
-    const handler = () => openModal();
-    window.addEventListener("edm:open-login" as any, handler);
-    // Also re-try once after a tick in case LoginModal renders async
-    const t = setTimeout(() => {
-      /* no-op: just ensures DOM settled before first use */
-    }, 0);
-    return () => {
-      window.removeEventListener("edm:open-login" as any, handler);
-      clearTimeout(t);
-    };
-  }, []);
-
-  return (
-    <div ref={hostRef} className="inline-flex items-center gap-3">
-      {/* Keep LoginModal mounted so its internal trigger exists */}
-      <LoginModal />
-
-      {/* Our visible proxy trigger */}
-      <button
-        type="button"
-        data-proxy-login
-        onClick={(e) => {
-          e.preventDefault();
-          openModal();
-        }}
-        className="inline-flex items-center rounded-full bg-gradient-to-r from-dance-purple to-dance-pink text-white px-4 py-2 font-semibold"
-      >
-        Login
-      </button>
-    </div>
-  );
-}
-
-// ---- minimal mount helpers ----
-function mount(el: HTMLElement | null, node: React.ReactNode) {
+function mount(Component: any, el: HTMLElement | null) {
   if (!el) return;
   const root = createRoot(el);
-  root.render(node);
+  root.render(<Component />);
+}
+
+/** Finds the first clickable element that LoginModal renders (button or anchor) */
+function findLoginTrigger(containerId: string): HTMLElement | null {
+  const host = document.getElementById(containerId);
+  if (!host) return null;
+  // Look only inside the LoginModal mount
+  return (host.querySelector("button, a") as HTMLElement | null) || null;
+}
+
+function normalizeTriggerLabel(trigger: HTMLElement | null) {
+  if (!trigger) return;
+  // Make sure the button says "Login" and looks like your header CTA
+  trigger.textContent = "Login";
+  trigger.classList.add(
+    "inline-flex",
+    "items-center",
+    "rounded-full",
+    "bg-gradient-to-r",
+    "from-dance-purple",
+    "to-dance-pink",
+    "text-white",
+    "px-4",
+    "py-2",
+    "font-semibold"
+  );
 }
 
 export default function HeaderIslands() {
   useEffect(() => {
+    // 1) Mount LoginModal into the islands
     const desktopIsland = document.getElementById("edm-login-island");
     const mobileIsland = document.getElementById("edm-login-island-mobile");
 
     if (desktopIsland) {
       desktopIsland.innerHTML = '<span id="edm-login-slot"></span>';
-      mount(
-        document.getElementById("edm-login-slot"),
-        <LoginIsland withTrial={true} />
-      );
+      mount(LoginModal, document.getElementById("edm-login-slot"));
+    }
+    if (mobileIsland) {
+      mobileIsland.innerHTML = '<span id="edm-login-slot-m"></span>';
+      mount(LoginModal, document.getElementById("edm-login-slot-m"));
     }
 
-    if (mobileIsland) {
-      mobileIsland.innerHTML = '<div id="edm-login-slot-m"></div>';
-      mount(document.getElementById("edm-login-slot-m"), <LoginIsland withTrial={true} />);
-    }
+    // 2) After React paints, grab the real trigger and standardize it
+    const t = setTimeout(() => {
+      const dTrigger = findLoginTrigger("edm-login-slot");
+      const mTrigger = findLoginTrigger("edm-login-slot-m");
+
+      normalizeTriggerLabel(dTrigger);
+      normalizeTriggerLabel(mTrigger);
+
+      // 3) Fallback event from the WC -> click the real trigger
+      const open = () => (dTrigger || mTrigger)?.click();
+      window.addEventListener("edm:open-login" as any, open);
+
+      // cleanup
+      return () => window.removeEventListener("edm:open-login" as any, open);
+    }, 0);
+
+    return () => clearTimeout(t);
   }, []);
 
   return null;
