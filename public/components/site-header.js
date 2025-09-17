@@ -1,5 +1,8 @@
-// Elite Dance & Music header web component (light DOM so Tailwind & React islands work)
-// Reads /partials/nav.json for links
+// public/components/site-header.js
+// Elite Dance & Music header web component (light DOM)
+// - Reads /partials/nav.json for links
+// - Smooth-scroll on "/" only; from other pages, anchors go to "/#id"
+// - Provides a "Login" fallback that React can replace (Next) or a static helper can catch
 
 class SiteHeader extends HTMLElement {
   connectedCallback() {
@@ -11,6 +14,8 @@ class SiteHeader extends HTMLElement {
 
   renderSkeleton() {
     const forcedPath = this.getAttribute('data-page');
+    this._forcedPath = forcedPath || null;
+
     this.innerHTML = `
       <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-sm z-50 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,6 +28,7 @@ class SiteHeader extends HTMLElement {
 
             <div class="hidden md:block">
               <div class="ml-10 flex items-baseline space-x-8" id="edm-nav-desktop">
+                <!-- links injected here -->
                 <span id="edm-login-island" class="ml-2"></span>
               </div>
             </div>
@@ -38,12 +44,12 @@ class SiteHeader extends HTMLElement {
 
         <div class="md:hidden hidden bg-white border-t" id="edm-mobile">
           <div class="px-2 pt-2 pb-3 space-y-1" id="edm-nav-mobile">
+            <!-- links injected here -->
             <div id="edm-login-island-mobile" class="px-3 py-2"></div>
           </div>
         </div>
       </nav>
     `;
-    if (forcedPath) this._forcedPath = forcedPath;
   }
 
   async loadNav() {
@@ -54,63 +60,66 @@ class SiteHeader extends HTMLElement {
       const desktop = this.querySelector('#edm-nav-desktop');
       const mobile  = this.querySelector('#edm-nav-mobile');
 
-      const mkDesktop = (l) => {
-        if (l.scroll) {
-          return `<button data-scroll="${l.href.replace('#','')}" class="text-gray-700 hover:text-dance-purple transition-colors ${l.label==='Home' ? 'text-dance-purple font-semibold' : ''}">
-            ${l.label}
-          </button>`;
-        }
-        return `<a href="${l.href}" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">${l.label}</a>`;
-      };
+      const herePath = (this._forcedPath || (typeof location !== 'undefined' ? location.pathname : '/')) || '/';
+      const onHome = (herePath.replace(/\/+$/,'') || '/') === '/';
 
-      const mkMobile = (l) => {
-        if (l.scroll) {
-          return `<button data-scroll="${l.href.replace('#','')}" class="block px-3 py-2 text-gray-700 hover:text-dance-purple ${l.label==='Home' ? 'text-dance-purple font-semibold underline underline-offset-4' : ''}">
-            ${l.label}
-          </button>`;
-        }
-        return `<a href="${l.href}" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">${l.label}</a>`;
-      };
+      const mkDesktop = (l) => this._linkHTML(l, onHome, /*desktop*/true);
+      const mkMobile  = (l) => this._linkHTML(l, onHome, /*desktop*/false);
 
       if (desktop) desktop.insertAdjacentHTML('afterbegin', links.map(mkDesktop).join(''));
       if (mobile)  mobile.insertAdjacentHTML('afterbegin',  links.map(mkMobile).join(''));
 
-      // Fallback CTA for purely static pages (Next will replace via islands)
+      // --- Fallback "Login" button (replaced by React island on Next pages) ---
       const fallbackLogin = `
-  <button type="button"
-    class="inline-flex items-center rounded-full bg-gradient-to-r from-dance-purple to-dance-pink text-white px-4 py-2 font-semibold"
-    id="edm-fallback-login">
-    Login
-  </button>`;
+        <button type="button"
+          class="inline-flex items-center rounded-full bg-gradient-to-r from-dance-purple to-dance-pink text-white px-4 py-2 font-semibold"
+          id="edm-fallback-login">
+          Login
+        </button>`;
 
-// Drop the fallback into both desktop & mobile islands
-const dIsland = this.querySelector('#edm-login-island');
-const mIsland = this.querySelector('#edm-login-island-mobile');
-if (dIsland) dIsland.innerHTML = fallbackLogin;
-if (mIsland) mIsland.innerHTML = fallbackLogin;
+      const dIsland = this.querySelector('#edm-login-island');
+      const mIsland = this.querySelector('#edm-login-island-mobile');
+      if (dIsland) dIsland.innerHTML = fallbackLogin;
+      if (mIsland) mIsland.innerHTML = fallbackLogin;
 
-// Optional: no-op click (prevents jump to top if someone binds default anchors)
-// Your React island will fully replace this node when it mounts.
-this.querySelectorAll('#edm-fallback-login').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    // If your static pages include the small “islands” helper that mounts LoginModal,
-    // this button will be replaced quickly. If not, consider navigating to a /login page.
-  });
-});// Optional: no-op click (prevents jump to top if someone binds default anchors)
-// Your React island will fully replace this node when it mounts.
-this.querySelectorAll('#edm-fallback-login').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    // If your static pages include the small “islands” helper that mounts LoginModal,
-    // this button will be replaced quickly. If not, consider navigating to a /login page.
-  });
-});
+      // Clicking the fallback fires a window event that static pages can handle.
+      this.querySelectorAll('#edm-fallback-login').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('edm:open-login'));
+        });
+      });
+
       this.bindScrollButtons();
       this.markActive();
     } catch (e) {
       console.error('Header nav failed', e);
     }
+  }
+
+  // Create appropriate link/button markup for desktop/mobile
+  _linkHTML(l, onHome, isDesktop) {
+    const baseClasses = isDesktop
+      ? 'block px-3 py-2 text-gray-700 hover:text-dance-purple'
+      : 'block px-3 py-2 text-gray-700 hover:text-dance-purple';
+
+    // Scroll links behave differently off the homepage
+    if (l.scroll) {
+      if (onHome) {
+        const extra = (l.label === 'Home' && isDesktop)
+          ? ' text-dance-purple font-semibold'
+          : (l.label === 'Home' && !isDesktop)
+            ? ' text-dance-purple font-semibold underline underline-offset-4'
+            : '';
+        return `<button data-scroll="${l.href.replace('#','')}" class="${baseClasses}${extra}">${l.label}</button>`;
+      }
+      // Not on home: navigate to the home anchor
+      const id = l.href.startsWith('#') ? l.href : `#${l.href}`;
+      return `<a href="/${id}" class="${baseClasses}">${l.label}</a>`;
+    }
+
+    // Normal link
+    return `<a href="${l.href}" class="${baseClasses}">${l.label}</a>`;
   }
 
   bindEvents() {
