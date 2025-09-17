@@ -1,41 +1,39 @@
-// app/HeaderIslands.tsx
 "use client";
 
 import { useEffect } from "react";
 import { createRoot } from "react-dom/client";
-// Use a path that matches your project. From /app, a relative import is simplest:
-import TrialButton from "@/components/TrialButton";
 import LoginModal from "@/components/LoginModal";
 
 function mount(Component: any, el: HTMLElement | null, props: any = {}) {
   if (!el) return;
-  try {
-    const root = createRoot(el);
-    root.render(<Component {...props} />);
-  } catch (e) {
-    console.error("Mount failed", e);
-  }
+  const root = createRoot(el);
+  root.render(<Component {...props} />);
 }
 
 export default function HeaderIslands() {
   useEffect(() => {
     const desktopIsland = document.getElementById("edm-login-island");
-    const mobileIsland = document.getElementById("edm-login-island-mobile");
+    const mobileIsland  = document.getElementById("edm-login-island-mobile");
 
-    // Desktop: Login + Trial side-by-side
+    // Remove the fallback "Try a Class" CTA the web component adds
+    if (desktopIsland) desktopIsland.innerHTML = "";
+    if (mobileIsland)  mobileIsland.innerHTML  = "";
+
+    // Mount JUST the Login modal trigger (button text comes from your LoginModal)
     if (desktopIsland) {
-      desktopIsland.innerHTML =
-        '<span id="edm-login-slot"></span><span class="ml-3" id="edm-trial-slot"></span>';
-      mount(LoginModal, document.getElementById("edm-login-slot"));
-      mount(TrialButton, document.getElementById("edm-trial-slot"), { variant: "small" });
+      const slot = document.createElement("span");
+      desktopIsland.appendChild(slot);
+      mount(LoginModal, slot);
     }
 
-    // Mobile: stacked
     if (mobileIsland) {
-      mobileIsland.innerHTML =
-        '<div id="edm-login-slot-m"></div><div class="mt-2" id="edm-trial-slot-m"></div>';
-      mount(LoginModal, document.getElementById("edm-login-slot-m"));
-      mount(TrialButton, document.getElementById("edm-trial-slot-m"), { variant: "small" });
+      const slotM = document.createElement("div");
+      mobileIsland.appendChild(slotM);
+      mount(LoginModal, slotM, {
+        // Optional: make the mobile button full-width; remove if your LoginModal styles its own trigger
+        buttonClassName:
+          "w-full inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-dance-purple to-dance-pink text-white px-4 py-3 font-semibold",
+      });
     }
   }, []);
 
