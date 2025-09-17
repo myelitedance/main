@@ -30,7 +30,7 @@ class SiteHeader extends HTMLElement {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between items-center h-16">
             <div class="flex items-center">
-              <a href="/" class="text-2xl font-bold edm-gradient-text">
+              <a href="/" class="text-2xl font-bold gradient-text bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent">
                 Elite Dance &amp; Music
               </a>
             </div>
