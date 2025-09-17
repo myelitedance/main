@@ -36,7 +36,7 @@ class SiteHeader extends HTMLElement {
             </div>
 
             <div class="hidden md:block">
-              <div class="ml-10 flex items-baseline space-x-8" id="edm-nav-desktop">
+              <div class="ml-6 flex items-baseline space-x-4" id="edm-nav-desktop">
                 <!-- links injected here -->
                 <span id="edm-login-island" class="ml-2"></span>
               </div>
