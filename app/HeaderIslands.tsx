@@ -1,74 +1,70 @@
 "use client";
 
-import { useEffect } from "react";
-import { createRoot } from "react-dom/client";
+import { useEffect, useRef } from "react";
 import LoginModal from "@/components/LoginModal";
 
-function mount(Component: any, el: HTMLElement | null) {
-  if (!el) return;
-  const root = createRoot(el);
-  root.render(<Component />);
-}
-
-/** Finds the first clickable element that LoginModal renders (button or anchor) */
-function findLoginTrigger(containerId: string): HTMLElement | null {
-  const host = document.getElementById(containerId);
-  if (!host) return null;
-  // Look only inside the LoginModal mount
-  return (host.querySelector("button, a") as HTMLElement | null) || null;
-}
-
-function normalizeTriggerLabel(trigger: HTMLElement | null) {
-  if (!trigger) return;
-  // Make sure the button says "Login" and looks like your header CTA
-  trigger.textContent = "Login";
-  trigger.classList.add(
-    "inline-flex",
-    "items-center",
-    "rounded-full",
-    "bg-gradient-to-r",
-    "from-dance-purple",
-    "to-dance-pink",
-    "text-white",
-    "px-4",
-    "py-2",
-    "font-semibold"
-  );
-}
-
+/**
+ * - Renders ONE hidden <LoginModal /> inside the Next app tree (so it has all providers/portals).
+ * - Writes a plain <button> into the header islands that dispatches a window event.
+ * - Listens for that event and programmatically clicks the REAL LoginModal trigger.
+ */
 export default function HeaderIslands() {
+  const triggerRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
-    // 1) Mount LoginModal into the islands
-    const desktopIsland = document.getElementById("edm-login-island");
-    const mobileIsland = document.getElementById("edm-login-island-mobile");
+    // Put a plain "Login" button in the header islands that fires a global event.
+    const mountLoginButton = (containerId: string) => {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = `
+        <button type="button"
+          class="inline-flex items-center rounded-full bg-gradient-to-r from-dance-purple to-dance-pink text-white px-4 py-2 font-semibold"
+          id="${containerId}-btn">
+          Login
+        </button>
+      `;
+      const btn = document.getElementById(`${containerId}-btn`);
+      btn?.addEventListener("click", () => {
+        window.dispatchEvent(new CustomEvent("edm:open-login"));
+      });
+    };
 
-    if (desktopIsland) {
-      desktopIsland.innerHTML = '<span id="edm-login-slot"></span>';
-      mount(LoginModal, document.getElementById("edm-login-slot"));
-    }
-    if (mobileIsland) {
-      mobileIsland.innerHTML = '<span id="edm-login-slot-m"></span>';
-      mount(LoginModal, document.getElementById("edm-login-slot-m"));
-    }
+    mountLoginButton("edm-login-island");
+    mountLoginButton("edm-login-island-mobile");
 
-    // 2) After React paints, grab the real trigger and standardize it
-    const t = setTimeout(() => {
-      const dTrigger = findLoginTrigger("edm-login-slot");
-      const mTrigger = findLoginTrigger("edm-login-slot-m");
+    // After <LoginModal /> renders, find its true trigger button/anchor once.
+    // We render it hidden below in JSX, so it's inside the app tree.
+    const findTrigger = () => {
+      const host = document.getElementById("edm-login-hidden");
+      if (!host) return null;
+      const el = host.querySelector("button, a") as HTMLElement | null;
+      return el || null;
+    };
 
-      normalizeTriggerLabel(dTrigger);
-      normalizeTriggerLabel(mTrigger);
+    // Try a couple of times to catch async mount
+    const t1 = setTimeout(() => (triggerRef.current ||= findTrigger()), 0);
+    const t2 = setTimeout(() => (triggerRef.current ||= findTrigger()), 200);
 
-      // 3) Fallback event from the WC -> click the real trigger
-      const open = () => (dTrigger || mTrigger)?.click();
-      window.addEventListener("edm:open-login" as any, open);
+    const openHandler = () => {
+      // Ensure we have the trigger; if not, attempt to refind
+      if (!triggerRef.current) triggerRef.current = findTrigger();
+      triggerRef.current?.click();
+    };
 
-      // cleanup
-      return () => window.removeEventListener("edm:open-login" as any, open);
-    }, 0);
+    window.addEventListener("edm:open-login" as any, openHandler);
 
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener("edm:open-login" as any, openHandler);
+    };
   }, []);
 
-  return null;
+  // Hidden mount: the real LoginModal (with its own trigger) lives INSIDE the Next tree
+  // Programmatic click works even if hidden; the modal itself portals to <body>.
+  return (
+    <div id="edm-login-hidden" className="hidden">
+      <LoginModal />
+    </div>
+  );
 }
