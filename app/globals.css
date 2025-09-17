@@ -1,4 +1,9 @@
-/* @tailwindcss */
+/* app/globals.css */
+
+/* Fonts first */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Tailwind layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,13 +19,11 @@
 }
 
 /* Brand font */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 body {
   font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-/* Utilities compatible with your components */
+/* Extra utilities (keep as fallbacks) */
 .bg-dance-purple{ background-color: var(--dance-purple) !important; }
 .bg-dance-pink{ background-color: var(--dance-pink) !important; }
 .bg-dance-blue{ background-color: var(--dance-blue) !important; }
@@ -30,7 +33,6 @@ body {
 .border-dance-blue{ border-color: var(--dance-blue) !important; }
 .border-dance-pink{ border-color: var(--dance-pink) !important; }
 
-/* Fix the shadow var name (it was --brand-shadow before) */
 .dance-shadow { box-shadow: var(--dance-shadow); }
 
 button.inline-flex.items-center.px-5.py-3.rounded-2xl.font-medium {

@@ -1,9 +1,13 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+// tailwind.config.ts (or .js)
+import type { Config } from "tailwindcss";
+
+export default {
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    // Include the web component + any static HTML you ship
+    "./public/components/**/*.js",
+    "./public/**/*.html",
   ],
   theme: {
     extend: {
@@ -16,5 +20,16 @@ module.exports = {
       },
     },
   },
-  plugins: [],
-};
+  safelist: [
+    // gradient + text utilities the header uses
+    "bg-gradient-to-r",
+    "from-dance-purple",
+    "via-dance-pink",
+    "to-dance-blue",
+    "text-dance-purple",
+    "text-dance-pink",
+    "text-dance-blue",
+    "border-dance-blue",
+    "border-dance-pink",
+  ],
+} satisfies Config;
