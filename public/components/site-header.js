@@ -76,14 +76,36 @@ class SiteHeader extends HTMLElement {
       if (mobile)  mobile.insertAdjacentHTML('afterbegin',  links.map(mkMobile).join(''));
 
       // Fallback CTA for purely static pages (Next will replace via islands)
-      const fallbackCTA = `<a href="/book-trial" class="inline-flex items-center rounded-full bg-gradient-to-r from-dance-purple to-dance-pink text-white px-4 py-2 font-semibold">
-        Try a Class
-      </a>`;
-      const dIsland = this.querySelector('#edm-login-island');
-      const mIsland = this.querySelector('#edm-login-island-mobile');
-      if (dIsland) dIsland.innerHTML = fallbackCTA;
-      if (mIsland) mIsland.innerHTML = fallbackCTA;
+      const fallbackLogin = `
+  <button type="button"
+    class="inline-flex items-center rounded-full bg-gradient-to-r from-dance-purple to-dance-pink text-white px-4 py-2 font-semibold"
+    id="edm-fallback-login">
+    Login
+  </button>`;
 
+// Drop the fallback into both desktop & mobile islands
+const dIsland = this.querySelector('#edm-login-island');
+const mIsland = this.querySelector('#edm-login-island-mobile');
+if (dIsland) dIsland.innerHTML = fallbackLogin;
+if (mIsland) mIsland.innerHTML = fallbackLogin;
+
+// Optional: no-op click (prevents jump to top if someone binds default anchors)
+// Your React island will fully replace this node when it mounts.
+this.querySelectorAll('#edm-fallback-login').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    // If your static pages include the small “islands” helper that mounts LoginModal,
+    // this button will be replaced quickly. If not, consider navigating to a /login page.
+  });
+});// Optional: no-op click (prevents jump to top if someone binds default anchors)
+// Your React island will fully replace this node when it mounts.
+this.querySelectorAll('#edm-fallback-login').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    // If your static pages include the small “islands” helper that mounts LoginModal,
+    // this button will be replaced quickly. If not, consider navigating to a /login page.
+  });
+});
       this.bindScrollButtons();
       this.markActive();
     } catch (e) {
