@@ -17,11 +17,20 @@ class SiteHeader extends HTMLElement {
     this._forcedPath = forcedPath || null;
 
     this.innerHTML = `
+         <style id="edm-header-inline">
+       /* Self-contained gradient text (no Tailwind or CSS vars required) */
+       .edm-gradient-text{
+         background-image: linear-gradient(90deg,#8B5CF6,#EC4899,#3B82F6);
+        -webkit-background-clip: text;
+         background-clip: text;
+         color: transparent;
+       }
+     </style>
       <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-sm z-50 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between items-center h-16">
             <div class="flex items-center">
-              <a href="/" class="text-2xl font-bold gradient-text">
+              <a href="/" class="text-2xl font-bold edm-gradient-text">
                 Elite Dance &amp; Music
               </a>
             </div>

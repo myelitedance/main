@@ -1,59 +1,83 @@
 // public/components/login-fallback.js
-// Minimal modal for static .html pages (no React). Listens for `edm:open-login`.
+// Pure JS modal that matches the React <LoginModal/> look & behavior
+// Opens when header raises `window.dispatchEvent(new CustomEvent('edm:open-login'))`
+// and also if a #edm-fallback-login button is clicked.
 
 (function () {
-  const NEW_DANCER_URL = "https://portal.akadadance.com/signup?schoolId=100";      // TODO: set your real URL
-  const RETURNING_URL  = "https://portal.akadadance.com/auth?schoolId=100";  // TODO: set your real URL
+  let modalEl = null;
 
   function ensureModal() {
-    if (document.getElementById("edm-lite-login-modal")) return;
+    if (modalEl) return modalEl;
 
-    const wrap = document.createElement("div");
-    wrap.id = "edm-lite-login-modal";
-    wrap.className =
-      "fixed inset-0 z-[9999] hidden items-center justify-center";
-    wrap.innerHTML = `
-      <div class="absolute inset-0 bg-black/40"></div>
-      <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-[90%] max-w-sm mx-auto">
-        <h3 class="text-xl font-semibold text-gray-900 mb-4">Sign in</h3>
-        <p class="text-gray-600 mb-6">Choose one:</p>
-        <div class="space-y-3">
-          <a href="${NEW_DANCER_URL}" class="block w-full text-center rounded-full bg-gradient-to-r from-dance-purple to-dance-pink text-white px-4 py-2 font-semibold">New Dancer</a>
-          <a href="${RETURNING_URL}"  class="block w-full text-center rounded-full border border-gray-300 text-gray-800 px-4 py-2 font-semibold hover:border-dance-purple">Returning Dancer</a>
+    modalEl = document.createElement('div');
+    modalEl.id = 'edm-login-fallback-modal';
+    modalEl.className = 'fixed inset-0 z-50 hidden';
+
+    modalEl.innerHTML = `
+      <div class="absolute inset-0 bg-black/50"></div>
+      <div class="relative min-h-screen flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-8 relative mx-4">
+          <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 text-2xl" aria-label="Close">&times;</button>
+          <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">Login to Your Account</h3>
+          <div class="space-y-4">
+            <button
+              data-action="new"
+              class="w-full bg-gradient-to-r from-dance-purple to-dance-pink text-white py-4 rounded-lg font-semibold text-lg hover:shadow-lg transition-all">
+              New Dancer
+            </button>
+            <button
+              data-action="returning"
+              class="w-full bg-gradient-to-r from-dance-purple to-dance-pink text-white py-4 rounded-lg font-semibold text-lg hover:shadow-lg transition-all">
+              Returning Dancer
+            </button>
+          </div>
         </div>
-        <button id="edm-lite-close" class="mt-6 text-sm text-gray-500 hover:text-gray-700 underline">Close</button>
       </div>
     `;
-    wrap.style.display = "none";
-    wrap.style.alignItems = "center";
-    wrap.style.justifyContent = "center";
-    document.body.appendChild(wrap);
 
-    wrap.addEventListener("click", (e) => {
-      if (e.target === wrap) close();
+    document.body.appendChild(modalEl);
+
+    // Close handlers
+    const closeBtn = modalEl.querySelector('button[aria-label="Close"]');
+    const backdrop = modalEl.firstElementChild;
+
+    function close() { modalEl.classList.add('hidden'); }
+    function escToClose(e){ if (e.key === 'Escape') close(); }
+
+    closeBtn?.addEventListener('click', close);
+    backdrop?.addEventListener('click', close);
+    document.addEventListener('keydown', escToClose);
+
+    // Actions
+    modalEl.querySelector('[data-action="new"]')?.addEventListener('click', () => {
+      window.location.href = 'https://portal.akadadance.com/signup?schoolId=100';
     });
-    wrap.querySelector("#edm-lite-close")?.addEventListener("click", close);
+    modalEl.querySelector('[data-action="returning"]')?.addEventListener('click', () => {
+      window.location.href = 'https://portal.akadadance.com/auth?schoolId=100';
+    });
 
-    function open()  { wrap.classList.remove("hidden"); wrap.style.display = "flex"; }
-    function close() { wrap.classList.add("hidden");    wrap.style.display = "none"; }
-
-    // expose small API
-    window.__EDM_LITE_LOGIN__ = { open, close };
+    return modalEl;
   }
 
-  function onOpenLogin() {
-    ensureModal();
-    window.__EDM_LITE_LOGIN__?.open();
+  function openModal() {
+    const el = ensureModal();
+    el.classList.remove('hidden');
   }
 
-  window.addEventListener("edm:open-login", onOpenLogin);
+  // 1) Header fires this event on click
+  window.addEventListener('edm:open-login', openModal);
 
-  // If the header fallback button exists, wire it as a safety
-  document.addEventListener("click", (e) => {
-    const target = e.target;
-    if (target && target.id === "edm-fallback-login") {
-      e.preventDefault();
-      onOpenLogin();
-    }
-  });
+  // 2) If the header injected a fallback button, click it -> open
+  function wireButtons() {
+    document.querySelectorAll('#edm-fallback-login').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openModal();
+      });
+    });
+  }
+
+  // Wire now and after small delay in case header loads async
+  wireButtons();
+  setTimeout(wireButtons, 300);
 })();
