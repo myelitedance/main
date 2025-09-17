@@ -2,17 +2,19 @@
 <html lang="en">
 <head>
   <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-DJ4JSSGK30"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DJ4JSSGK30"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-DJ4JSSGK30');
+  </script>
 
-  gtag('config', 'G-DJ4JSSGK30');
-</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacy Policy • Elite Dance & Music</title>
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -23,64 +25,25 @@
             'dance-pink': '#EC4899',
             'dance-blue': '#3B82F6'
           },
-          fontFamily: {
-            sans: ['Poppins', 'sans-serif']
-          }
+          fontFamily: { sans: ['Poppins', 'sans-serif'] }
         }
       }
     }
   </script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
-    body {
-      font-family: 'Poppins', sans-serif;
-    }
-    h1, h2 {
-      scroll-margin-top: 100px;
-    }
+    body { font-family: 'Poppins', sans-serif; }
+    h1, h2 { scroll-margin-top: 100px; }
   </style>
 </head>
 <body class="bg-white text-gray-800">
-    <!-- Navigation -->
-    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-sm z-50 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <h1 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">Elite Dance & Music</h1>
-                </div>
-                <div class="hidden md:block">
-                    <div class="ml-10 flex items-baseline space-x-8">
-                        <a href="#home" class="text-dance-purple font-semibold">Home</a>
-                        <a href="#about" class="text-gray-700 hover:text-dance-purple transition-colors">About</a>
-                        <a href="#classes" class="text-gray-700 hover:text-dance-purple transition-colors">Classes</a>
-                        <a href="calendar.html" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Calendar</a>
-                       <a href="team.html" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Meet the Team</a>
-                       <!-- <a href="#testimonials" class="text-gray-700 hover:text-dance-purple transition-colors">Testimonials</a>-->
-                        <a href="#contact" class="text-gray-700 hover:text-dance-purple transition-colors">Contact</a>
-                    </div>
-                </div>
-                <button id="mobile-menu-btn" class="md:hidden p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <!-- Mobile menu -->
-        <div id="mobile-menu" class="md:hidden hidden bg-white border-t">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="#home" class="text-dance-purple font-semibold underline underline-offset-4">Home</a>
-                <a href="#about" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">About</a>
-                <a href="#classes" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Classes</a>
-                <a href="calendar.html" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Calendar</a>
-                <a href="team.html" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Meet the Team</a>
-                <!--<a href="#testimonials" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Testimonials</a>-->
-                <a href="#contact" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Contact</a>
-            </div>
-        </div>
-    </nav>
+  <!-- Shared Header -->
+  <script type="module" src="/components/site-header.js"></script>
+  <site-header data-page="/privacy-policy.html"></site-header>
 
-  <div class="max-w-5xl mx-auto px-4 py-16">
+  <main class="max-w-5xl mx-auto px-4 pt-24 pb-16">
     <h1 class="text-4xl font-bold text-dance-purple mb-6">Privacy Policy</h1>
     <p class="mb-4 text-sm text-gray-500">Last Updated: 2025-09-01</p>
 
@@ -105,9 +68,7 @@
     </ul>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">3. Sharing Your Information</h2>
-    <p class="mb-4">
-      We do not sell your personal data. We may share it with:
-    </p>
+    <p class="mb-4">We do not sell your personal data. We may share it with:</p>
     <ul class="list-disc list-inside space-y-2 mb-6">
       <li>Trusted service providers (e.g., email, hosting, payment processors)</li>
       <li>Law enforcement or regulators when legally required</li>
@@ -115,19 +76,13 @@
     </ul>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">4. Cookies and Tracking</h2>
-    <p class="mb-6">
-      We use cookies and analytics (e.g., Google Analytics) to enhance your experience. You can manage cookies via your browser settings.
-    </p>
+    <p class="mb-6">We use cookies and analytics (e.g., Google Analytics) to enhance your experience. You can manage cookies via your browser settings.</p>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">5. Data Security</h2>
-    <p class="mb-6">
-      We implement safeguards to protect your information, but no system is 100% secure. Please take care when sharing data online.
-    </p>
+    <p class="mb-6">We implement safeguards to protect your information, but no system is 100% secure. Please take care when sharing data online.</p>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">6. Children's Privacy</h2>
-    <p class="mb-6">
-      We do not knowingly collect personal data from children under 13. If you believe we have, please contact us to remove it.
-    </p>
+    <p class="mb-6">We do not knowingly collect personal data from children under 13. If you believe we have, please contact us to remove it.</p>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">7. Your Rights</h2>
     <ul class="list-disc list-inside space-y-2 mb-6">
@@ -136,64 +91,59 @@
     </ul>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">8. Third-Party Links</h2>
-    <p class="mb-6">
-      Our site may link to third-party websites. We are not responsible for their content or privacy practices.
-    </p>
+    <p class="mb-6">Our site may link to third-party websites. We are not responsible for their content or privacy practices.</p>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">9. California Privacy Rights</h2>
-    <p class="mb-6">
-      California residents may request access to personal data, ask for deletion, or request more details under the CCPA. We do not sell personal data.
-    </p>
+    <p class="mb-6">California residents may request access to personal data, ask for deletion, or request more details under the CCPA. We do not sell personal data.</p>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">10. Contact Us</h2>
-    <p class="mb-2">
-      If you have questions or requests related to this Privacy Policy, please contact us:
-    </p>
+    <p class="mb-2">If you have questions or requests related to this Privacy Policy, please contact us:</p>
     <p>
       <strong>Email:</strong> <a href="mailto:admin@myelitedance.com" class="text-dance-blue underline">admin@myelitedance.com</a><br />
       <strong>Mail:</strong> Elite Dance LLC, 7177 Nolensville Rd, Ste B3, Nolensville, TN 37135
     </p>
-  </div>
+  </main>
+
   <footer class="bg-gray-900 text-white py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid md:grid-cols-3 gap-8">
-                <div>
-                    <h3 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent mb-4">Elite Dance & Music</h3>
-                    <p class="text-gray-300 mb-4">
-                        Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in Nolensville, TN.
-                    </p>
-                    <div class="flex space-x-4">
-                        <a href="https://www.facebook.com/profile.php?id=61573876559298" class="text-gray-400 hover:text-white transition-colors">Facebook</a>
-                        <a href="https://www.instagram.com/elitedancetn/" class="text-gray-400 hover:text-white transition-colors">Instagram</a>
-                    </div>
-                </div>
-                <div>
-                    <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
-                    <ul class="space-y-2 text-sm text-gray-300">
-  <li><a href="/#about" class="hover:text-dance-purple transition-colors">About</a></li>
-  <li><a href="/#classes" class="hover:text-dance-purple transition-colors">Classes</a></li>
-  <li><a href="calendar.html" class="hover:text-dance-purple transition-colors">Calendar</a></li>
-  <li><a href="team.html" class="hover:text-dance-purple transition-colors">Meet the Team</a></li>
-  <li><a href="/#contact" class="hover:text-dance-purple transition-colors">Contact</a></li>
-</ul>
-                </div>
-                <div>
-                    <h4 class="text-lg font-semibold mb-4">Contact Info</h4>
-                    <div class="text-gray-300 space-y-2">
-                        <p>7177 Nolensville Rd Suite B-3</p>
-                        <p>Nolensville, TN</p>
-                        <p>(615) 776-4202</p>
-                    </div>
-                </div>
-            </div>
- <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-  <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
-    <span>&copy; 2025 Elite Dance & Music</span>
-    <a href="/privacy-policy.html" class="hover:text-dance-purple underline">Privacy Policy</a>
-    <a href="/terms-and-conditions.html" class="hover:text-dance-purple underline">Terms & Conditions</a>
-  </div>
-</div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid md:grid-cols-3 gap-8">
+        <div>
+          <h3 class="text-2xl font-bold bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent mb-4">Elite Dance & Music</h3>
+          <p class="text-gray-300 mb-4">
+            Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in Nolensville, TN.
+          </p>
+          <div class="flex space-x-4">
+            <a href="https://www.facebook.com/profile.php?id=61573876559298" class="text-gray-400 hover:text-white transition-colors">Facebook</a>
+            <a href="https://www.instagram.com/elitedancetn/" class="text-gray-400 hover:text-white transition-colors">Instagram</a>
+          </div>
         </div>
-    </footer>
+        <div>
+          <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
+          <ul class="space-y-2 text-sm text-gray-300">
+            <li><a href="/#about" class="hover:text-dance-purple transition-colors">About</a></li>
+            <li><a href="/#classes" class="hover:text-dance-purple transition-colors">Classes</a></li>
+            <li><a href="calendar.html" class="hover:text-dance-purple transition-colors">Calendar</a></li>
+            <li><a href="team.html" class="hover:text-dance-purple transition-colors">Meet the Team</a></li>
+            <li><a href="/#contact" class="hover:text-dance-purple transition-colors">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-lg font-semibold mb-4">Contact Info</h4>
+          <div class="text-gray-300 space-y-2">
+            <p>7177 Nolensville Rd Suite B-3</p>
+            <p>Nolensville, TN</p>
+            <p>(615) 776-4202</p>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
+        <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
+          <span>&copy; 2025 Elite Dance & Music</span>
+          <a href="/privacy-policy.html" class="hover:text-dance-purple underline">Privacy Policy</a>
+          <a href="/terms-and-conditions.html" class="hover:text-dance-purple underline">Terms &amp; Conditions</a>
+        </div>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

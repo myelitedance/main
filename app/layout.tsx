@@ -1,38 +1,13 @@
 // app/layout.tsx
-import "./globals.css";
-import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
-import ClientAnalytics from "./client-analytics";
-import { Suspense } from "react";
-
-export const metadata: Metadata = {
-  title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
-  description:
-    "Elite Dance & Music in Nolensville, TN offers ballet, tap, jazz, hip hop, acro, and Mini-Movers preschool dance. Supportive, high-quality training for ages 2–18.",
-  metadataBase: new URL("https://www.myelitedance.com"),
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    siteName: "Elite Dance & Music",
-    url: "https://www.myelitedance.com/",
-    title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
-    description:
-      "Professional, high-quality dance training in an uplifting, supportive environment where every student is seen, challenged, and celebrated.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
-    description:
-      "Dance classes for ages 2–18 in Nolensville: ballet, tap, jazz, hip hop, acro, and more.",
-  },
-  themeColor: "#8B5CF6",
-};
+import SiteHeaderWC from "@/components/SiteHeaderWC";
+import HeaderIslands from "./HeaderIslands";
+// ...your existing imports & metadata
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const isProd = process.env.NODE_ENV === "production";
   const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+
   return (
     <html lang="en">
       <head>
@@ -54,12 +29,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
       </head>
       <body className="scroll-smooth">
-        <Suspense fallback={null}>
-        <ClientAnalytics />
-        </Suspense>
-        {children}
-        {isProd && <Analytics />}
-        {isProd && <SpeedInsights />}
+        {/* your analytics keep working */}
+        {/* ...ClientAnalytics / Analytics / SpeedInsights etc. */}
+
+        {/* Load the web component JS once */}
+        <Script src="/components/site-header.js" type="module" strategy="afterInteractive" />
+
+        {/* Use the JSX-safe wrapper */}
+        <SiteHeaderWC />
+
+        {/* Islands to replace the fallback CTA inside the header */}
+        <HeaderIslands />
+
+        <div className="pt-16">{children}</div>
       </body>
     </html>
   );

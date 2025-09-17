@@ -3,162 +3,37 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import TrialButton from "../components/TrialButton";
-import LoginModal from "../components/LoginModal";
+// Removed: import LoginModal from "../components/LoginModal";
 
 /* Simple FAQ model */
 type FAQ = { q: string; a: string };
 
 const faqs: FAQ[] = [
-  {
-    q: "What age groups do you serve?",
-    a: "We welcome dancers from age 2 through 18! Our Tiny Dancers program starts at age 2, and we have classes for preschoolers, elementary, middle school, high school, and adults. Each age group has specially designed curriculum appropriate for their developmental stage.",
-  },
-  {
-    q: "Do you offer trial classes?",
-    a: "Yes! Your first class is always free. We believe it's important for both dancers and parents to experience our studio culture and teaching style before making a commitment. Just contact us to schedule your trial class.",
-  },
-  {
-    q: "What's the difference between recreational and competitive programs?",
-    a: "Recreational classes focus on fun, fundamentals, and building a love of dance with one annual recital. Competitive programs involve more intensive training, multiple competitions throughout the year, and require auditions. Both maintain our high standards of instruction - it's about finding the right fit for your dancer's goals and commitment level.",
-  },
-  {
-    q: "What should my child wear to class?",
-    a: "Each class has specific dress code requirements that will be provided upon registration. Generally, comfortable fitted clothing that allows for movement, with hair pulled back securely. We have dancewear available for purchase at the studio, and our staff is happy to help new families with dress code questions.",
-  },
-  {
-    q: "Do you offer family discounts?",
-    a: "Absolutely! We offer discounts for multiple children from the same family, and we also have payment plan options to help make dance accessible for all families. Contact us to discuss the best options for your family's situation.",
-  },
+  { q: "What age groups do you serve?", a: "We welcome dancers from age 2 through 18! Our Tiny Dancers program starts at age 2, and we have classes for preschoolers, elementary, middle school, high school, and adults. Each age group has specially designed curriculum appropriate for their developmental stage." },
+  { q: "Do you offer trial classes?", a: "Yes! Your first class is always free. We believe it's important for both dancers and parents to experience our studio culture and teaching style before making a commitment. Just contact us to schedule your trial class." },
+  { q: "What's the difference between recreational and competitive programs?", a: "Recreational classes focus on fun, fundamentals, and building a love of dance with one annual recital. Competitive programs involve more intensive training, multiple competitions throughout the year, and require auditions. Both maintain our high standards of instruction - it's about finding the right fit for your dancer's goals and commitment level." },
+  { q: "What should my child wear to class?", a: "Each class has specific dress code requirements that will be provided upon registration. Generally, comfortable fitted clothing that allows for movement, with hair pulled back securely. We have dancewear available for purchase at the studio, and our staff is happy to help new families with dress code questions." },
+  { q: "Do you offer family discounts?", a: "Absolutely! We offer discounts for multiple children from the same family, and we also have payment plan options to help make dance accessible for all families. Contact us to discuss the best options for your family's situation." },
 ];
 
 export default function HomePage() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  // Removed: const [mobileOpen, setMobileOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth" });
-    setMobileOpen(false);
+    // Removed: setMobileOpen(false);
   };
 
   const yearRange = useMemo(() => "2025–2026", []);
 
   return (
     <main className="scroll-smooth">
-      {/* NAV */}
-      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-sm z-50 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent">
-                Elite Dance &amp; Music
-              </h1>
-            </div>
-
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-8">
-                <button
-                  onClick={() => scrollTo("home")}
-                  className="text-dance-purple font-semibold"
-                >
-                  Home
-                </button>
-                <button
-                  onClick={() => scrollTo("about")}
-                  className="text-gray-700 hover:text-dance-purple transition-colors"
-                >
-                  About
-                </button>
-                <button
-                  onClick={() => scrollTo("classes")}
-                  className="text-gray-700 hover:text-dance-purple transition-colors"
-                >
-                  Classes
-                </button>
-                <Link
-                  href="/calendar.html"
-                  className="block px-3 py-2 text-gray-700 hover:text-dance-purple"
-                >
-                  Calendar
-                </Link>
-                <Link
-                  href="/team.html"
-                  className="block px-3 py-2 text-gray-700 hover:text-dance-purple"
-                >
-                  Meet the Team
-                </Link>
-                <button
-                  onClick={() => scrollTo("contact")}
-                  className="text-gray-700 hover:text-dance-purple transition-colors"
-                >
-                  Contact
-                </button>
-                <div className="m1-4"><LoginModal /></div>
-              </div>
-            </div>
-
-            <button
-              aria-label="Open menu"
-              className="md:hidden p-2"
-              onClick={() => setMobileOpen((v) => !v)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile menu */}
-        <div className={`md:hidden ${mobileOpen ? "" : "hidden"} bg-white border-t`}>
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            <button
-              onClick={() => scrollTo("home")}
-              className="text-dance-purple font-semibold underline underline-offset-4"
-            >
-              Home
-            </button>
-            <button
-              onClick={() => scrollTo("about")}
-              className="block px-3 py-2 text-gray-700 hover:text-dance-purple"
-            >
-              About
-            </button>
-            <button
-              onClick={() => scrollTo("classes")}
-              className="block px-3 py-2 text-gray-700 hover:text-dance-purple"
-            >
-              Classes
-            </button>
-            <Link
-              href="/calendar.html"
-              className="block px-3 py-2 text-gray-700 hover:text-dance-purple"
-              onClick={() => setMobileOpen(false)}
-            >
-              Calendar
-            </Link>
-            <Link
-              href="/team.html"
-              className="block px-3 py-2 text-gray-700 hover:text-dance-purple"
-              onClick={() => setMobileOpen(false)}
-            >
-              Meet the Team
-            </Link>
-            <button
-              onClick={() => scrollTo("contact")}
-              className="block px-3 py-2 text-gray-700 hover:text-dance-purple"
-            >
-              Contact
-            </button>
-             <div className="m1-4"><LoginModal /></div>
-          </div>
-        </div>
-      </nav>
-
-      {/* HERO */}
+      {/* HERO (removed pt-16 because layout already offsets for fixed header) */}
       <section
         id="home"
-        className="min-h-screen pt-16 bg-gradient-to-tr from-dance-purple via-dance-pink to-dance-blue flex items-center justify-center relative overflow-hidden"
+        className="min-h-screen bg-gradient-to-tr from-dance-purple via-dance-pink to-dance-blue flex items-center justify-center relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-black/20" />
 
@@ -184,46 +59,22 @@ export default function HomePage() {
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="hidden md:block absolute top-28 left-[12%] -rotate-[12deg]">
             <div className="bg-gradient-to-br from-dance-purple via-dance-pink to-dance-blue p-1 rounded-2xl shadow-2xl">
-              <img
-                src="/assets/mini-movers.jpg"
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="block w-[300px] md:w-[340px] lg:w-[380px] h-auto rounded-[14px] object-cover"
-              />
+              <img src="/assets/mini-movers.jpg" alt="" loading="lazy" decoding="async" className="block w-[300px] md:w-[340px] lg:w-[380px] h-auto rounded-[14px] object-cover" />
             </div>
           </div>
           <div className="hidden md:block absolute top-20 right-[15%] rotate-[10deg]">
             <div className="bg-gradient-to-br from-dance-blue via-dance-purple to-dance-pink p-1 rounded-2xl shadow-2xl">
-              <img
-                src="/assets/jazz-class.jpg"
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="block w-[220px] md:w-[240px] lg:w-[260px] h-auto rounded-[14px] object-cover"
-              />
+              <img src="/assets/jazz-class.jpg" alt="" loading="lazy" decoding="async" className="block w-[220px] md:w-[240px] lg:w-[260px] h-auto rounded-[14px] object-cover" />
             </div>
           </div>
           <div className="hidden md:block absolute bottom-20 left-[18%] rotate-[15deg]">
             <div className="bg-gradient-to-br from-dance-green via-dance-blue to-dance-purple p-1 rounded-2xl shadow-2xl">
-              <img
-                src="/assets/ballet-barre.jpg"
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="block w-[320px] md:w-[360px] lg:w-[400px] h-auto rounded-[14px] object-cover"
-              />
+              <img src="/assets/ballet-barre.jpg" alt="" loading="lazy" decoding="async" className="block w-[320px] md:w-[360px] lg:w-[400px] h-auto rounded-[14px] object-cover" />
             </div>
           </div>
           <div className="hidden lg:block absolute bottom-16 right-[20%] -rotate-[18deg]">
             <div className="bg-gradient-to-br from-dance-pink via-dance-gold to-dance-purple p-1 rounded-2xl shadow-2xl">
-              <img
-                src="/assets/hiphop-kids.jpg"
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="block w-[320px] md:w-[360px] lg:w-[420px] h-auto rounded-[14px] object-cover"
-              />
+              <img src="/assets/hiphop-kids.jpg" alt="" loading="lazy" decoding="async" className="block w-[320px] md:w-[360px] lg:w-[420px] h-auto rounded-[14px] object-cover" />
             </div>
           </div>
         </div>
@@ -233,15 +84,12 @@ export default function HomePage() {
           <h1 className="text-5xl md:text-7xl font-bold mb-4 leading-tight">
             Elite Dance &amp; Music in Nolensville, TN
           </h1>
-          <h2 className="text-2xl md:text-3xl mb-8 opacity-90 max-w-2xl mx-auto">
-            Where Dreams Take Flight
-          </h2>
+          <h2 className="text-2xl md:text-3xl mb-8 opacity-90 max-w-2xl mx-auto">Where Dreams Take Flight</h2>
           <p className="text-xl md:text-2xl mb-8 opacity-90 max-w-2xl mx-auto">
             Nurturing dancers of all ages with world-class training in a warm, family-friendly environment
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {/* Replaces “Register Now” with the modal trigger */}
-            <TrialButton variant="small"/>
+            <TrialButton variant="small" />
             <button
               onClick={() => scrollTo("about")}
               className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-dance-purple transition-all"
@@ -317,17 +165,12 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-8 mb-16 items-stretch">
             {/* Mini Movers */}
-            <Link
-              href="/downloads/mini-movers-flyer.pdf"
-              target="_blank"
-              className="block h-full transform hover:scale-[1.02] transition-all duration-300"
-            >
+            <Link href="/downloads/mini-movers-flyer.pdf" target="_blank" className="block h-full transform hover:scale-[1.02] transition-all duration-300">
               <div className="bg-gradient-to-br from-dance-green to-dance-blue p-8 rounded-2xl text-white shadow-xl cursor-pointer h-full flex flex-col">
                 <div className="flex-grow">
                   <h3 className="text-3xl font-bold mb-6">Mini Movers</h3>
                   <p className="mb-6 opacity-90">
-                    A weekday creative movement program that blends dance, music, and play in a joyful, nurturing
-                    environment. Ideal for children ages 3–6 (must be potty trained).
+                    A weekday creative movement program that blends dance, music, and play in a joyful, nurturing environment. Ideal for children ages 3–6 (must be potty trained).
                   </p>
                   <ul className="space-y-2 opacity-90 mb-6">
                     <li>• Offered M/W/F – 9:01 AM to 12:00 PM</li>
@@ -346,17 +189,12 @@ export default function HomePage() {
             </Link>
 
             {/* Recreational */}
-            <Link
-              href="/downloads/class-list-flyer.pdf"
-              target="_blank"
-              className="block h-full transform hover:scale-[1.02] transition-all duration-300"
-            >
+            <Link href="/downloads/class-list-flyer.pdf" target="_blank" className="block h-full transform hover:scale-[1.02] transition-all duration-300">
               <div className="bg-gradient-to-br from-dance-purple to-dance-pink p-8 rounded-2xl text-white shadow-xl cursor-pointer h-full flex flex-col">
                 <div className="flex-grow">
                   <h3 className="text-3xl font-bold mb-6">Recreational Programs</h3>
                   <p className="mb-6 opacity-90">
-                    Perfect for dancers who want to explore their passion in a fun, supportive environment. Build
-                    confidence, make friends, and develop a lifelong love of dance.
+                    Perfect for dancers who want to explore their passion in a fun, supportive environment. Build confidence, make friends, and develop a lifelong love of dance.
                   </p>
                   <ul className="space-y-2 opacity-90 mb-6">
                     <li>• Ages 2-18</li>
@@ -374,17 +212,12 @@ export default function HomePage() {
             </Link>
 
             {/* Competitive */}
-            <Link
-              href="/downloads/dance-team-update.pdf"
-              target="_blank"
-              className="block h-full transform hover:scale-[1.02] transition-all duration-300"
-            >
+            <Link href="/downloads/dance-team-update.pdf" target="_blank" className="block h-full transform hover:scale-[1.02] transition-all duration-300">
               <div className="bg-gradient-to-br from-dance-purple to-dance-green p-8 rounded-2xl text-white shadow-xl cursor-pointer h-full flex flex-col">
                 <div className="flex-grow">
                   <h3 className="text-3xl font-bold mb-6">Competitive Programs</h3>
                   <p className="mb-6 opacity-90">
-                    For dedicated dancers ready to take their skills to the next level. Intensive training, competition
-                    opportunities, and advanced technique development.
+                    For dedicated dancers ready to take their skills to the next level. Intensive training, competition opportunities, and advanced technique development.
                   </p>
                   <ul className="space-y-2 opacity-90 mb-6">
                     <li>• Audition-based placement</li>
@@ -437,8 +270,7 @@ export default function HomePage() {
           <div className="mt-12">
             <h4 className="text-2xl font-bold text-dance-purple mb-4 text-center">📄 View Full Class Schedule</h4>
             <p className="text-gray-700 text-center mb-6">
-              Explore our full {yearRange} season schedule right here. Flip through classes, days, and times all in one
-              place.
+              Explore our full {yearRange} season schedule right here. Flip through classes, days, and times all in one place.
             </p>
 
             <div className="w-full aspect-[4/3] rounded-xl overflow-hidden shadow-md border border-gray-200">
@@ -480,8 +312,7 @@ export default function HomePage() {
               <div>
                 <h4 className="font-semibold text-dance-purple mb-2">💰 Tuition &amp; Fees</h4>
                 <p className="text-gray-700">
-                  Competitive rates with family discounts available. Payment plans offered to make dance accessible for
-                  all families.
+                  Competitive rates with family discounts available. Payment plans offered to make dance accessible for all families.
                 </p>
               </div>
               <div>
@@ -500,9 +331,9 @@ export default function HomePage() {
 
             {/* Big CTA now uses the modal */}
             <div className="flex justify-center mt-12 px-4">
-                <div className="flex justify-center mt-12 px-4">
-                    <TrialButton variant="big" />
-                </div>
+              <div className="flex justify-center mt-12 px-4">
+                <TrialButton variant="big" />
+              </div>
             </div>
           </div>
         </div>
@@ -637,8 +468,7 @@ export default function HomePage() {
                 Elite Dance &amp; Music
               </h3>
               <p className="text-gray-300 mb-4">
-                Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in
-                Nolensville, TN.
+                Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in Nolensville, TN.
               </p>
               <div className="flex space-x-4">
                 <Link href="https://www.facebook.com/profile.php?id=61573876559298" className="text-gray-400 hover:text-white transition-colors">
@@ -718,11 +548,9 @@ function ContactMessageForm() {
     email: "",
     dancer: "",
     interest: "Trial Class",
-    message:
-      "",
+    message: "",
   });
 
-  // --- helpers ---
   function splitName(full: string): { first: string; last: string } {
     const t = (full || "").trim().replace(/\s+/g, " ");
     if (!t) return { first: "", last: "" };
@@ -731,24 +559,17 @@ function ContactMessageForm() {
     return { first: parts[0], last: parts.slice(1).join(" ") };
   }
 
-  // Accepts inputs like: "Emma Smith, Age 8" | "Emma, 8" | "Emma Smith age: 8"
   function parseDancer(input: string): { first: string; last: string; age?: number } {
     const raw = (input || "").trim();
     if (!raw) return { first: "", last: "" };
-
-    // try to pull an age number anywhere in the string
     const ageMatch = raw.match(/(?:^|[\s,;()-])(\d{1,2})(?:\s*(?:yrs?|years?)\b)?/i);
     const age = ageMatch ? parseInt(ageMatch[1], 10) : undefined;
-
-    // remove age phrases for name parsing
     const nameOnly = raw
       .replace(/\bage\b[:\s]*/i, "")
       .replace(/\b(?:yrs?|years?)\b/gi, "")
       .replace(/\b\d{1,2}\b/g, "")
       .replace(/[,\s]{2,}/g, " ")
       .trim();
-
-    // names like "Emma Smith" or "Emma"
     const { first, last } = splitName(nameOnly);
     return { first, last, age: Number.isFinite(age) ? age : undefined };
   }
@@ -759,20 +580,16 @@ function ContactMessageForm() {
     try {
       const parent = splitName(form.parent);
       const dancer = parseDancer(form.dancer);
-
       const utm = Object.fromEntries(new URLSearchParams(window.location.search).entries());
+
       const payload = {
-        // what lead-complete/route.ts expects:
         parentFirst: parent.first,
         parentLast: parent.last,
         parentPhone: form.phone,
         email: form.email,
-
         dancerFirst: dancer.first || undefined,
         dancerLast: dancer.last || undefined,
         age: dancer.age ?? undefined,
-
-        // store interest + message
         interest: form.interest,
         notes:
           `Contact Us message:\n` +
@@ -780,19 +597,15 @@ function ContactMessageForm() {
           `Phone: ${form.phone}\n` +
           `Dancer: ${form.dancer}\n\n` +
           `${form.message}`,
-
-        // identify this path as an info request
         action: "inquiry",
-
-        // nice-to-haves used by your route
         utm: {
           source: utm.utm_source || utm.source || "",
           medium: utm.utm_medium || "",
           campaign: utm.utm_campaign || "",
         },
         page: typeof window !== "undefined" ? window.location.pathname : "/",
-        selectedClassName: undefined, // not used on Contact; route handles empty
-        selectedClassId: undefined,   // not used on Contact; route handles empty
+        selectedClassName: undefined,
+        selectedClassId: undefined,
       };
 
       const res = await fetch("/api/elite/lead-complete", {
@@ -810,8 +623,7 @@ function ContactMessageForm() {
         email: "",
         dancer: "",
         interest: "Trial Class",
-        message:
-          "",
+        message: "",
       });
       setTimeout(() => setDone(false), 4000);
     } catch (err) {

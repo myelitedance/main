@@ -2,17 +2,19 @@
 <html lang="en">
 <head>
   <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-DJ4JSSGK30"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DJ4JSSGK30"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-DJ4JSSGK30');
+  </script>
 
-  gtag('config', 'G-DJ4JSSGK30');
-</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Terms & Conditions • Elite Dance & Music</title>
+  <title>Terms &amp; Conditions • Elite Dance & Music</title>
+
+  <!-- Tailwind (uses your brand colors via inline config) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -20,72 +22,35 @@
         extend: {
           colors: {
             'dance-purple': '#8B5CF6',
-            'dance-pink': '#EC4899',
-            'dance-blue': '#3B82F6'
+            'dance-pink':   '#EC4899',
+            'dance-blue':   '#3B82F6'
           },
-          fontFamily: {
-            sans: ['Poppins', 'sans-serif']
-          }
+          fontFamily: { sans: ['Poppins', 'sans-serif'] }
         }
       }
     }
   </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
-    body {
-      font-family: 'Poppins', sans-serif;
-    }
-    h1, h2 {
-      scroll-margin-top: 100px;
-    }
+    body { font-family: 'Poppins', sans-serif; }
+    h1, h2 { scroll-margin-top: 100px; }
+    .gradient-bg { background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #3B82F6 100%); }
   </style>
 </head>
 <body class="bg-white text-gray-800">
-    <!-- Navigation -->
-    <nav class="fixed top-0 w-full bg-white/95 backdrop-blur-sm z-50 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <h1 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">Elite Dance & Music</h1>
-                </div>
-                <div class="hidden md:block">
-                    <div class="ml-10 flex items-baseline space-x-8">
-                        <a href="#home" class="text-dance-purple font-semibold">Home</a>
-                        <a href="#about" class="text-gray-700 hover:text-dance-purple transition-colors">About</a>
-                        <a href="#classes" class="text-gray-700 hover:text-dance-purple transition-colors">Classes</a>
-                        <a href="calendar.html" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Calendar</a>
-                       <a href="team.html" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Meet the Team</a>
-                       <!-- <a href="#testimonials" class="text-gray-700 hover:text-dance-purple transition-colors">Testimonials</a>-->
-                        <a href="#contact" class="text-gray-700 hover:text-dance-purple transition-colors">Contact</a>
-                    </div>
-                </div>
-                <button id="mobile-menu-btn" class="md:hidden p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <!-- Mobile menu -->
-        <div id="mobile-menu" class="md:hidden hidden bg-white border-t">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="#home" class="text-dance-purple font-semibold underline underline-offset-4">Home</a>
-                <a href="#about" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">About</a>
-                <a href="#classes" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Classes</a>
-                <a href="calendar.html" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Calendar</a>
-                <a href="team.html" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Meet the Team</a>
-                <!--<a href="#testimonials" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Testimonials</a>-->
-                <a href="#contact" class="block px-3 py-2 text-gray-700 hover:text-dance-purple">Contact</a>
-            </div>
-        </div>
-    </nav>
+  <!-- Shared header (light DOM component) -->
+  <script type="module" src="/components/site-header.js"></script>
+  <site-header data-page="/terms-and-conditions.html"></site-header>
 
-  <div class="max-w-5xl mx-auto px-4 py-16">
-    <h1 class="text-4xl font-bold text-dance-purple mb-6">Terms & Conditions</h1>
+  <!-- Page content (offset for fixed header) -->
+  <main class="max-w-5xl mx-auto px-4 pt-24 pb-16">
+    <h1 class="text-4xl font-bold text-dance-purple mb-6">Terms &amp; Conditions</h1>
     <p class="mb-4 text-sm text-gray-500">Last Updated: 2025-09-01</p>
 
     <p class="mb-6">
-      These Terms and Conditions ("Terms") govern your use of the website located at <a href="https://www.myelitedance.com" class="text-dance-blue underline">myelitedance.com</a> ("Site") operated by Elite Dance LLC ("we", "us", or "our").
+      These Terms and Conditions ("Terms") govern your use of the website located at
+      <a href="https://www.myelitedance.com" class="text-dance-blue underline">myelitedance.com</a>
+      ("Site") operated by Elite Dance LLC ("we", "us", or "our").
     </p>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">1. Acceptance of Terms</h2>
@@ -98,12 +63,12 @@
       You agree to use the Site for lawful purposes only. You may not use it in a way that violates any applicable laws, infringes on the rights of others, or restricts or inhibits others from enjoying the Site.
     </p>
 
-    <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">3. Registration & Payments</h2>
+    <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">3. Registration &amp; Payments</h2>
     <p class="mb-6">
       When registering for classes or services, you agree to provide accurate information and pay all applicable fees. We reserve the right to cancel or refuse service at our discretion.
     </p>
 
-    <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">4. Cancellation & Refund Policy</h2>
+    <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">4. Cancellation &amp; Refund Policy</h2>
     <p class="mb-6">
       All cancellation and refund policies are outlined during the registration process or specified in class agreements. By registering, you agree to those terms.
     </p>
@@ -134,54 +99,54 @@
     </p>
 
     <h2 class="text-2xl font-semibold text-dance-pink mt-10 mb-2">10. Contact Us</h2>
-    <p class="mb-2">
-      If you have questions about these Terms, please contact us:
-    </p>
+    <p class="mb-2">If you have questions about these Terms, please contact us:</p>
     <p>
       <strong>Email:</strong> <a href="mailto:admin@myelitedance.com" class="text-dance-blue underline">admin@myelitedance.com</a><br />
       <strong>Mail:</strong> Elite Dance LLC, 7177 Nolensville Rd, Ste B3, Nolensville, TN 37135
     </p>
-  </div>
+  </main>
+
+  <!-- Global Footer -->
   <footer class="bg-gray-900 text-white py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid md:grid-cols-3 gap-8">
-                <div>
-                    <h3 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent mb-4">Elite Dance & Music</h3>
-                    <p class="text-gray-300 mb-4">
-                        Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in Nolensville, TN.
-                    </p>
-                    <div class="flex space-x-4">
-                        <a href="https://www.facebook.com/profile.php?id=61573876559298" class="text-gray-400 hover:text-white transition-colors">Facebook</a>
-                        <a href="https://www.instagram.com/elitedancetn/" class="text-gray-400 hover:text-white transition-colors">Instagram</a>
-                    </div>
-                </div>
-                <div>
-                    <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
-                    <ul class="space-y-2 text-sm text-gray-300">
-  <li><a href="/#about" class="hover:text-dance-purple transition-colors">About</a></li>
-  <li><a href="/#classes" class="hover:text-dance-purple transition-colors">Classes</a></li>
-  <li><a href="calendar.html" class="hover:text-dance-purple transition-colors">Calendar</a></li>
-  <li><a href="team.html" class="hover:text-dance-purple transition-colors">Meet the Team</a></li>
-  <li><a href="/#contact" class="hover:text-dance-purple transition-colors">Contact</a></li>
-</ul>
-                </div>
-                <div>
-                    <h4 class="text-lg font-semibold mb-4">Contact Info</h4>
-                    <div class="text-gray-300 space-y-2">
-                        <p>7177 Nolensville Rd Suite B-3</p>
-                        <p>Nolensville, TN</p>
-                        <p>(615) 776-4202</p>
-                    </div>
-                </div>
-            </div>
-<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-  <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
-    <span>&copy; 2025 Elite Dance & Music</span>
-    <a href="/privacy-policy.html" class="hover:text-dance-purple underline">Privacy Policy</a>
-    <a href="/terms-and-conditions.html" class="hover:text-dance-purple underline">Terms & Conditions</a>
-  </div>
-</div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid md:grid-cols-3 gap-8">
+        <div>
+          <h3 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent mb-4">Elite Dance &amp; Music</h3>
+          <p class="text-gray-300 mb-4">
+            Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in Nolensville, TN.
+          </p>
+          <div class="flex space-x-4">
+            <a href="https://www.facebook.com/profile.php?id=61573876559298" class="text-gray-400 hover:text-white transition-colors">Facebook</a>
+            <a href="https://www.instagram.com/elitedancetn/" class="text-gray-400 hover:text-white transition-colors">Instagram</a>
+          </div>
         </div>
-    </footer>
+        <div>
+          <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
+          <ul class="space-y-2 text-sm text-gray-300">
+            <li><a href="/#about" class="hover:text-dance-purple transition-colors">About</a></li>
+            <li><a href="/#classes" class="hover:text-dance-purple transition-colors">Classes</a></li>
+            <li><a href="/calendar.html" class="hover:text-dance-purple transition-colors">Calendar</a></li>
+            <li><a href="/team.html" class="hover:text-dance-purple transition-colors">Meet the Team</a></li>
+            <li><a href="/#contact" class="hover:text-dance-purple transition-colors">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-lg font-semibold mb-4">Contact Info</h4>
+          <div class="text-gray-300 space-y-2">
+            <p>7177 Nolensville Rd Suite B-3</p>
+            <p>Nolensville, TN</p>
+            <p>(615) 776-4202</p>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
+        <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
+          <span>&copy; 2025 Elite Dance &amp; Music</span>
+          <a href="/privacy-policy.html" class="hover:text-dance-purple underline">Privacy Policy</a>
+          <a href="/terms-and-conditions.html" class="hover:text-dance-purple underline">Terms &amp; Conditions</a>
+        </div>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

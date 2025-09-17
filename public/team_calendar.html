@@ -2,25 +2,24 @@
 <html lang="en">
 <head>
   <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-DJ4JSSGK30"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DJ4JSSGK30"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-DJ4JSSGK30');
+  </script>
 
-  gtag('config', 'G-DJ4JSSGK30');
-</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Primary SEO -->
   <title>Dance Team Rehearsal Calendar</title>
-  <meta name="description" content="See important dates, studio closures, and events for Elite Dance & Music in Nolensville, TN. Updated automatically from our Google Calendar." />
-  <link rel="canonical" href="https://www.myelitedance.com/calendar.html" />
+  <meta name="description" content="See important dates, team rehearsals, and events for Elite Dance & Music in Nolensville, TN. Updated automatically from our Google Calendar." />
+  <link rel="canonical" href="https://www.myelitedance.com/team_calendar.html" />
   <meta name="theme-color" content="#8B5CF6" />
 
-
-  <!-- Favicons (match homepage) -->
+  <!-- Favicons -->
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
   <!-- Tailwind -->
@@ -50,559 +49,490 @@
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-dance-purple/5 via-dance-pink/5 to-dance-blue/5 text-gray-900">
-  <!-- Navigation -->
-<nav class="fixed top-0 w-full bg-white/90 backdrop-blur-md z-50 shadow-md">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between items-center h-16">
-      <h1 class="text-2xl font-bold bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent">
-        Elite Dance & Music
-      </h1>
-      <div class="hidden md:flex space-x-8">
-        <a href="/#home"    class="text-gray-700 hover:text-dance-purple">Home</a>
-        <a href="/#about"   class="text-gray-700 hover:text-dance-purple">About</a>
-        <a href="/#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
-        <!-- Active page -->
-        <a href="team_calendar.html" class="text-dance-purple font-semibold underline underline-offset-4">Team Calendar</a>
-        <a href="team.html"     class="text-gray-700 hover:text-dance-purple">Meet the Team</a>
-        <a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a> 
-      </div>
-      <button id="mobile-menu-btn" class="md:hidden p-2" aria-label="Open menu" aria-expanded="false">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 6h16M4 12h16M4 18h16"></path>
-        </svg>
-      </button>
-    </div>
-  </div>
-  <!-- Mobile -->
-  <div id="mobile-menu" class="md:hidden hidden bg-white border-t px-4 py-4 space-y-2">
-   <a href="/#home"    class="text-gray-700 hover:text-dance-purple">Home</a>
-   <a href="/#about"   class="text-gray-700 hover:text-dance-purple">About</a>
-   <a href="/#classes" class="text-gray-700 hover:text-dance-purple">Classes</a>
-    <a href="team_calendar.html"      class="block text-dance-purple font-semibold underline">Team Calendar</a>
-    <a href="team.html"          class="block text-gray-700 hover:text-dance-purple">Meet the Team</a>
-    <a href="/#contact" class="text-gray-700 hover:text-dance-purple">Contact</a> 
-  </div>
-</nav>
-    <main class="max-w-6xl mx-auto px-4 pt-24 pb-12">
-    <h1 class="text-4xl font-bold mb-4 text-center text-transparent bg-clip-text bg-gradient-to-r from-dance-purple to-dance-pink">Dance Team Rehearsal Calendar</h1>
-   <p class="text-center text-gray-600 mb-8">Updated automatically from Google Calendar.</p>
+  <!-- Shared Header -->
+  <script type="module" src="/components/site-header.js"></script>
+  <site-header data-page="/team_calendar.html"></site-header>
+
+  <main class="max-w-6xl mx-auto px-4 pt-24 pb-12">
+    <h1 class="text-4xl font-bold mb-4 text-center text-transparent bg-clip-text bg-gradient-to-r from-dance-purple to-dance-pink">
+      Dance Team Rehearsal Calendar
+    </h1>
+    <p class="text-center text-gray-600 mb-8">Updated automatically from Google Calendar.</p>
 
     <div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
-  <div id="cal"></div>
-</div>
+      <div id="cal"></div>
+    </div>
   </main>
 
-<script>
-  const calEl = document.getElementById('cal')
-  const TZ = 'America/Chicago'
+  <script>
+    const calEl = document.getElementById('cal')
+    const TZ = 'America/Chicago'
 
-  // ---- State ----
-  const state = {
-    cursor: new Date(),   // anchor for Month
-    view: 'day',          // 'day' (agenda) | 'month'
-    events: [],
-  }
-
-  // ---- Chicago (TZ) helpers ----
-  function ymdChicagoFromISO(iso) {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
-    }).formatToParts(new Date(iso))
-    const y = parts.find(p=>p.type==='year').value
-    const m = parts.find(p=>p.type==='month').value
-    const d = parts.find(p=>p.type==='day').value
-    return `${y}-${m}-${d}`
-  }
-  function ymdChicagoFromDate(d) {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
-    }).formatToParts(d)
-    const y = parts.find(p=>p.type==='year').value
-    const m = parts.find(p=>p.type==='month').value
-    const dd = parts.find(p=>p.type==='day').value
-    return `${y}-${m}-${dd}`
-  }
-  function chicagoTime(iso) {
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: TZ, hour: 'numeric', minute: '2-digit'
-    }).format(new Date(iso))
-  }
-  function chicagoMonthYear(d) {
-    return new Intl.DateTimeFormat('en-US', { timeZone: TZ, month:'long', year:'numeric' }).format(d)
-  }
-
-  // ---- All‑day range helpers (Chicago) ----
-  function chicagoYMDParts(d){
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(d)
-    return {
-      y: parts.find(p=>p.type==='year').value,
-      m: parts.find(p=>p.type==='month').value,
-      d: parts.find(p=>p.type==='day').value,
-    }
-  }
-  function chicagoAddDays(ymd, days){
-    const dt = new Date(ymd+'T12:00:00') // noon avoids DST edges
-    dt.setDate(dt.getDate()+days)
-    const {y,m,d} = chicagoYMDParts(dt)
-    return `${y}-${m}-${d}`
-  }
-  function chicagoDateRangeLabel(startYMD, endYMDExclusive){
-    const endInc = chicagoAddDays(endYMDExclusive, -1)
-    const s = new Date(startYMD+'T12:00:00')
-    const e = new Date(endInc+'T12:00:00')
-    const fmt = (d,opts)=> new Intl.DateTimeFormat('en-US', { timeZone: TZ, ...opts }).format(d)
-    if (startYMD===endInc) return fmt(s,{month:'short', day:'numeric'})
-    const sameMonth = s.getFullYear()===e.getFullYear() && s.getMonth()===e.getMonth()
-    return sameMonth
-      ? `${fmt(s,{month:'short'})} ${fmt(s,{day:'numeric'})}–${fmt(e,{day:'numeric'})}`
-      : `${fmt(s,{month:'short', day:'numeric'})} – ${fmt(e,{month:'short', day:'numeric'})}`
-  }
-  function isAllDay(ev){ return ev.start && ev.start.length===10 && ev.end && ev.end.length===10 }
-
-  // ---- Fetch events (window depends on view) ----
-  async function fetchEvents(){
-    let timeMin, timeMax
-    const now = new Date()
-
-    if (state.view === 'day') {
-      // Agenda: today → +200 days (your preference)
-      const startYMD = ymdChicagoFromDate(now)
-      const start = new Date(`${startYMD}T00:00:00`)
-      const end = new Date(start); end.setDate(end.getDate() + 200); end.setHours(23,59,59,999)
-      timeMin = start.toISOString(); timeMax = end.toISOString()
-    } else {
-      const start = new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1)
-      const end = new Date(state.cursor.getFullYear(), state.cursor.getMonth()+1, 0, 23, 59, 59)
-      timeMin = start.toISOString(); timeMax = end.toISOString()
+    // ---- State ----
+    const state = {
+      cursor: new Date(),   // anchor for Month
+      view: 'day',          // 'day' (agenda) | 'month'
+      events: [],
     }
 
-    const r = await fetch(`/api/events?cal=team&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`)
-    const json = await r.json()
-    const raw = (json.events || [])
+    // ---- Chicago (TZ) helpers ----
+    function ymdChicagoFromISO(iso) {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date(iso))
+      const y = parts.find(p=>p.type==='year').value
+      const m = parts.find(p=>p.type==='month').value
+      const d = parts.find(p=>p.type==='day').value
+      return `${y}-${m}-${d}`
+    }
+    function ymdChicagoFromDate(d) {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(d)
+      const y = parts.find(p=>p.type==='year').value
+      const m = parts.find(p=>p.type==='month').value
+      const dd = parts.find(p=>p.type==='day').value
+      return `${y}-${m}-${dd}`
+    }
+    function chicagoTime(iso) {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: TZ, hour: 'numeric', minute: '2-digit'
+      }).format(new Date(iso))
+    }
+    function chicagoMonthYear(d) {
+      return new Intl.DateTimeFormat('en-US', { timeZone: TZ, month:'long', year:'numeric' }).format(d)
+    }
 
-    // Expand multi-day all-day events across each day (end.date is exclusive)
-    const expanded = []
-    for (const ev of raw) {
-      const isAllDay = ev.start && ev.start.length === 10 && ev.end && ev.end.length === 10
-      if (!isAllDay) {
-        expanded.push(ev)
-        continue
-      }
-      const startYMD = ev.start
-      const endYMDEx = ev.end
-      let cur = startYMD
-      while (cur < endYMDEx) {
-        expanded.push({
-          ...ev,
-          __allDaySpan: { startYMD, endYMDEx },
-          start: cur,
-          end: cur
-        })
-        cur = chicagoAddDays(cur, 1)
+    // ---- All-day range helpers (Chicago) ----
+    function chicagoYMDParts(d){
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(d)
+      return {
+        y: parts.find(p=>p.type==='year').value,
+        m: parts.find(p=>p.type==='month').value,
+        d: parts.find(p=>p.type==='day').value,
       }
     }
-
-    expanded.sort((a,b)=> new Date(a.start) - new Date(b.start))
-    state.events = expanded
-  }
-
-  // ---- Group by Chicago day (keys sorted) ----
-  function groupByChicagoDaySorted(){
-    const map = new Map()
-    for (const e of state.events) {
-      const key = (e.start.length === 10) ? e.start : ymdChicagoFromISO(e.start)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(e)
+    function chicagoAddDays(ymd, days){
+      const dt = new Date(ymd+'T12:00:00') // noon avoids DST edges
+      dt.setDate(dt.getDate()+days)
+      const {y,m,d} = chicagoYMDParts(dt)
+      return `${y}-${m}-${d}`
     }
-    const keys = Array.from(map.keys()).sort()
-    return { map, keys }
-  }
+    function chicagoDateRangeLabel(startYMD, endYMDExclusive){
+      const endInc = chicagoAddDays(endYMDExclusive, -1)
+      const s = new Date(startYMD+'T12:00:00')
+      const e = new Date(endInc+'T12:00:00')
+      const fmt = (d,opts)=> new Intl.DateTimeFormat('en-US', { timeZone: TZ, ...opts }).format(d)
+      if (startYMD===endInc) return fmt(s,{month:'short', day:'numeric'})
+      const sameMonth = s.getFullYear()===e.getFullYear() && s.getMonth()===e.getMonth()
+      return sameMonth
+        ? `${fmt(s,{month:'short'})} ${fmt(s,{day:'numeric'})}–${fmt(e,{day:'numeric'})}`
+        : `${fmt(s,{month:'short', day:'numeric'})} – ${fmt(e,{month:'short', day:'numeric'})}`
+    }
+    function isAllDay(ev){ return ev.start && ev.start.length===10 && ev.end && ev.end.length===10 }
 
-  // ---- Month grid helpers ----
-  function buildMonthDays(cursor){
-    const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
-    const end = new Date(cursor.getFullYear(), cursor.getMonth()+1, 0)
-    const firstWeekday = start.getDay() // 0=Sun..6=Sat
-    const days = []
-    for (let i=0;i<firstWeekday;i++){ const d=new Date(start); d.setDate(start.getDate()-(firstWeekday-i)); days.push(d) }
-    for (let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(new Date(d))
-    while (days.length<42){ const d=new Date(days[days.length-1]); d.setDate(d.getDate()+1); days.push(d) }
-    return days
-  }
+    // ---- Fetch events (window depends on view) ----
+    async function fetchEvents(){
+      let timeMin, timeMax
+      const now = new Date()
 
-  // ---- Render root ----
-  function render(){
-    calEl.innerHTML = ''
+      if (state.view === 'day') {
+        // Agenda: today → +200 days
+        const startYMD = ymdChicagoFromDate(now)
+        const start = new Date(`${startYMD}T00:00:00`)
+        const end = new Date(start); end.setDate(end.getDate() + 200); end.setHours(23,59,59,999)
+        timeMin = start.toISOString(); timeMax = end.toISOString()
+      } else {
+        const start = new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1)
+        const end = new Date(state.cursor.getFullYear(), state.cursor.getMonth()+1, 0, 23, 59, 59)
+        timeMin = start.toISOString(); timeMax = end.toISOString()
+      }
 
-    // Header
-    const header = document.createElement('div')
-    header.className = 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4'
-    header.innerHTML = `
-      <div class="flex items-center gap-3">
-        <h3 class="text-3xl font-bold text-dance-purple">${state.view==='month' ? chicagoMonthYear(state.cursor) : 'Agenda View'}</h3>
-        ${state.view==='month' ? `
-          <div class="hidden sm:flex gap-2 ml-1">
-            <button class="px-3 py-2 rounded-xl bg-gradient-to-r from-dance-purple to-dance-pink text-white hover:opacity-90" id="btnToday">Today</button>
-            <button class="px-3 py-2 rounded-xl bg-gradient-to-r from-dance-purple to-dance-pink text-white hover:opacity-90" id="btnPrev">Prev</button>
-            <button class="px-3 py-2 rounded-xl bg-gradient-to-r from-dance-purple to-dance-pink text-white hover:opacity-90" id="btnNext">Next</button>
-          </div>` : ''}
-      </div>
-      <div class="flex items-center gap-2">
-        <label for="viewSel" class="text-sm text-gray-600">View</label>
-        <select id="viewSel" class="px-3 py-2 rounded-xl border">
-          <option value="day"${state.view==='day'?' selected':''}>Day (List)</option>
-          <option value="month"${state.view==='month'?' selected':''}>Month</option>
-        </select>
-      </div>
-    `
-    calEl.appendChild(header)
-    header.querySelector('#viewSel').onchange = (e)=>{ state.view = e.target.value; boot() }
-    if (state.view==='month'){
-      header.querySelector('#btnToday').onclick = ()=>{ state.cursor = new Date(); boot() }
-      header.querySelector('#btnPrev').onclick = ()=>{ const d=new Date(state.cursor); d.setMonth(d.getMonth()-1); state.cursor=d; boot() }
-      header.querySelector('#btnNext').onclick = ()=>{ const d=new Date(state.cursor); d.setMonth(d.getMonth()+1); state.cursor=d; boot() }
+      const r = await fetch(`/api/events?cal=team&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`)
+      const json = await r.json()
+      const raw = (json.events || [])
+
+      // Expand multi-day all-day events across each day (end.date is exclusive)
+      const expanded = []
+      for (const ev of raw) {
+        const isAD = ev.start && ev.start.length === 10 && ev.end && ev.end.length === 10
+        if (!isAD) { expanded.push(ev); continue }
+        const startYMD = ev.start
+        const endYMDEx = ev.end
+        let cur = startYMD
+        while (cur < endYMDEx) {
+          expanded.push({ ...ev, __allDaySpan: { startYMD, endYMDEx }, start: cur, end: cur })
+          cur = chicagoAddDays(cur, 1)
+        }
+      }
+
+      expanded.sort((a,b)=> new Date(a.start) - new Date(b.start))
+      state.events = expanded
     }
 
-    if (state.view === 'day') renderAgenda()
-    else renderMonth()
-  }
+    // ---- Group by Chicago day (keys sorted) ----
+    function groupByChicagoDaySorted(){
+      const map = new Map()
+      for (const e of state.events) {
+        const key = (e.start.length === 10) ? e.start : ymdChicagoFromISO(e.start)
+        if (!map.has(key)) map.set(key, [])
+        map.get(key).push(e)
+      }
+      const keys = Array.from(map.keys()).sort()
+      return { map, keys }
+    }
 
-  // ---- Day = Agenda list (only dates that have events) ----
-function renderAgenda(){
-  const { map, keys } = groupByChicagoDaySorted()
-  const wrap = document.createElement('div')
-  wrap.className = 'space-y-6'
+    // ---- Month grid helpers ----
+    function buildMonthDays(cursor){
+      const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+      const end = new Date(cursor.getFullYear(), cursor.getMonth()+1, 0)
+      const firstWeekday = start.getDay() // 0=Sun..6=Sat
+      const days = []
+      for (let i=0;i<firstWeekday;i++){ const d=new Date(start); d.setDate(start.getDate()-(firstWeekday-i)); days.push(d) }
+      for (let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) days.push(new Date(d))
+      while (days.length<42){ const d=new Date(days[days.length-1]); d.setDate(d.getDate()+1); days.push(d) }
+      return days
+    }
 
-  if (!keys.length) {
-    wrap.innerHTML = `<div class="text-gray-600">No upcoming events.</div>`
-    calEl.appendChild(wrap)
-    return
-  }
+    // ---- Render root ----
+    function render(){
+      calEl.innerHTML = ''
 
-  for (const key of keys) {
-    const allForDay = map.get(key) || []
-
-    // Hide mid-span all‑day instances (only show on span start)
-    const visible = allForDay.filter(ev => !(isAllDay(ev) && ev.__allDaySpan && key !== ev.__allDaySpan.startYMD))
-
-    // If nothing left after filtering, skip this day entirely
-    if (visible.length === 0) continue
-
-    const dateObj = new Date(`${key}T12:00:00`)
-    const heading = new Intl.DateTimeFormat('en-US', {
-      timeZone: TZ, weekday:'long', month:'long', day:'numeric'
-    }).format(dateObj)
-
-    const section = document.createElement('section')
-    section.className = 'bg-white border border-gray-200 rounded-2xl p-4 shadow-sm'
-    section.innerHTML = `
-      <div class="flex items-baseline justify-between mb-3">
-        <h3 class="text-xl font-semibold text-gray-900">${heading}</h3>
-        <span class="text-sm text-gray-500">${visible.length} ${visible.length===1?'event':'events'}</span>
-      </div>
-    `
-    const list = document.createElement('div')
-    list.className = 'divide-y divide-gray-100'
-
-    for (const ev of visible) {
-      const isTimed = ev.start.length > 10
-      const whenHTML = isTimed
-        ? `${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}`
-        : (ev.__allDaySpan
-            ? chicagoDateRangeLabel(ev.__allDaySpan.startYMD, ev.__allDaySpan.endYMDEx)
-            : 'All day')
-
-      const row = document.createElement('a')
-      row.href = ev.htmlLink || '#'
-      row.target = '_blank'
-      row.rel = 'noreferrer'
-      row.className = 'flex items-start gap-4 py-3 group'
-      row.innerHTML = `
-        <div class="text-sm text-gray-700 whitespace-nowrap min-w-[140px]">${whenHTML}</div>
-        <div class="flex-1">
-          <div class="font-medium text-dance-purple group-hover:underline">${escapeHtml(ev.title || 'Untitled')}</div>
-          ${ev.location ? `<div class="text-sm text-gray-600 mt-0.5">📍 ${escapeHtml(ev.location)}</div>` : ''}
-          ${ev.description ? `<div class="text-sm text-gray-700 mt-1 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
+      // Header
+      const header = document.createElement('div')
+      header.className = 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4'
+      header.innerHTML = `
+        <div class="flex items-center gap-3">
+          <h3 class="text-3xl font-bold text-dance-purple">${state.view==='month' ? chicagoMonthYear(state.cursor) : 'Agenda View'}</h3>
+          ${state.view==='month' ? `
+            <div class="hidden sm:flex gap-2 ml-1">
+              <button class="px-3 py-2 rounded-xl bg-gradient-to-r from-dance-purple to-dance-pink text-white hover:opacity-90" id="btnToday">Today</button>
+              <button class="px-3 py-2 rounded-xl bg-gradient-to-r from-dance-purple to-dance-pink text-white hover:opacity-90" id="btnPrev">Prev</button>
+              <button class="px-3 py-2 rounded-xl bg-gradient-to-r from-dance-purple to-dance-pink text-white hover:opacity-90" id="btnNext">Next</button>
+            </div>` : ''}
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="viewSel" class="text-sm text-gray-600">View</label>
+          <select id="viewSel" class="px-3 py-2 rounded-xl border">
+            <option value="day"${state.view==='day'?' selected':''}>Day (List)</option>
+            <option value="month"${state.view==='month'?' selected':''}>Month</option>
+          </select>
         </div>
       `
-      list.appendChild(row)
-    }
-
-    section.appendChild(list)
-    wrap.appendChild(section)
-  }
-
-  // If every day was filtered out, show a friendly empty state
-  if (!wrap.children.length) {
-    wrap.innerHTML = `<div class="text-gray-600">No upcoming events.</div>`
-  }
-
-  calEl.appendChild(wrap)
-}
-
-  // ---- Month grid with clearer borders ----
-  function renderMonth(){
-  // Weekday header
-  const weekdayRow = document.createElement('div')
-  weekdayRow.className = 'grid grid-cols-7 text-xs font-medium text-gray-500 uppercase tracking-wide mb-2'
-  weekdayRow.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="px-2 py-1">${d}</div>`).join('')
-  calEl.appendChild(weekdayRow)
-
-  // Build month grid (6 rows x 7 cols)
-  const days = buildMonthDays(state.cursor)
-  const { map } = groupByChicagoDaySorted()
-
-  // Grid wrapper (relative so we can overlay span bars)
-  const wrap = document.createElement('div')
-  wrap.className = 'relative'
-  calEl.appendChild(wrap)
-
-  // Base day cells
-  const grid = document.createElement('div')
-  grid.className = 'grid grid-cols-7 grid-rows-6 gap-0 rounded-2xl overflow-hidden border border-gray-200'
-  wrap.appendChild(grid)
-
-  const todayYMD = ymdChicagoFromDate(new Date())
-  const monthY = state.cursor.getFullYear(), monthM = state.cursor.getMonth()
-
-  // Render all 42 day boxes
-  days.forEach((d, idx) => {
-    const inMonth = (d.getMonth()===monthM && d.getFullYear()===monthY)
-    const ymd = ymdChicagoFromDate(d)
-    const isToday = (ymd === todayYMD)
-    const events = (map.get(ymd) || []).filter(ev => !isAllDay(ev)) // suppress all-day spans here
-
-    const cell = document.createElement('button')
-    cell.className = `relative text-left p-2 pt-8 transition hover:bg-gray-50
-                      ${inMonth ? 'bg-white' : 'bg-gray-50'}
-                      ${isToday ? 'ring-2 ring-dance-pink ring-offset-0' : ''}
-                      border border-gray-200`
-    cell.style.minHeight = '140px'
-    cell.innerHTML = `
-      <div class="absolute top-1 left-2 right-2 flex items-center justify-between">
-        <span class="text-sm ${inMonth?'text-gray-900':'text-gray-400'}">${d.getDate()}</span>
-        ${events.length ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-dance-purple/10 text-dance-purple">${events.length}</span>` : '<span></span>'}
-      </div>
-    `
-    const list = document.createElement('div')
-    list.className = 'mt-2 space-y-1'
-    let shown = 0
-    for (const ev of events) {
-      if (shown >= 3) break
-      const pill = document.createElement('div')
-      pill.className = 'text-[12px] px-2 py-1 rounded-lg bg-gray-100 truncate'
-      const isTimed = ev.start.length > 10
-      const timePrefix = isTimed ? `${chicagoTime(ev.start)} — ` : ''
-      pill.textContent = `${timePrefix}${ev.title}`
-      pill.title = ev.title
-      list.appendChild(pill)
-      shown++
-    }
-    if (events.length > shown) {
-      const more = document.createElement('div')
-      more.className = 'text-[11px] text-gray-500'
-      more.textContent = `+${events.length - shown} more`
-      list.appendChild(more)
-    }
-
-    // Click (includes all-day spans via panel overlay below)
-    const dayAllEvents = (map.get(ymd) || [])
-    cell.addEventListener('click', ()=> openPanel(d, dayAllEvents))
-
-    cell.appendChild(list)
-    grid.appendChild(cell)
-  })
-
-  // ---- Overlay: draw span bars for multi-day all-day events ----
-  // Build a quick index: date -> (row, col)
-  const cellIndex = new Map() // 'YYYY-MM-DD' -> {row, col}
-  days.forEach((d, i) => {
-    const row = Math.floor(i / 7)
-    const col = i % 7
-    cellIndex.set(ymdChicagoFromDate(d), { row, col })
-  })
-
-  // Collect unique spans (use the first occurrence of each __allDaySpan signature)
-  const spanKey = e => isAllDay(e) && e.__allDaySpan ? `${e.id}|${e.__allDaySpan.startYMD}|${e.__allDaySpan.endYMDEx}` : null
-  const seen = new Set()
-  const allSpans = []
-  state.events.forEach(e => {
-    const k = spanKey(e)
-    if (!k || seen.has(k)) return
-    seen.add(k)
-    allSpans.push(e) // any instance carries the span info + title
-  })
-
-  // Overlay grid with same 7x6 structure, bars placed by grid row/columns
-  const overlay = document.createElement('div')
-  overlay.className = 'pointer-events-none absolute inset-0 grid grid-cols-7 grid-rows-6'
-  wrap.appendChild(overlay)
-
-  for (const ev of allSpans) {
-    const { startYMD, endYMDEx } = ev.__allDaySpan
-    // For each week the span intersects, create one bar segment
-    let cur = startYMD
-    while (cur < endYMDEx) {
-      const pos = cellIndex.get(cur)
-      if (!pos) { cur = chicagoAddDays(cur, 1); continue }
-
-      const row = pos.row
-      const rowStartYMD = Array.from(cellIndex.keys()).find(k => cellIndex.get(k).row === row && cellIndex.get(k).col === 0)
-      const rowEndYMD   = Array.from(cellIndex.keys()).find(k => cellIndex.get(k).row === row && cellIndex.get(k).col === 6)
-
-      // Segment start = max(cur, row first day)
-      let segStart = cur
-      if (rowStartYMD && segStart < rowStartYMD) segStart = rowStartYMD
-      // Segment end   = min(endYMDEx - 1day, row last day)
-      const lastInclusive = chicagoAddDays(endYMDEx, -1)
-      let segEnd = lastInclusive
-      if (rowEndYMD && segEnd > rowEndYMD) segEnd = rowEndYMD
-
-      const startPos = cellIndex.get(segStart)
-      const endPos   = cellIndex.get(segEnd)
-      if (startPos && endPos && startPos.row === row && endPos.row === row) {
-        const bar = document.createElement('div')
-        // Place in this row, span the columns
-        bar.style.gridRow = `${row+1}`
-        bar.style.gridColumn = `${startPos.col+1} / ${endPos.col+2}`
-
-        bar.className = 'mx-1 mt-6 h-6 rounded-full bg-dance-purple text-white text-xs px-2 flex items-center gap-2 overflow-hidden'
-        // Only print the label on the **first** segment (start of the overall span)
-        const isFirstSegment = (segStart === startYMD)
-        bar.innerHTML = isFirstSegment
-          ? `<span class="whitespace-nowrap truncate">${escapeHtml(ev.title || 'Untitled')} • ${chicagoDateRangeLabel(startYMD, endYMDEx)}</span>`
-          : `<span class="opacity-80"> </span>`
-
-        overlay.appendChild(bar)
+      calEl.appendChild(header)
+      header.querySelector('#viewSel').onchange = (e)=>{ state.view = e.target.value; boot() }
+      if (state.view==='month'){
+        header.querySelector('#btnToday').onclick = ()=>{ state.cursor = new Date(); boot() }
+        header.querySelector('#btnPrev').onclick = ()=>{ const d=new Date(state.cursor); d.setMonth(d.getMonth()-1); state.cursor=d; boot() }
+        header.querySelector('#btnNext').onclick = ()=>{ const d=new Date(state.cursor); d.setMonth(d.getMonth()+1); state.cursor=d; boot() }
       }
 
-      // Move to first day of next week row
-      cur = chicagoAddDays(segEnd, 1)
-      // Advance until we hit the next row present in the grid
-      while (cur <= lastInclusive) {
-        const p = cellIndex.get(cur)
-        if (p && p.row !== row) break
-        cur = chicagoAddDays(cur, 1)
+      if (state.view === 'day') renderAgenda()
+      else renderMonth()
+    }
+
+    // ---- Day = Agenda list (only dates that have events) ----
+    function renderAgenda(){
+      const { map, keys } = groupByChicagoDaySorted()
+      const wrap = document.createElement('div')
+      wrap.className = 'space-y-6'
+
+      if (!keys.length) {
+        wrap.innerHTML = `<div class="text-gray-600">No upcoming events.</div>`
+        calEl.appendChild(wrap)
+        return
       }
-    }
-  }
-}
-  // Panel helpers
-  window.closePanel = function(){
-    document.getElementById('overlay').classList.add('hidden')
-  }
-  window.openPanel = function(dayDate, events){
-    document.getElementById('panel-title').textContent =
-      new Intl.DateTimeFormat('en-US',{ timeZone: TZ, weekday:'long', month:'long', day:'numeric'}).format(dayDate)
-    const body = document.getElementById('panel-body')
-    body.innerHTML = ''
-    if(!events.length){ body.innerHTML = '<div class="text-gray-500">No events.</div>'; document.getElementById('overlay').classList.remove('hidden'); return }
-    for(const ev of events){
-      const a = document.createElement('a')
-      a.href = ev.htmlLink || '#'
-      a.target = '_blank'
-      a.rel = 'noreferrer'
-      a.className = 'block border rounded-2xl p-3 hover:shadow'
-      const isTimed = ev.start.length > 10
-      a.innerHTML = `
-        <div class="font-semibold text-dance-purple">${escapeHtml(ev.title || 'Untitled')}</div>
-        ${ev.location ? `<div class="text-sm text-gray-600 mt-1">📍 ${escapeHtml(ev.location)}</div>` : ''}
-        ${isTimed ? `<div class="text-sm text-gray-600 mt-1">🕒 ${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}</div>` : '<div class="text-sm text-gray-600 mt-1">All day</div>'}
-        ${ev.description ? `<div class="text-sm text-gray-700 mt-2 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
-      `
-      body.appendChild(a)
-    }
-    document.getElementById('overlay').classList.remove('hidden')
-  }
 
-  // Utils
-  function escapeHtml(s){ return s?.replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])) }
+      for (const key of keys) {
+        const allForDay = map.get(key) || []
 
-  // Boot
-  async function boot(){ await fetchEvents(); render() }
-  boot()
-</script>
-<script>
-  const btn = document.getElementById('mobile-menu-btn');
-  const menu = document.getElementById('mobile-menu');
+        // Hide mid-span all-day instances (only show on span start)
+        const visible = allForDay.filter(ev => !(isAllDay(ev) && ev.__allDaySpan && key !== ev.__allDaySpan.startYMD))
 
-  btn?.addEventListener('click', () => {
-    const isOpen = !menu.classList.contains('hidden');
-    menu.classList.toggle('hidden', isOpen);
-    btn.setAttribute('aria-expanded', String(!isOpen));
-  });
+        // If nothing left after filtering, skip this day entirely
+        if (visible.length === 0) continue
 
-  // Close menu when a link is clicked
-  menu?.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      menu.classList.add('hidden');
-      btn.setAttribute('aria-expanded', 'false');
-    });
-  });
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "DanceSchool",
-  "name": "Elite Dance & Music",
-  "url": "https://www.myelitedance.com/",
-  "logo": "https://www.myelitedance.com/assets/img/social-card.jpg",
-  "telephone": "(615) 776-4202",
-  "address": {
-    "@type": "PostalAddress",
-    "streetAddress": "7177 Nolensville Rd Suite B-3",
-    "addressLocality": "Nolensville",
-    "addressRegion": "TN",
-    "postalCode": "",
-    "addressCountry": "US"
-  },
-  "sameAs": [
-    "https://www.facebook.com/profile.php?id=61573876559298",
-    "https://www.instagram.com/elitedancetn/"
-  ]
-}
-</script>
-<footer class="bg-gray-900 text-white py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid md:grid-cols-3 gap-8">
-                <div>
-                    <h3 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent mb-4">Elite Dance & Music</h3>
-                    <p class="text-gray-300 mb-4">
-                        Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in Nolensville, TN.
-                    </p>
-                    <div class="flex space-x-4">
-                        <a href="https://www.facebook.com/profile.php?id=61573876559298" class="text-gray-400 hover:text-white transition-colors">Facebook</a>
-                        <a href="https://www.instagram.com/elitedancetn/" class="text-gray-400 hover:text-white transition-colors">Instagram</a>
-                    </div>
-                </div>
-                <div>
-                    <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
-                    <ul class="space-y-2 text-sm text-gray-300">
-  <li><a href="/#about" class="hover:text-dance-purple transition-colors">About</a></li>
-  <li><a href="/#classes" class="hover:text-dance-purple transition-colors">Classes</a></li>
-  <li><a href="team_calendar.html" class="hover:text-dance-purple transition-colors">Team Calendar</a></li>
-  <li><a href="team.html" class="hover:text-dance-purple transition-colors">Meet the Team</a></li>
-  <li><a href="/#contact" class="hover:text-dance-purple transition-colors">Contact</a></li>
-</ul>
-                </div>
-                <div>
-                    <h4 class="text-lg font-semibold mb-4">Contact Info</h4>
-                    <div class="text-gray-300 space-y-2">
-                        <p>7177 Nolensville Rd Suite B-3</p>
-                        <p>Nolensville, TN</p>
-                        <p>(615) 776-4202</p>
-                    </div>
-                </div>
+        const dateObj = new Date(`${key}T12:00:00`)
+        const heading = new Intl.DateTimeFormat('en-US', {
+          timeZone: TZ, weekday:'long', month:'long', day:'numeric'
+        }).format(dateObj)
+
+        const section = document.createElement('section')
+        section.className = 'bg-white border border-gray-200 rounded-2xl p-4 shadow-sm'
+        section.innerHTML = `
+          <div class="flex items-baseline justify-between mb-3">
+            <h3 class="text-xl font-semibold text-gray-900">${heading}</h3>
+            <span class="text-sm text-gray-500">${visible.length} ${visible.length===1?'event':'events'}</span>
+          </div>
+        `
+        const list = document.createElement('div')
+        list.className = 'divide-y divide-gray-100'
+
+        for (const ev of visible) {
+          const isTimed = ev.start.length > 10
+          const whenHTML = isTimed
+            ? `${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}`
+            : (ev.__allDaySpan
+                ? chicagoDateRangeLabel(ev.__allDaySpan.startYMD, ev.__allDaySpan.endYMDEx)
+                : 'All day')
+
+          const row = document.createElement('a')
+          row.href = ev.htmlLink || '#'
+          row.target = '_blank'
+          row.rel = 'noreferrer'
+          row.className = 'flex items-start gap-4 py-3 group'
+          row.innerHTML = `
+            <div class="text-sm text-gray-700 whitespace-nowrap min-w-[140px]">${whenHTML}</div>
+            <div class="flex-1">
+              <div class="font-medium text-dance-purple group-hover:underline">${escapeHtml(ev.title || 'Untitled')}</div>
+              ${ev.location ? `<div class="text-sm text-gray-600 mt-0.5">📍 ${escapeHtml(ev.location)}</div>` : ''}
+              ${ev.description ? `<div class="text-sm text-gray-700 mt-1 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
             </div>
- <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-  <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
-    <span>&copy; 2025 Elite Dance & Music</span>
-    <a href="/privacy-policy.html" class="hover:text-dance-purple underline">Privacy Policy</a>
-    <a href="/terms-and-conditions.html" class="hover:text-dance-purple underline">Terms & Conditions</a>
-  </div>
-</div>
+          `
+          list.appendChild(row)
+        }
+
+        section.appendChild(list)
+        wrap.appendChild(section)
+      }
+
+      if (!wrap.children.length) {
+        wrap.innerHTML = `<div class="text-gray-600">No upcoming events.</div>`
+      }
+
+      calEl.appendChild(wrap)
+    }
+
+    // ---- Month grid with clearer borders ----
+    function renderMonth(){
+      const weekdayRow = document.createElement('div')
+      weekdayRow.className = 'grid grid-cols-7 text-xs font-medium text-gray-500 uppercase tracking-wide mb-2'
+      weekdayRow.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="px-2 py-1">${d}</div>`).join('')
+      calEl.appendChild(weekdayRow)
+
+      const days = buildMonthDays(state.cursor)
+      const { map } = groupByChicagoDaySorted()
+
+      const wrap = document.createElement('div')
+      wrap.className = 'relative'
+      calEl.appendChild(wrap)
+
+      const grid = document.createElement('div')
+      grid.className = 'grid grid-cols-7 grid-rows-6 gap-0 rounded-2xl overflow-hidden border border-gray-200'
+      wrap.appendChild(grid)
+
+      const todayYMD = ymdChicagoFromDate(new Date())
+      const monthY = state.cursor.getFullYear(), monthM = state.cursor.getMonth()
+
+      days.forEach((d) => {
+        const inMonth = (d.getMonth()===monthM && d.getFullYear()===monthY)
+        const ymd = ymdChicagoFromDate(d)
+        const isToday = (ymd === todayYMD)
+        const events = (map.get(ymd) || []).filter(ev => !isAllDay(ev))
+
+        const cell = document.createElement('button')
+        cell.className = `relative text-left p-2 pt-8 transition hover:bg-gray-50
+                          ${inMonth ? 'bg-white' : 'bg-gray-50'}
+                          ${isToday ? 'ring-2 ring-dance-pink ring-offset-0' : ''}
+                          border border-gray-200`
+        cell.style.minHeight = '140px'
+        cell.innerHTML = `
+          <div class="absolute top-1 left-2 right-2 flex items-center justify-between">
+            <span class="text-sm ${inMonth?'text-gray-900':'text-gray-400'}">${d.getDate()}</span>
+            ${events.length ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-dance-purple/10 text-dance-purple">${events.length}</span>` : '<span></span>'}
+          </div>
+        `
+        const list = document.createElement('div')
+        list.className = 'mt-2 space-y-1'
+        let shown = 0
+        for (const ev of events) {
+          if (shown >= 3) break
+          const pill = document.createElement('div')
+          pill.className = 'text-[12px] px-2 py-1 rounded-lg bg-gray-100 truncate'
+          const isTimed = ev.start.length > 10
+          const timePrefix = isTimed ? `${chicagoTime(ev.start)} — ` : ''
+          pill.textContent = `${timePrefix}${ev.title}`
+          pill.title = ev.title
+          list.appendChild(pill)
+          shown++
+        }
+        if (events.length > shown) {
+          const more = document.createElement('div')
+          more.className = 'text-[11px] text-gray-500'
+          more.textContent = `+${events.length - shown} more`
+          list.appendChild(more)
+        }
+
+        const dayAllEvents = (map.get(ymd) || [])
+        cell.addEventListener('click', ()=> openPanel(d, dayAllEvents))
+
+        cell.appendChild(list)
+        grid.appendChild(cell)
+      })
+
+      const cellIndex = new Map()
+      days.forEach((d, i) => {
+        const row = Math.floor(i / 7)
+        const col = i % 7
+        cellIndex.set(ymdChicagoFromDate(d), { row, col })
+      })
+
+      const spanKey = e => isAllDay(e) && e.__allDaySpan ? `${e.id}|${e.__allDaySpan.startYMD}|${e.__allDaySpan.endYMDEx}` : null
+      const seen = new Set()
+      const allSpans = []
+      state.events.forEach(e => {
+        const k = spanKey(e)
+        if (!k || seen.has(k)) return
+        seen.add(k)
+        allSpans.push(e)
+      })
+
+      const overlay = document.createElement('div')
+      overlay.className = 'pointer-events-none absolute inset-0 grid grid-cols-7 grid-rows-6'
+      wrap.appendChild(overlay)
+
+      for (const ev of allSpans) {
+        const { startYMD, endYMDEx } = ev.__allDaySpan
+        let cur = startYMD
+        while (cur < endYMDEx) {
+          const pos = cellIndex.get(cur)
+          if (!pos) { cur = chicagoAddDays(cur, 1); continue }
+
+          const row = pos.row
+          const rowStartYMD = Array.from(cellIndex.keys()).find(k => cellIndex.get(k).row === row && cellIndex.get(k).col === 0)
+          const rowEndYMD   = Array.from(cellIndex.keys()).find(k => cellIndex.get(k).row === row && cellIndex.get(k).col === 6)
+
+          let segStart = cur
+          if (rowStartYMD && segStart < rowStartYMD) segStart = rowStartYMD
+          const lastInclusive = chicagoAddDays(endYMDEx, -1)
+          let segEnd = lastInclusive
+          if (rowEndYMD && segEnd > rowEndYMD) segEnd = rowEndYMD
+
+          const startPos = cellIndex.get(segStart)
+          const endPos   = cellIndex.get(segEnd)
+          if (startPos && endPos && startPos.row === row && endPos.row === row) {
+            const bar = document.createElement('div')
+            bar.style.gridRow = `${row+1}`
+            bar.style.gridColumn = `${startPos.col+1} / ${endPos.col+2}`
+            bar.className = 'mx-1 mt-6 h-6 rounded-full bg-dance-purple text-white text-xs px-2 flex items-center gap-2 overflow-hidden'
+            const isFirstSegment = (segStart === startYMD)
+            bar.innerHTML = isFirstSegment
+              ? `<span class="whitespace-nowrap truncate">${escapeHtml(ev.title || 'Untitled')} • ${chicagoDateRangeLabel(startYMD, endYMDEx)}</span>`
+              : `<span class="opacity-80"> </span>`
+            overlay.appendChild(bar)
+          }
+
+          cur = chicagoAddDays(segEnd, 1)
+          while (cur <= lastInclusive) {
+            const p = cellIndex.get(cur)
+            if (p && p.row !== row) break
+            cur = chicagoAddDays(cur, 1)
+          }
+        }
+      }
+    }
+
+    // Panel helpers
+    window.closePanel = function(){
+      document.getElementById('overlay').classList.add('hidden')
+    }
+    window.openPanel = function(dayDate, events){
+      document.getElementById('panel-title').textContent =
+        new Intl.DateTimeFormat('en-US',{ timeZone: TZ, weekday:'long', month:'long', day:'numeric'}).format(dayDate)
+      const body = document.getElementById('panel-body')
+      body.innerHTML = ''
+      if(!events.length){ body.innerHTML = '<div class="text-gray-500">No events.</div>'; document.getElementById('overlay').classList.remove('hidden'); return }
+      for(const ev of events){
+        const a = document.createElement('a')
+        a.href = ev.htmlLink || '#'
+        a.target = '_blank'
+        a.rel = 'noreferrer'
+        a.className = 'block border rounded-2xl p-3 hover:shadow'
+        const isTimed = ev.start.length > 10
+        a.innerHTML = `
+          <div class="font-semibold text-dance-purple">${escapeHtml(ev.title || 'Untitled')}</div>
+          ${ev.location ? `<div class="text-sm text-gray-600 mt-1">📍 ${escapeHtml(ev.location)}</div>` : ''}
+          ${isTimed ? `<div class="text-sm text-gray-600 mt-1">🕒 ${chicagoTime(ev.start)} – ${chicagoTime(ev.end)}</div>` : '<div class="text-sm text-gray-600 mt-1">All day</div>'}
+          ${ev.description ? `<div class="text-sm text-gray-700 mt-2 whitespace-pre-line">${escapeHtml(ev.description)}</div>` : ''}
+        `
+        body.appendChild(a)
+      }
+      document.getElementById('overlay').classList.remove('hidden')
+    }
+
+    // Utils
+    function escapeHtml(s){ return s?.replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])) }
+
+    // Boot
+    async function boot(){ await fetchEvents(); render() }
+    boot()
+  </script>
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "DanceSchool",
+    "name": "Elite Dance & Music",
+    "url": "https://www.myelitedance.com/",
+    "logo": "https://www.myelitedance.com/assets/img/social-card.jpg",
+    "telephone": "(615) 776-4202",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "7177 Nolensville Rd Suite B-3",
+      "addressLocality": "Nolensville",
+      "addressRegion": "TN",
+      "postalCode": "",
+      "addressCountry": "US"
+    },
+    "sameAs": [
+      "https://www.facebook.com/profile.php?id=61573876559298",
+      "https://www.instagram.com/elitedancetn/"
+    ]
+  }
+  </script>
+
+  <!-- Global Footer -->
+  <footer class="bg-gray-900 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid md:grid-cols-3 gap-8">
+        <div>
+          <h3 class="text-2xl font-bold bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent mb-4">Elite Dance & Music</h3>
+          <p class="text-gray-300 mb-4">
+            Nurturing dancers of all ages with world-class training in a warm, family-friendly environment in Nolensville, TN.
+          </p>
+          <div class="flex space-x-4">
+            <a href="https://www.facebook.com/profile.php?id=61573876559298" class="text-gray-400 hover:text-white transition-colors">Facebook</a>
+            <a href="https://www.instagram.com/elitedancetn/" class="text-gray-400 hover:text-white transition-colors">Instagram</a>
+          </div>
         </div>
-    </footer>
+        <div>
+          <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
+          <ul class="space-y-2 text-sm text-gray-300">
+            <li><a href="/#about" class="hover:text-dance-purple transition-colors">About</a></li>
+            <li><a href="/#classes" class="hover:text-dance-purple transition-colors">Classes</a></li>
+            <li><a href="/team_calendar.html" class="hover:text-dance-purple transition-colors">Team Calendar</a></li>
+            <li><a href="/team.html" class="hover:text-dance-purple transition-colors">Meet the Team</a></li>
+            <li><a href="/#contact" class="hover:text-dance-purple transition-colors">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-lg font-semibold mb-4">Contact Info</h4>
+          <div class="text-gray-300 space-y-2">
+            <p>7177 Nolensville Rd Suite B-3</p>
+            <p>Nolensville, TN</p>
+            <p>(615) 776-4202</p>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
+        <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8">
+          <span>&copy; 2025 Elite Dance & Music</span>
+          <a href="/privacy-policy.html" class="hover:text-dance-purple underline">Privacy Policy</a>
+          <a href="/terms-and-conditions.html" class="hover:text-dance-purple underline">Terms &amp; Conditions</a>
+        </div>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>
