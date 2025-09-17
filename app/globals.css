@@ -38,7 +38,13 @@ body {
   background: linear-gradient(90deg, var(--dance-purple), var(--dance-pink), var(--dance-blue));
   -webkit-background-clip: text;
   background-clip: text;
-  color: transparent;
+
+  /* These two lines ensure the gradient shows even if link colors are set elsewhere */
+  -webkit-text-fill-color: transparent;
+  color: transparent !important;
+
+  /* Prevent collapsing issues with inline elements in some browsers */
+  display: inline-block;
 }
 
 button.inline-flex.items-center.px-5.py-3.rounded-2xl.font-medium {
