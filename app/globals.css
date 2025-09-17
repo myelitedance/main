@@ -1,12 +1,11 @@
 /* app/globals.css */
-
-/* Fonts first */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 /* Tailwind layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Fonts first */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 /* Brand tokens */
 :root{
