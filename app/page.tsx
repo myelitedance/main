@@ -150,6 +150,7 @@ export default function HomePage() {
             >
               Contact
             </button>
+             <div className="m1-4"><LoginModal /></div>
           </div>
         </div>
       </nav>
