@@ -33,6 +33,13 @@ body {
 .border-dance-pink{ border-color: var(--dance-pink) !important; }
 
 .dance-shadow { box-shadow: var(--dance-shadow); }
+/* gradient text helper used by the header brand link */
+.gradient-text{
+  background: linear-gradient(90deg, var(--dance-purple), var(--dance-pink), var(--dance-blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
 button.inline-flex.items-center.px-5.py-3.rounded-2xl.font-medium {
   transition: opacity .15s ease, transform .15s ease;
