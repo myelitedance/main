@@ -30,9 +30,10 @@ class SiteHeader extends HTMLElement {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between items-center h-16">
             <div class="flex items-center">
-              <a href="/" class="text-2xl font-bold gradient-text bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent">
-                Elite Dance &amp; Music
-              </a>
+              - <a href="/" class="text-2xl font-bold gradient-text">
++ <a href="/" data-no-active class="text-2xl font-bold gradient-text bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue bg-clip-text text-transparent">
+    Elite Dance &amp; Music
+  </a>
             </div>
 
             <div class="hidden md:block">
@@ -154,13 +155,13 @@ class SiteHeader extends HTMLElement {
   markActive() {
     let path = this._forcedPath || (typeof location !== 'undefined' ? location.pathname : '/');
     path = (path || '/').replace(/\/+$/,'') || '/';
-    this.querySelectorAll('a[href]').forEach(a => {
-      const href = (a.getAttribute('href') || '').replace(/\/+$/,'') || '/';
-      if (!href.startsWith('#') && href === path) {
-        a.setAttribute('aria-current','page');
-        a.classList.add('text-dance-purple','font-semibold');
-      }
-    });
+    this.querySelectorAll('a[href]:not([data-no-active])').forEach(a => {
+    const href = (a.getAttribute('href') || '').replace(/\/+$/,'') || '/';
+    if (!href.startsWith('#') && href === path) {
+      a.setAttribute('aria-current','page');
+      a.classList.add('text-dance-purple','font-semibold');
+    }
+  });
   }
 }
 
