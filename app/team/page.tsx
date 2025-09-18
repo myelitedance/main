@@ -1,42 +1,33 @@
-"use client";
 import Image from "next/image";
-import Script from "next/script";
-import { useState, useMemo } from "react";
+import type { Metadata } from "next";
 
 /**
- * Elite Dance & Music — Meet the Team (Next.js / React)
- * ----------------------------------------------------
- * - App Router compatible (place in: /app/team/page.tsx)
- * - Tailwind first; matches brand colors
- * - Structured for future CMS/admin integration
- * - Sorting: Featured Director(s) on top, then instructors (Mini-Movers first), owners at bottom
- * - All content is read from a typed data object you can later replace with a CMS fetch
+ * Elite Dance & Music — Meet the Team (Next.js / React, Server Component)
+ * - Directors featured on top, instructors (Mini-Movers first), owners at bottom
+ * - No "use client" so metadata export is allowed
+ * - Uses <details>/<summary> for expandable bios (no client state needed)
  */
 
-// ---------- Tailwind brand helpers (match project palette) ----------
 const brand = {
   purple: "#8B5CF6",
   pink: "#EC4899",
   blue: "#3B82F6",
 };
 
-// ---------- Types ----------
 export type Person = {
   id: string;
   name: string;
-  headshot: string; // public/ path or remote URL
-  roles: string[]; // e.g., ["Artistic Director"], ["Dance Team Director", "Instructor"]
-  categories?: string[]; // e.g., ["Mini-Movers", "Ballet"] (used for ordering under instructors)
+  headshot: string;
+  roles: string[];
+  categories?: string[];
   bio: string;
   isOwner?: boolean;
-  isFeaturedDirector?: boolean; // show in hero at the top
+  isFeaturedDirector?: boolean;
   social?: { instagram?: string; facebook?: string };
 };
 
-// ---------- Data (swap to CMS later) ----------
-// TODO: Replace with fetch() from your API/CMS (e.g., Sanity, Payload, Strapi, Directus)
+// --- Data (replace with CMS later) ---
 const TEAM: Person[] = [
-  // Directors (featured first)
   {
     id: "kiana",
     name: "Kiana Renae",
@@ -47,17 +38,6 @@ const TEAM: Person[] = [
     bio:
       "Kiana Renae is a dance educator, adjudicator, and coach from Southern New Hampshire. She trained with Saving Grace Dance Ensemble and Boston Community Dance Project, performing in NYC and Boston at venues like Alvin Ailey Studios and Times Square. She toured the Northeast teaching and managing events for Step Up 2 Dance and has adjudicated for KAR, NexStar, and Sheer Elite. Now based in Nashville with Fresh Talent Group, Kiana is also an ICF-certified life coach, musician, and board member of Satellite School of the Arts. Her passion is inspiring others through dance, music, and storytelling.",
   },
-  // If/when you have an Artistic Director, just set isFeaturedDirector: true as well
-  // {
-  //   id: "artistic-director-id",
-  //   name: "Your Artistic Director",
-  //   headshot: "/images/your_artistic_director.jpg",
-  //   roles: ["Artistic Director"],
-  //   isFeaturedDirector: true,
-  //   bio: "Short bio...",
-  // },
-
-  // Instructors
   {
     id: "lisa-hays",
     name: "Lisa Hays",
@@ -103,8 +83,6 @@ const TEAM: Person[] = [
     bio:
       "Maggie grew up with New Jersey Ballet and holds a BFA from The Juilliard School with additional training at the Martha Graham and José Limón schools. She danced with Ailey II and Alvin Ailey American Dance Theater and currently teaches across Nashville including Belmont University and Lipscomb University.",
   },
-
-  // Owners (bottom section, side-by-side smaller)
   {
     id: "jason-pond",
     name: "Jason Pond",
@@ -125,9 +103,9 @@ const TEAM: Person[] = [
   },
 ];
 
-// ---------- Helpers: ordering & grouping ----------
+// --- Sorting helpers ---
 const CATEGORY_PRIORITY = [
-  "Mini-Movers", // FIRST
+  "Mini-Movers",
   "Creative Movement",
   "Ballet",
   "Jazz",
@@ -143,7 +121,7 @@ function byCategoryPriority(a?: string[], b?: string[]) {
   return (pa === -1 ? 999 : pa) - (pb === -1 ? 999 : pb);
 }
 
-// ---------- UI Bits ----------
+// --- UI bits (server-friendly) ---
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="text-3xl sm:text-4xl font-semibold text-center mb-10 bg-gradient-to-r from-dance-purple to-dance-pink bg-clip-text text-transparent">
@@ -152,52 +130,33 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Bio({ text, clamp = 360 }: { text: string; clamp?: number }) {
-  const [open, setOpen] = useState(false);
+function Bio({ text }: { text: string }) {
   return (
-    <div>
-      <p
-        className={`text-gray-700 leading-relaxed transition-[max-height] duration-500 ease-in-out ${
-          open ? "max-h-[9999px]" : "max-h-[" + clamp + "px] overflow-hidden"
-        }`}
-      >
-        {text}
-      </p>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="mt-3 text-dance-purple font-semibold hover:underline"
-        aria-expanded={open}
-      >
-        {open ? "Less..." : "More..."}
-      </button>
-    </div>
+    <details>
+      <summary className="mt-3 cursor-pointer text-dance-purple font-semibold hover:underline">
+        More...
+      </summary>
+      <p className="text-gray-700 leading-relaxed mt-2">{text}</p>
+    </details>
   );
 }
 
-function Card({
-  person,
-  orientation = "row",
-}: {
-  person: Person;
-  orientation?: "row" | "col";
-}) {
+function Card({ person }: { person: Person }) {
   return (
     <div className="bg-white rounded-2xl shadow-xl p-6 flex flex-col sm:flex-row gap-8 items-center">
-      <div className={orientation === "row" ? "sm:w-1/2" : "w-full"}>
-        <div className="w-full flex items-center justify-center">
-          <div className="relative w-full max-w-md aspect-[4/5]">
-            <Image
-              src={person.headshot}
-              alt={person.name}
-              fill
-              className="object-cover rounded-xl"
-              sizes="(max-width: 768px) 90vw, 40vw"
-              priority={person.isFeaturedDirector}
-            />
-          </div>
+      <div className="sm:w-1/2 w-full">
+        <div className="relative w-full max-w-md aspect-[4/5] mx-auto">
+          <Image
+            src={person.headshot}
+            alt={person.name}
+            fill
+            className="object-cover rounded-xl"
+            sizes="(max-width: 768px) 90vw, 40vw"
+            priority={person.isFeaturedDirector}
+          />
         </div>
       </div>
-      <div className={orientation === "row" ? "sm:w-1/2" : "w-full"}>
+      <div className="sm:w-1/2 w-full">
         <h3 className="text-2xl font-semibold text-dance-purple">{person.name}</h3>
         <p className="text-sm text-gray-600 mb-3">{person.roles.join(" · ")}</p>
         <Bio text={person.bio} />
@@ -210,11 +169,18 @@ function DirectorsHero({ directors }: { directors: Person[] }) {
   if (!directors.length) return null;
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-      <div className="rounded-3xl p-1" style={{ background: `linear-gradient(135deg, ${brand.purple}, ${brand.pink}, ${brand.blue})` }}>
+      <div
+        className="rounded-3xl p-1"
+        style={{
+          background: `linear-gradient(135deg, ${brand.purple}, ${brand.pink}, ${brand.blue})`,
+        }}
+      >
         <div className="bg-white rounded-3xl p-8 sm:p-10">
-          <h1 className="text-4xl sm:text-5xl font-bold text-center mb-8 text-dance-purple">Meet the Team</h1>
+          <h1 className="text-4xl sm:text-5xl font-bold text-center mb-8 text-dance-purple">
+            Meet the Team
+          </h1>
           <SectionTitle>Artistic / Dance Team Director</SectionTitle>
-          <div className={`grid gap-8 ${directors.length > 1 ? "md:grid-cols-2" : "grid-cols-1"}`}>
+          <div className="grid gap-8 md:grid-cols-2">
             {directors.map((p) => (
               <Card key={p.id} person={p} />
             ))}
@@ -227,15 +193,11 @@ function DirectorsHero({ directors }: { directors: Person[] }) {
 
 function Instructors({ instructors }: { instructors: Person[] }) {
   if (!instructors.length) return null;
-
-  // Sort by category priority, then by name
-  const sorted = useMemo(() => {
-    return [...instructors].sort((a, b) => {
-      const byCat = byCategoryPriority(a.categories, b.categories);
-      if (byCat !== 0) return byCat;
-      return a.name.localeCompare(b.name);
-    });
-  }, [instructors]);
+  const sorted = [...instructors].sort((a, b) => {
+    const byCat = byCategoryPriority(a.categories, b.categories);
+    if (byCat !== 0) return byCat;
+    return a.name.localeCompare(b.name);
+  });
 
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -263,7 +225,7 @@ function Owners({ owners }: { owners: Person[] }) {
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-dance-purple">{p.name}</h3>
               <p className="text-sm text-gray-600 mb-2">{p.roles.join(" · ")}</p>
-              <Bio text={p.bio} clamp={160} />
+              <Bio text={p.bio} />
             </div>
           </div>
         ))}
@@ -272,7 +234,7 @@ function Owners({ owners }: { owners: Person[] }) {
   );
 }
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Meet the Team | Elite Dance & Music Teachers in Nolensville",
   description:
     "Get to know the Elite Dance & Music faculty in Nolensville—experienced, encouraging instructors dedicated to helping dancers grow in skill and confidence.",
@@ -299,74 +261,35 @@ export default function Page() {
 
   return (
     <main className="bg-gray-50 text-gray-800 pb-16">
-      {/* Optional: Google Analytics (if not already globally added in layout.tsx) */}
-      <Script
-        src="https://www.googletagmanager.com/gtag/js?id=G-DJ4JSSGK30"
-        strategy="afterInteractive"
-      />
-      <Script id="ga-init" strategy="afterInteractive">{`
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);} gtag('js', new Date());
-        gtag('config', 'G-DJ4JSSGK30');
-      `}</Script>
-
-      {/* Directors Hero */}
       <DirectorsHero directors={directors} />
-
-      {/* Instructors (Mini-Movers first) */}
       <Instructors instructors={instructors} />
-
-      {/* Owners (side-by-side smaller cards at bottom) */}
       <Owners owners={owners} />
-
-      {/* JSON-LD (DanceSchool) */}
-      <Script id="schema-org" type="application/ld+json" dangerouslySetInnerHTML={{
-        __html: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "DanceSchool",
-          name: "Elite Dance & Music",
-          url: "https://www.myelitedance.com/",
-          logo: "https://www.myelitedance.com/assets/img/social-card.jpg",
-          telephone: "(615) 776-4202",
-          address: {
-            "@type": "PostalAddress",
-            streetAddress: "7177 Nolensville Rd Suite B-3",
-            addressLocality: "Nolensville",
-            addressRegion: "TN",
-            postalCode: "",
-            addressCountry: "US",
-          },
-          sameAs: [
-            "https://www.facebook.com/profile.php?id=61573876559298",
-            "https://www.instagram.com/elitedancetn/",
-          ],
-        }),
-      }} />
+      {/* JSON-LD can be moved to app/layout.tsx if you prefer. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "DanceSchool",
+            name: "Elite Dance & Music",
+            url: "https://www.myelitedance.com/",
+            logo: "https://www.myelitedance.com/assets/img/social-card.jpg",
+            telephone: "(615) 776-4202",
+            address: {
+              "@type": "PostalAddress",
+              streetAddress: "7177 Nolensville Rd Suite B-3",
+              addressLocality: "Nolensville",
+              addressRegion: "TN",
+              postalCode: "",
+              addressCountry: "US",
+            },
+            sameAs: [
+              "https://www.facebook.com/profile.php?id=61573876559298",
+              "https://www.instagram.com/elitedancetn/",
+            ],
+          }),
+        }}
+      />
     </main>
   );
 }
-
-// -------------------- Notes for future CMS/admin --------------------
-/**
- * 1) Replace TEAM with server data:
- *    - export async function generateStaticParams() {} (optional)
- *    - export default async function Page() { const TEAM = await fetch(API).then(r => r.json()); }
- *
- * 2) Suggested fields per person in CMS:
- *    - name, slug, headshot(asset), roles (array of strings), categories (array), bio (rich text),
- *      isOwner (bool), isFeaturedDirector (bool), sortPriority (number, optional)
- *
- * 3) Sorting logic:
- *    - Directors: filter isFeaturedDirector
- *    - Instructors: everyone else that's not owner/director; order by CATEGORY_PRIORITY then name
- *    - Owners: filter isOwner
- *
- * 4) Styling:
- *    - Colors already align with: dance-purple, dance-pink, dance-blue
- *
- * 5) Images:
- *    - Put assets in /public/images to match current paths
- *
- * 6) Accessibility:
- *    - Buttons use aria-expanded for collapsible bios
- */
