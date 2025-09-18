@@ -3,6 +3,7 @@
   { "label": "About",  "href": "#about",   "scroll": true },
   { "label": "Classes","href": "#classes", "scroll": true },
   { "label": "Calendar","href": "/calendar.html" },
-  { "label": "Meet the Team","href": "/team.html" },
+  { "label": "Meet the Team","href": "/team" },
+  { "label": "Workshops", "href": "/workshops" },
   { "label": "Contact","href": "#contact", "scroll": true }
 ]
