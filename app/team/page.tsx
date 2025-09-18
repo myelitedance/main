@@ -86,7 +86,7 @@ const TEAM: Person[] = [
   {
     id: "demaree-hill",
     name: "Demaree Hill",
-    headshot: "/images/Demaree Headshot.jpg",
+    headshot: "/images/Demaree Headshot.png",
     roles: ["Voice Instructor"],
     categories: ["Voice", "Musical Theater"],
     bio:
