@@ -84,6 +84,15 @@ const TEAM: Person[] = [
       "Maggie grew up with New Jersey Ballet and holds a BFA from The Juilliard School with additional training at the Martha Graham and José Limón schools. She danced with Ailey II and Alvin Ailey American Dance Theater and currently teaches across Nashville including Belmont University and Lipscomb University.",
   },
   {
+    id: "demaree-hill",
+    name: "Demaree Hill",
+    headshot: "/images/Demaree Headshot.jpg",
+    roles: ["Voice Instructor"],
+    categories: ["Voice", "Musical Theater"],
+    bio:
+      "Demaree is a professional actress, singer, and coach with over 2 decades of experience on stage and screen. She began her career on Broadway at age 8, starring as Young Cosette in Les Miserables, and later toured the country in Wicked, The Sectet Garden, & Big: The musical. She also recently recorded a reimagined duet of \"You'll Never Walk Alone\" with Dolly Parton.",
+  },
+  {
     id: "jason-pond",
     name: "Jason Pond",
     headshot: "/images/Jason_Bio_Pic.jpg",
@@ -220,7 +229,7 @@ function Owners({ owners }: { owners: Person[] }) {
         {owners.map((p) => (
           <div key={p.id} className="bg-white rounded-2xl shadow-xl p-6 flex gap-6 items-center">
             <div className="relative w-32 h-40 flex-shrink-0">
-              <Image src={p.headshot} alt={p.name} fill className="object-cover rounded-xl" sizes="128px" />
+              <Image src={p.headshot} alt={p.name} fill className="object-contain object-top rounded-xl" sizes="128px" />
             </div>
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-dance-purple">{p.name}</h3>
