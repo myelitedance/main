@@ -33,7 +33,7 @@ const TEAM: Person[] = [
     name: "Kiana Renae",
     headshot: "/images/Kiana_Renae.jpg",
     roles: ["Dance Team Director", "Dance Instructor"],
-    categories: ["Contemporary"],
+    categories: ["Jazz", "Contemporary", "Hip Hop"],
     isFeaturedDirector: true,
     bio:
       "Kiana Renae is a dance educator, adjudicator, and coach from Southern New Hampshire. She trained with Saving Grace Dance Ensemble and Boston Community Dance Project, performing in NYC and Boston at venues like Alvin Ailey Studios and Times Square. She toured the Northeast teaching and managing events for Step Up 2 Dance and has adjudicated for KAR, NexStar, and Sheer Elite. Now based in Nashville with Fresh Talent Group, Kiana is also an ICF-certified life coach, musician, and board member of Satellite School of the Arts. Her passion is inspiring others through dance, music, and storytelling.",
@@ -43,7 +43,7 @@ const TEAM: Person[] = [
     name: "Lisa Hays",
     headshot: "/images/lisa_hays.webp",
     roles: ["Dance Instructor"],
-    categories: ["Mini-Movers"],
+    categories: ["Mini-Movers", "Ballet", "Tap"],
     bio:
       "Lisa began dancing at the age of four with The Dorothy Frankovitch School of Theatrical Arts in Las Vegas, Nevada. By the age of ten, she was giving solo performances in pointe and flamenco dance... Ms. Lisa believes that every dancer should have a strong foundation in ballet and pulls her teaching style mainly from the Russian Vaganova school. Besides teaching at Elite, Lisa is currently competing in Irish dance and gives private lessons in flute, piano, and harp.",
   },
@@ -61,7 +61,7 @@ const TEAM: Person[] = [
     name: "Molly Pena",
     headshot: "/images/Molly_Pena.jpeg",
     roles: ["Dance Instructor"],
-    categories: ["Contemporary"],
+    categories: ["Ballet", "Pointe", "Jazz", "Hip Hop", "Contemporary"],
     bio:
       "Molly holds an MFA in Dance from the University of Arizona and a BA in Dance Performance from Chapman University. She has taught at Gus Giordano Jazz Dance School, CSUF, Grossmont College, and MTSU as an adjunct professor. As a performer, Molly was a principal dancer with Royal Flux (NBC's World of Dance) and with Talia Favia’s company, The Difference Between.",
   },
@@ -79,7 +79,7 @@ const TEAM: Person[] = [
     name: "Maggie Pelton",
     headshot: "/images/Mag Headshot.jpg",
     roles: ["Dance Instructor"],
-    categories: ["Ballet", "Modern"],
+    categories: ["Ballet", "Pointe"],
     bio:
       "Maggie grew up with New Jersey Ballet and holds a BFA from The Juilliard School with additional training at the Martha Graham and José Limón schools. She danced with Ailey II and Alvin Ailey American Dance Theater and currently teaches across Nashville including Belmont University and Lipscomb University.",
   },
