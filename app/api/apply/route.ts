@@ -4,8 +4,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
+const requireEnv = (k: string) => {
+  const v = process.env[k];
+  if (!v) throw new Error(`Missing env: ${k}`);
+  return v;
+};
 // Create a Resend client with your API key in env.
-const resend = new Resend(process.env.RESEND_API_KEY);
+const RESEND_API_KEY = requireEnv("RESEND_API_KEY");
+
+const resend = new Resend(RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,15 +58,15 @@ export async function POST(req: NextRequest) {
       </div>
     `;
 
-    // CHANGE THESE to your desired from/to
-    const toAddress = process.env.APPLY_TO_EMAIL || "frontdesk@myelitedance.com";
-    const fromAddress = process.env.APPLY_FROM_EMAIL || "Elite Dance <no-reply@myelitedance.com>";
+    
+const EMAIL_FROM     = requireEnv("EMAIL_FROM"); // e.g. "Elite Dance <hello@myelitedance.com>"
+const EMAIL_TO       = requireEnv("EMAIL_TO");   // e.g. "frontdesk@myelitedance.com"
 
     const { error } = await resend.emails.send({
-      from: fromAddress,
-      to: [toAddress],
+      from: EMAIL_FROM,
+      to: EMAIL_TO,
       replyTo: email ? [email] : undefined,
-      subject,
+      subject: "New Instructor Application",
       html,
       attachments,
     });
