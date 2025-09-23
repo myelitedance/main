@@ -23,14 +23,24 @@ export async function POST(req: NextRequest) {
     const lastName = (formData.get("lastName") as string) || "";
     const email = (formData.get("email") as string) || "";
     const phone = (formData.get("phone") as string) || "";
-    const disciplines = (formData.get("disciplines") as string) || "";
+    //const disciplines = (formData.get("disciplines") as string) || "";
     const availability = (formData.get("availability") as string) || "";
     const links = (formData.get("links") as string) || "";
     const source = (formData.get("source") as string) || "teach-page";
 
     // Attachment (optional)
     const file = formData.get("attachment") as File | null;
+// ✅ Collect all checked disciplines (works whether you name inputs "disciplines" or "disciplines[]")
+const rawDisciplines =
+  formData.getAll("disciplines").length > 0
+    ? formData.getAll("disciplines")
+    : formData.getAll("disciplines[]"); // fallback if you used [] in the name
 
+// FormDataEntryValue can be string | File, so normalize to strings:
+const disciplines = rawDisciplines
+  .map((v) => (typeof v === "string" ? v : ""))
+  .filter(Boolean)
+  .join(", ");
     let attachments: { filename: string; content: Buffer }[] = [];
     if (file) {
       const arrayBuffer = await file.arrayBuffer();
@@ -49,7 +59,7 @@ export async function POST(req: NextRequest) {
             <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>Name</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${firstName} ${lastName}</td></tr>
             <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>Email</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${email}</td></tr>
             <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>Phone</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${phone}</td></tr>
-            <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>Disciplines</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${disciplines}</td></tr>
+            <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>Disciplines</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${disciplines || "(none selected)"}</td></tr>
             <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>Availability</strong></td><td style="padding:8px; border-bottom:1px solid #eee; white-space:pre-wrap;">${availability}</td></tr>
             <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>Links</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${links}</td></tr>
           </tbody>
