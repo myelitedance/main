@@ -52,9 +52,9 @@ export default function TeachApplyPage() {
       {/* Hero */}
       <section className="relative overflow-hidden pt-16">
         <div className="max-w-7xl mx-auto px-6 py-14 text-center">
-          <span className="inline-block px-3 py-1 rounded-full bg-dance-pink/10 text-dance-pink text-sm font-semibold">
-            We’re hiring instructors
-          </span>
+          <span className="inline-block px-4 py-2 rounded-full bg-dance-pink/10 text-dance-pink text-base sm:text-xl md:text-3xl font-semibold">
+  We’re looking for amazing dance instructors
+</span>
           <h1 className="mt-6 text-4xl md:text-5xl font-extrabold leading-tight">
             Share your talent. <span className="text-dance-purple">Inspire the next generation.</span>
           </h1>
@@ -108,7 +108,7 @@ export default function TeachApplyPage() {
               <h3 className="font-semibold text-xl text-dance-blue">Voice Instructor</h3>
               <p className="text-gray-600 mt-2">Beginner–intermediate voice; performance and audition prep.</p>
               <p className="text-gray-600 mt-2">
-                <strong>Hours:</strong> Afternoons/evenings; some daytime availability ideal.
+                <strong>Hours:</strong> Afternoons/evenings; some daytime availability.
               </p>
             </div>
             <div className="p-6 bg-white rounded-2xl border">
@@ -117,7 +117,7 @@ export default function TeachApplyPage() {
                 Piano • Violin • Guitar. Beginner–Intermediate; comfortable working with students as young as 5.
               </p>
               <p className="text-gray-600 mt-2">
-                <strong>Hours:</strong> Afternoons/evenings; some daytime availability ideal.
+                <strong>Hours:</strong> Afternoons/evenings; some daytime availability.
               </p>
             </div>
           </div>
