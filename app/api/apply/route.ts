@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     `;
 
     // CHANGE THESE to your desired from/to
-    const toAddress = process.env.APPLY_TO_EMAIL || "info@myelitedance.com";
+    const toAddress = process.env.APPLY_TO_EMAIL || "frontdesk@myelitedance.com";
     const fromAddress = process.env.APPLY_FROM_EMAIL || "Elite Dance <no-reply@myelitedance.com>";
 
     const { error } = await resend.emails.send({
@@ -75,3 +75,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unable to process application." }, { status: 500 });
   }
 }
+
+// =============================
+// Setup Notes
+// =============================
+// 1) Ensure Tailwind is configured with the Elite Dance colors in tailwind.config.js (see note above).
+// 2) Add environment variables (e.g., in .env.local):
+//    RESEND_API_KEY=your_resend_key
+//    APPLY_TO_EMAIL=info@myelitedance.com
+//    APPLY_FROM_EMAIL="Elite Dance <no-reply@myelitedance.com>"
+// 3) This example assumes Next.js (App Router). Place files as shown.
+// 4) If you use a SiteHeader web component, you can import your React header instead or keep this page standalone.
+// 5) Google Analytics: add your GA Script in app/layout.tsx using next/script if needed.
