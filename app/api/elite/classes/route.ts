@@ -1,29 +1,11 @@
-// /app/api/elite/classes/route.ts
 import { NextResponse, NextRequest } from "next/server";
+import { akadaFetch } from "@/lib/akada";
 
 export const runtime = "nodejs";
 
-const AKADA_API = "https://app.akadadance.com/api/v3/studio";
-const need = (k: string) => {
-  const v = process.env[k];
-  if (!v) throw new Error(`Missing env: ${k}`);
-  return v;
-};
-
-const AKADA_API_KEY    = need("AKADA_API_KEY");
-const AKADA_AUTH_TOKEN = need("AKADA_AUTH_TOKEN"); // Akada user-token
-
-/** Map Akada levelDescription to a numeric-ish rank for optional experience filtering */
-function levelRank(levelDesc?: string | null): number {
-  const s = (levelDesc || "").toUpperCase().trim();
-  if (s.includes("1/2")) return 1.5;
-  if (s === "I" || s === "1" || s === "K-1") return 1;
-  if (s === "II" || s === "2") return 2;
-  if (s === "III" || s === "3") return 3;
-  if (s.includes("4")) return 4;
-  if (s === "2YR" || s === "3-4" || s === "4-5" || s === "MM" || s === "PW" || s === "PRE") return 0.5;
-  return 2; // mid/default
-}
+// Simple in-memory cache (per server instance)
+let classesCache: { key: string; data: any[]; exp: number } | null = null;
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 
 function firstDayString(c: any): string {
   const map: [keyof any, string][] = [
@@ -38,49 +20,46 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const ageParam = searchParams.get("age");
-    const expParam = searchParams.get("experience"); // optional: "0", "1-2", "3-4", "5+"
 
-    const url = new URL(`${AKADA_API}/classes`);
-
-    const res = await fetch(url.toString(), {
-      headers: {
-        AkadaApiKey: AKADA_API_KEY,
-        Authorization: `Bearer ${AKADA_AUTH_TOKEN}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`Akada classes ${res.status}: ${txt}`);
+    // cache key based on filters that affect results
+    const key = `classes:${ageParam || ""}`;
+    if (classesCache && classesCache.key === key && Date.now() < classesCache.exp) {
+      return NextResponse.json({ classes: classesCache.data, cached: true });
     }
 
-    const j = await res.json();
-    const raw: any[] = j?.returnValue?.currentPageItems || [];
+    // NOTE: BASE is .../api/v3; include /studio here
+    const res = await akadaFetch(`/studio/classes`, { method: "GET" });
+    const text = await res.text();
+    if (!res.ok) {
+      // helpful surface of Akada error
+      return NextResponse.json({ error: `Akada classes ${res.status}: ${text}` }, { status: res.status });
+    }
 
-    // Normalize + carry through sunday + levelDescription
+    // Akada wraps in returnValue.currentPageItems
+    const j = JSON.parse(text);
+    const raw: any[] = j?.returnValue?.currentPageItems || j?.returnValue || [];
+
     const normalized = raw.map((c) => {
       const day = firstDayString(c);
       const time = `${(c.startTimeDisplay || "").trim()} - ${(c.stopTimeDisplay || "").trim()}`;
       return {
         id: String(c.id),
         name: String(c.description || "").trim(),
-        level: String(c.levelDescription || "").trim(), // keep raw for filtering
+        level: String(c.levelDescription || "").trim(),
         type: String(c.typeDescription || "").trim(),
         ageMin: Number(c.lowerAgeLimit ?? 0),
         ageMax: Number(c.upperAgeLimit ?? 99),
         day,
         time,
-        sunday: !!c.sunday, // keep raw boolean
+        sunday: !!c.sunday,
         currentEnrollment: c.currentEnrollment,
         maxEnrollment: c.maxEnrollment,
       };
     });
 
+    // Filters
     let filtered = normalized;
 
-    // Age filter: within lowerAgeLimit..upperAgeLimit
     const age = ageParam ? Number(ageParam) : NaN;
     if (!Number.isNaN(age)) {
       filtered = filtered.filter((c) => {
@@ -90,27 +69,13 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Exclude Sunday classes
-    filtered = filtered.filter((c) => c.sunday !== true);
+    filtered = filtered
+      .filter((c) => c.sunday !== true)                                  // drop Sundays
+      .filter((c) => (c.level || "").trim().toUpperCase() !== "N/A")     // drop N/A
+      .filter((c) => c.day || c.time.trim() !== "-");                     // ensure has schedule
 
-    // Exclude levelDescription === "N/A"
-    filtered = filtered.filter((c) => (c.level || "").trim().toUpperCase() !== "N/A");
-
-    /* (Optional) Experience buckets — keep if you still want it
-    if (expParam) {
-      const want = (() => {
-        if (expParam === "0" || expParam === "1-2") return { min: 0, max: 1.6 };
-        if (expParam === "3-4") return { min: 1.6, max: 3.6 };
-        return { min: 3.6, max: 99 }; // "5+"
-      })();
-      filtered = filtered.filter((c) => {
-        const r = levelRank(c.level);
-        return r >= want.min && r < want.max;
-      });
-    }*/
-
-    // Keep only classes that have a day/time (optional polish)
-    filtered = filtered.filter((c) => c.day || c.time.trim() !== "-");
+    // Cache it
+    classesCache = { key, data: filtered, exp: Date.now() + CACHE_TTL_MS };
 
     return NextResponse.json({ classes: filtered });
   } catch (err: any) {
