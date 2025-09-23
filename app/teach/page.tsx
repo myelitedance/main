@@ -192,18 +192,33 @@ export default function TeachApplyPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">Disciplines</label>
-              <select name="disciplines" className="mt-1 w-full border rounded-lg px-3 py-2">
-                <option>Dance - Ballet</option>
-                <option>Dance - Tap</option>
-                <option>Dance - Jazz/Lyrical</option>
-                <option>Dance - Hip Hop</option>
-                <option>Dance - Contemporary</option>
-                <option>Dance - Acro</option>
-                <option>Voice</option>
-                <option>Other</option>
-              </select>
-            </div>
+  <label className="text-sm font-medium block mb-2">Disciplines (check all that apply)</label>
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    {[
+      "Dance - Ballet",
+      "Dance - Tap",
+      "Dance - Jazz/Lyrical",
+      "Dance - Hip Hop",
+      "Dance - Contemporary",
+      "Dance - Acro",
+      "Voice",
+      "Music - Piano",
+      "Music - Violin",
+      "Music - Guitar",
+      "Other",
+    ].map((option) => (
+      <label key={option} className="flex items-center space-x-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          name="disciplines"
+          value={option}
+          className="rounded border-gray-300 text-dance-purple focus:ring-dance-purple"
+        />
+        <span>{option}</span>
+      </label>
+    ))}
+  </div>
+</div>
             <div>
               <label className="text-sm font-medium">Availability</label>
               <textarea
