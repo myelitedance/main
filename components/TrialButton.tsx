@@ -28,10 +28,11 @@ export default function TrialButton({ variant = "small", label = "Book Your Free
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Book Your Free Trial">
-        {/* BookTrialForm already manages its own state & submission */}
-        {/* If BookTrialForm accepts onClose, pass it to close after submit */}
-        <BookTrialForm /* onClose={() => setOpen(false)} */ />
-      </Modal>
+  <BookTrialForm
+    key={open ? "form-open" : "form-closed"} // 👈 this forces a remount
+    onClose={() => setOpen(false)}
+  />
+</Modal>
     </>
   );
 }

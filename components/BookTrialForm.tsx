@@ -173,6 +173,8 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
     toStep2();
   };
 
+  const AUTO_CLOSE_MS = 1800;
+  const [submitted, setSubmitted] = useState(false);
   const submitFinal = async () => {
     setMsg(null);
 
@@ -192,45 +194,50 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
     }
 
     setBusy(true);
-    try {
-      const res = await fetch("/api/elite/lead-complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: s2.decision, // "trial" | "inquiry"
-          contactId,
-          parentFirst: s1.parentFirst,
-          parentLast: s1.parentLast,
-          email: s1.email,
-          parentPhone: s2.parentPhone,
-          smsConsent: s2.smsConsent,
-          dancerFirst: s1.dancerFirst,
-          dancerLast: s2.dancerLast || "",
-          age: s1.dancerAge,
-          experience: s1.experience,
+  try {
+    const res = await fetch("/api/elite/lead-complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: s2.decision, // "trial" | "inquiry"
+        contactId,
+        parentFirst: s1.parentFirst,
+        parentLast: s1.parentLast,
+        email: s1.email,
+        parentPhone: s2.parentPhone,
+        smsConsent: s2.smsConsent,
+        dancerFirst: s1.dancerFirst,
+        dancerLast: s2.dancerLast || "",
+        age: s1.dancerAge,
+        experience: s1.experience,
+        selectedClassIds: s2.selectedClassIds,
+        selectedClassLabels: s2.selectedClassLabels,
+        wantsTeam: s1.wantsTeam,
+        notes: s2.notes || "",
+      }),
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(text);
 
-          // arrays (IDs + friendly labels)
-          selectedClassIds: s2.selectedClassIds,
-          selectedClassLabels: s2.selectedClassLabels,
+    // success message
+    const thankYou =
+      s2.decision === "trial"
+        ? "Awesome! We’ve sent your trial request to our front desk. Watch for a confirmation."
+        : "Thanks! We’ve sent your question to our front desk and will follow up shortly.";
 
-          wantsTeam: s1.wantsTeam,
-          notes: s2.notes || "",
-        }),
-      });
-      const text = await res.text();
-      if (!res.ok) throw new Error(text);
+    setSubmitted(true);
+setMsg(thankYou);
 
-      setMsg(
-        s2.decision === "trial"
-          ? "Awesome! We’ve sent your trial request to our front desk. Watch for a confirmation."
-          : "Thanks! We’ve sent your question to our front desk and will follow up shortly."
-      );
-    } catch (e: any) {
-      setMsg(e?.message || "Something went wrong. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
+setTimeout(() => {
+  onClose?.();
+  setSubmitted(false);
+}, AUTO_CLOSE_MS);
+  } catch (e: any) {
+    setMsg(e?.message || "Something went wrong. Please try again.");
+  } finally {
+    setBusy(false);
+  }
+};
 
   return (
     <div className="bg-gray text-black px-6 py-4">
@@ -509,6 +516,7 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
               <button
                 disabled={
                   busy ||
+                  submitted ||
                   !s2.decision ||
                   (s2.decision === "trial" && (!s2.parentPhone || !s2.smsConsent || s2.selectedClassIds.length === 0))
                 }
