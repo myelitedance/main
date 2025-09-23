@@ -53,7 +53,8 @@ async function loginForToken(): Promise<string> {
     throw new Error(`Akada login parse error: ${text}`);
   }
 
-  const token: string | undefined = j?.returnValue;
+  const token: string | undefined = 
+    (typeof j?.returnValue === "string" ? j?.returnValue : j?.returnValue?.token);
   if (!token) {
     warn("LOGIN missing returnValue ◀︎", j);
     throw new Error("Akada login: missing token (returnValue)");
@@ -124,6 +125,7 @@ export async function akadaFetch(
       try { await refreshToken(); } catch (e) { warn("refresh failed:", e); }
       return akadaFetch(path, init, false);
     }
+    return new Response(body, { status: res.status, headers: res.headers } );
   }
 
   log("RES ◀︎", res.status, res.statusText);
