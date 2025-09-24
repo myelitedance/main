@@ -102,24 +102,47 @@ async function handleLookup() {
     return;
   }
   setLookupBusy(true);
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 10000);
+
   try {
-    const r = await fetch("/api/ghl/lookup", {
+    console.debug("[lookup] starting", { lookupEmail });
+    const r = await fetch(`/api/ghl/lookup?debug=1`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: lookupEmail }),
+      signal: ctrl.signal,
     });
-    if (!r.ok) throw new Error("Lookup failed");
-    const data = await r.json(); // { found: boolean, contactId?: string, formDraft?: NewStudentForm }
-    if (!data.found) {
-      setLookupMsg("No existing record found. You can continue filling out the form.");
-      setField("email", lookupEmail); // prefill so they don’t retype
+
+    if (!r.ok) {
+      const text = await r.text().catch(() => "");
+      console.error("[lookup] http error", r.status, text);
+      setLookupMsg(`Lookup failed (HTTP ${r.status}). ${text || "See console for details."}`);
       return;
     }
-    mergeForm({ ...(data.formDraft || {}), email: lookupEmail });
+
+    const data = await r.json();
+    console.debug("[lookup] success", data);
+
+    if (!data.found) {
+      setLookupMsg("No existing record found. You can continue filling out the form.");
+      setField("email", lookupEmail);
+      return;
+    }
+
+    // merge server values first; keep any fields the user already typed
+    setForm((prev) => ({ ...(data.formDraft || {}), ...prev, email: lookupEmail }));
     setLookupMsg("We found your info and pre-filled the form. Please review and update if needed.");
-  } catch {
-    setLookupMsg("We couldn’t check right now. Please try again or continue filling the form.");
+  } catch (e: any) {
+    console.error("[lookup] fetch threw", e);
+    setLookupMsg(
+      e?.name === "AbortError"
+        ? "Lookup timed out. Please try again."
+        : `We couldn’t check right now. ${e?.message || ""}`
+    );
   } finally {
+    clearTimeout(t);
     setLookupBusy(false);
   }
 }
