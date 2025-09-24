@@ -453,14 +453,16 @@ const removeChild = (idx: number) => {
 
     {/* Add Another Child button (max 3 total: 1 primary + 2 additional) */}
     {(form.additionalStudents || []).length < 2 && (
-      <button
-        type="button"
-        onClick={addChild}
-        className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#E9D5FF] bg-[#F3E8FF] px-3 py-2 text-[#8B5CF6] shadow-sm hover:bg-[#EDE9FE] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
-      >
-        <Plus className="h-4 w-4" />
-        Add Another Child
-      </button>
+      <Button
+  type="button"
+  onClick={addChild}
+  size="sm"
+  variant="outline"
+  className="inline-flex w-fit items-center gap-1.5 border-[#E9D5FF] bg-[#F3E8FF] text-xs font-medium text-[#8B5CF6] hover:bg-[#EDE9FE] focus:ring-[#8B5CF6]"
+>
+  <Plus className="h-3.5 w-3.5" />
+  Add Another Child
+</Button>
     )}
   </div>
 </section>
