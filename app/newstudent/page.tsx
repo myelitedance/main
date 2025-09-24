@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,18 +11,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import dynamic from "next/dynamic";
 import { Loader2, Send, CheckCircle2 } from "lucide-react";
 
-// Signature pad must be client-only
+// Signature pad must be client-only. We'll use an any-typed alias to satisfy TS for the ref.
 const SignatureCanvas = dynamic(() => import("react-signature-canvas"), { ssr: false });
+const SignatureCanvasAny = SignatureCanvas as unknown as React.ComponentType<any>;
 
-/**
- * New Student Digital Entry Form
- * Route: /newstudent
- * Target devices: Samsung Galaxy Tab S4 (10.5" 2560x1600, 16:10), iPad 8th gen (10.2" 2160x1620, 4:3)
- * Orientation: Portrait-first, touch-optimized for on-screen keyboard.
- * Theme: Elite Dance & Music: #8B5CF6 (purple), #EC4899 (pink), #3B82F6 (blue)
- */
-
-// ----- Types -----
+// ---------- Types ----------
 export type NewStudentForm = {
   studentFirstName?: string;
   studentLastName?: string;
@@ -45,12 +39,13 @@ export type NewStudentForm = {
   benefits?: string[];
   benefitsOther?: string;
   area6to12mo?: "Yes" | "No" | "";
-  waiverSigned?: boolean;
+  waiverAcknowledged?: boolean; // page 1 checkbox
+  waiverSigned?: boolean;       // set when signature drawn on page 2
   waiverDate?: string;
   signatureDataUrl?: string;
 };
 
-// ----- Utils -----
+// ---------- Utils ----------
 function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
 }
@@ -66,12 +61,13 @@ function ageFromDOB(dob?: string): string {
   return String(age);
 }
 
-// Persist form state in localStorage so staff don't lose entries if the page reloads
 const STORAGE_KEY = "elite-newstudent-draft";
 
 export default function NewStudentEntry() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1); // two-page flow
+  const [policies, setPolicies] = useState<string>("");
   const sigRef = useRef<any>(null);
 
   const [form, setForm] = useState<NewStudentForm>(() => {
@@ -79,7 +75,9 @@ export default function NewStudentEntry() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         return raw ? (JSON.parse(raw) as NewStudentForm) : {};
-      } catch (_) {}
+      } catch {
+        // ignore
+      }
     }
     return {};
   });
@@ -87,7 +85,9 @@ export default function NewStudentEntry() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
   }, [form]);
 
   // Ensure 16px base font-size to prevent zoom on mobile inputs
@@ -97,17 +97,26 @@ export default function NewStudentEntry() {
     }
   }, []);
 
+  // Load studio policies from a server document so content stays centralized
+  useEffect(() => {
+    if (step === 2) {
+      fetch("/api/policies")
+        .then((r) => (r.ok ? r.text() : Promise.reject(new Error("Policies not found"))))
+        .then((txt) => setPolicies(txt))
+        .catch(() => setPolicies("Studio Policies currently unavailable. Please see the office for a printed copy."));
+    }
+  }, [step]);
+
   const setField = <K extends keyof NewStudentForm>(name: K, value: NewStudentForm[K]) =>
     setForm((f) => ({ ...f, [name]: value }));
 
   const derivedAge = useMemo(() => ageFromDOB(form.birthdate), [form.birthdate]);
 
-  // ----- Build payloads for each integration -----
+  // ---------- Payloads ----------
   function buildGhlPayload(f: NewStudentForm & { age?: string; signatureDataUrl?: string }) {
     return {
       source: "newstudent",
       contact: {
-        // In CRM, treat Parent 1 as the primary contact
         name: f.parent1 || "",
         firstName: (f.parent1 || "").split(" ")[0] || f.parent1 || "",
         lastName: (f.parent1 || "").split(" ").slice(1).join(" ") || "",
@@ -130,6 +139,7 @@ export default function NewStudentEntry() {
           benefits: (f.benefits || []).join(", ") || "",
           benefits_other: f.benefitsOther || "",
           area6to12mo: f.area6to12mo || "",
+          waiverAcknowledged: !!f.waiverAcknowledged,
           waiverSignedAt: f.waiverDate || "",
         },
       },
@@ -165,6 +175,7 @@ export default function NewStudentEntry() {
         birthdate: f.birthdate || "",
         age: derivedAge || f.age || "",
         waiver: {
+          acknowledged: !!f.waiverAcknowledged,
           signed: !!f.waiverSigned,
           signedAt: f.waiverDate || "",
           signatureDataUrl: f.signatureDataUrl || "",
@@ -173,46 +184,84 @@ export default function NewStudentEntry() {
     };
   }
 
+  // ---------- Submit ----------
   async function handleSubmit(e: React.FormEvent<HTMLButtonElement | HTMLFormElement>) {
     e.preventDefault();
+
+    if (step === 1) {
+      if (!form.waiverAcknowledged) {
+        alert("Please acknowledge the Waiver / Release to continue.");
+        return;
+      }
+      setStep(2);
+      return;
+    }
+
     setSubmitting(true);
 
-    // Capture signature as data URL
+    // Capture signature as data URL (required on page 2)
     let signatureDataUrl = "";
     try {
       if (sigRef.current && !sigRef.current.isEmpty()) {
         signatureDataUrl = sigRef.current.getTrimmedCanvas().toDataURL("image/png");
       }
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
 
-    const payload = { ...form, age: derivedAge, signatureDataUrl };
+    if (!signatureDataUrl) {
+      alert("Please sign to acknowledge the studio policies.");
+      setSubmitting(false);
+      return;
+    }
+
+    const payload = { ...form, age: derivedAge, signatureDataUrl, waiverSigned: true };
 
     const ghlPayload = buildGhlPayload(payload);
     const akadaPayload = buildAkadaPayload(payload);
 
+    const AKADA_ENABLED = false; // No create/update endpoints available yet
+
     try {
-      const [ghlRes, akadaRes] = await Promise.allSettled([
+      const promises: Promise<Response>[] = [
         fetch("/api/ghl/new-student", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(ghlPayload),
         }),
-        fetch("/api/akada/new-student", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(akadaPayload),
-        }),
-      ]);
+      ];
 
+      if (AKADA_ENABLED) {
+        promises.push(
+          fetch("/api/akada/new-student", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(akadaPayload),
+          })
+        );
+      }
+
+      const results = await Promise.allSettled(promises);
       const errors: string[] = [];
-      if (ghlRes.status === "rejected" || (ghlRes.value && !ghlRes.value.ok)) errors.push("GHL");
-      if (akadaRes.status === "rejected" || (akadaRes.value && !akadaRes.value.ok)) errors.push("AKADA");
+      // GHL
+      if (results[0].status === "rejected" || (results[0].status === "fulfilled" && !results[0].value.ok)) {
+        errors.push("GHL");
+      }
+
+      if (AKADA_ENABLED) {
+        const r = results[1];
+        if (r && (r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok))) errors.push("AKADA");
+      }
 
       if (errors.length) {
         alert(`Submitted, but there was a problem sending to: ${errors.join(", ")}. Please notify the office.`);
       } else {
         setSubmitted(true);
-        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // ignore
+        }
       }
     } catch (err) {
       console.error(err);
@@ -222,6 +271,7 @@ export default function NewStudentEntry() {
     }
   }
 
+  // ---------- Options ----------
   const benefitsOptions = [
     "improve confidence",
     "improve focus",
@@ -244,218 +294,231 @@ export default function NewStudentEntry() {
     { key: "Other", detail: "Please specify" },
   ];
 
-  const SignatureCanvasAny = SignatureCanvas as unknown as React.ComponentType<any>;
-
+  // ---------- Render ----------
   return (
     <div className="min-h-screen bg-white text-neutral-900">
       {/* Sticky header */}
-      <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60" style={{borderColor: "#8B5CF6"}}>
+      <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60" style={{ borderColor: "#8B5CF6" }}>
         <div className="mx-auto max-w-screen-sm px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight" style={{color: "#8B5CF6"}}>Elite Dance & Music — New Student</h1>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: "#8B5CF6" }}>Elite Dance & Music — New Student</h1>
           <div className="text-xs text-neutral-500">/newstudent</div>
         </div>
       </header>
 
       <main className="mx-auto max-w-screen-sm px-4 pb-32 pt-4">
-        <Card className="shadow-lg rounded-2xl border" style={{borderColor: "#3B82F6"}}>
+        <Card className="shadow-lg rounded-2xl border" style={{ borderColor: "#3B82F6" }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">New Student Information</CardTitle>
             <div className="text-sm text-neutral-500">Please complete one form per child.</div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Student */}
-            <section className="space-y-3">
-              <h2 className="text-base font-semibold" style={{color: "#EC4899"}}>Student</h2>
-              <div className="grid grid-cols-1 gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="studentFirstName">First name *</Label>
-                    <Input id="studentFirstName" required autoComplete="given-name" inputMode="text" value={form.studentFirstName||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("studentFirstName", e.target.value)} />
-                  </div>
-                  <div>
-                    <Label htmlFor="studentLastName">Last name *</Label>
-                    <Input id="studentLastName" required autoComplete="family-name" inputMode="text" value={form.studentLastName||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("studentLastName", e.target.value)} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="birthdate">Birthdate *</Label>
-                    <Input id="birthdate" type="date" required value={form.birthdate||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("birthdate", e.target.value)} />
-                  </div>
-                  <div>
-                    <Label htmlFor="age">Age</Label>
-                    <Input id="age" value={derivedAge || form.age || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("age", e.target.value)} inputMode="numeric" />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Parents */}
-            <section className="space-y-3">
-              <h2 className="text-base font-semibold" style={{color: "#EC4899"}}>Parent / Guardian</h2>
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <Label htmlFor="parent1">Parent/Guardian 1 (Account Name) *</Label>
-                  <Input id="parent1" required autoComplete="name" value={form.parent1||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("parent1", e.target.value)} />
-                </div>
-                <div>
-                  <Label htmlFor="parent2">Parent/Guardian 2 (optional)</Label>
-                  <Input id="parent2" autoComplete="name" value={form.parent2||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("parent2", e.target.value)} />
-                </div>
-              </div>
-            </section>
-
-            {/* Contact */}
-            <section className="space-y-3">
-              <h2 className="text-base font-semibold" style={{color: "#EC4899"}}>Contact</h2>
-              <div className="grid grid-cols-1 gap-3">
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="grid grid-cols-1 gap-2">
-                    <Label htmlFor="primaryPhone">Primary phone *</Label>
-                    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-                      <Input id="primaryPhone" required placeholder="###-###-####" inputMode="tel" autoComplete="tel" value={form.primaryPhone||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("primaryPhone", e.target.value)} />
-                      <div className="flex items-center gap-2">
-                        <Checkbox id="primaryPhoneIsCell" checked={!!form.primaryPhoneIsCell} onCheckedChange={(v)=>setField("primaryPhoneIsCell", Boolean(v))} />
-                        <Label htmlFor="primaryPhoneIsCell" className="text-xs">cell</Label>
+            {step === 1 && (
+              <>
+                {/* Student */}
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Student</h2>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="studentFirstName">First name *</Label>
+                        <Input id="studentFirstName" required autoComplete="given-name" inputMode="text" value={form.studentFirstName || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("studentFirstName", e.target.value)} />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox id="primaryPhoneSmsOptIn" checked={!!form.primaryPhoneSmsOptIn} onCheckedChange={(v)=>setField("primaryPhoneSmsOptIn", Boolean(v))} />
-                        <Label htmlFor="primaryPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+                      <div>
+                        <Label htmlFor="studentLastName">Last name *</Label>
+                        <Input id="studentLastName" required autoComplete="family-name" inputMode="text" value={form.studentLastName || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("studentLastName", e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="birthdate">Birthdate *</Label>
+                        <Input id="birthdate" type="date" required value={form.birthdate || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("birthdate", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label htmlFor="age">Age</Label>
+                        <Input id="age" value={derivedAge || form.age || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("age", e.target.value)} inputMode="numeric" />
                       </div>
                     </div>
                   </div>
+                </section>
 
-                  <div className="grid grid-cols-1 gap-2">
-                    <Label htmlFor="altPhone">Alternate phone</Label>
-                    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-                      <Input id="altPhone" placeholder="###-###-####" inputMode="tel" autoComplete="tel" value={form.altPhone||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("altPhone", e.target.value)} />
-                      <div className="flex items-center gap-2">
-                        <Checkbox id="altPhoneIsCell" checked={!!form.altPhoneIsCell} onCheckedChange={(v)=>setField("altPhoneIsCell", Boolean(v))} />
-                        <Label htmlFor="altPhoneIsCell" className="text-xs">cell</Label>
+                {/* Parents */}
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Parent / Guardian</h2>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <Label htmlFor="parent1">Parent/Guardian 1 (Account Name) *</Label>
+                      <Input id="parent1" required autoComplete="name" value={form.parent1 || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("parent1", e.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="parent2">Parent/Guardian 2 (optional)</Label>
+                      <Input id="parent2" autoComplete="name" value={form.parent2 || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("parent2", e.target.value)} />
+                    </div>
+                  </div>
+                </section>
+
+                {/* Contact */}
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Contact</h2>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="grid grid-cols-1 gap-2">
+                        <Label htmlFor="primaryPhone">Primary phone *</Label>
+                        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                          <Input id="primaryPhone" required placeholder="###-###-####" inputMode="tel" autoComplete="tel" value={form.primaryPhone || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("primaryPhone", e.target.value)} />
+                          <div className="flex items-center gap-2">
+                            <Checkbox id="primaryPhoneIsCell" checked={!!form.primaryPhoneIsCell} onCheckedChange={(v) => setField("primaryPhoneIsCell", Boolean(v))} />
+                            <Label htmlFor="primaryPhoneIsCell" className="text-xs">cell</Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox id="primaryPhoneSmsOptIn" checked={!!form.primaryPhoneSmsOptIn} onCheckedChange={(v) => setField("primaryPhoneSmsOptIn", Boolean(v))} />
+                            <Label htmlFor="primaryPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox id="altPhoneSmsOptIn" checked={!!form.altPhoneSmsOptIn} onCheckedChange={(v)=>setField("altPhoneSmsOptIn", Boolean(v))} />
-                        <Label htmlFor="altPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+
+                      <div className="grid grid-cols-1 gap-2">
+                        <Label htmlFor="altPhone">Alternate phone</Label>
+                        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                          <Input id="altPhone" placeholder="###-###-####" inputMode="tel" autoComplete="tel" value={form.altPhone || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("altPhone", e.target.value)} />
+                          <div className="flex items-center gap-2">
+                            <Checkbox id="altPhoneIsCell" checked={!!form.altPhoneIsCell} onCheckedChange={(v) => setField("altPhoneIsCell", Boolean(v))} />
+                            <Label htmlFor="altPhoneIsCell" className="text-xs">cell</Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox id="altPhoneSmsOptIn" checked={!!form.altPhoneSmsOptIn} onCheckedChange={(v) => setField("altPhoneSmsOptIn", Boolean(v))} />
+                            <Label htmlFor="altPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
+                        <Label htmlFor="email">Email address *</Label>
+                        <Input id="email" type="email" required autoComplete="email" inputMode="email" value={form.email || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("email", e.target.value)} />
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
+                        <Label htmlFor="street">Street address *</Label>
+                        <Input id="street" required autoComplete="address-line1" value={form.street || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("street", e.target.value)} />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label htmlFor="city">City *</Label>
+                          <Input id="city" required autoComplete="address-level2" value={form.city || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("city", e.target.value)} />
+                        </div>
+                        <div>
+                          <Label htmlFor="state">State *</Label>
+                          <Input id="state" required autoComplete="address-level1" maxLength={2} placeholder="IL" value={form.state || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("state", e.target.value.toUpperCase())} />
+                        </div>
+                        <div>
+                          <Label htmlFor="zip">Zip *</Label>
+                          <Input id="zip" required inputMode="numeric" autoComplete="postal-code" value={form.zip || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("zip", e.target.value)} />
+                        </div>
                       </div>
                     </div>
                   </div>
+                </section>
 
+                {/* How did you hear about us? */}
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>How did you hear about us?</h2>
+                  <RadioGroup value={form.hearAbout || ""} onValueChange={(v: string) => setField("hearAbout", v)}>
+                    <div className="space-y-2">
+                      {hearOptions.map((opt) => (
+                        <div key={opt.key} className="flex items-start gap-3">
+                          <RadioGroupItem id={`hear-${opt.key}`} value={opt.key} />
+                          <Label htmlFor={`hear-${opt.key}`} className="flex-1">
+                            <div className="font-medium">{opt.key}</div>
+                            <Input className="mt-1" placeholder={`${opt.detail}:`} value={form.hearAbout === opt.key ? (form.hearAboutDetails || "") : ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                              setField("hearAbout", opt.key);
+                              setField("hearAboutDetails", e.target.value);
+                            }} />
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </RadioGroup>
+                </section>
+
+                {/* Benefits */}
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>What benefits were you hoping for?</h2>
                   <div className="grid grid-cols-1 gap-2">
-                    <Label htmlFor="email">Email address *</Label>
-                    <Input id="email" type="email" required autoComplete="email" inputMode="email" value={form.email||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("email", e.target.value)} />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2">
-                    <Label htmlFor="street">Street address *</Label>
-                    <Input id="street" required autoComplete="address-line1" value={form.street||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("street", e.target.value)} />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <Label htmlFor="city">City *</Label>
-                      <Input id="city" required autoComplete="address-level2" value={form.city||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("city", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label htmlFor="state">State *</Label>
-                      <Input id="state" required autoComplete="address-level1" maxLength={2} placeholder="IL" value={form.state||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("state", e.target.value.toUpperCase())} />
-                    </div>
-                    <div>
-                      <Label htmlFor="zip">Zip *</Label>
-                      <Input id="zip" required inputMode="numeric" autoComplete="postal-code" value={form.zip||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("zip", e.target.value)} />
+                    {benefitsOptions.map((label) => {
+                      const checked = (form.benefits || []).includes(label);
+                      return (
+                        <label key={label} className="flex items-center gap-3">
+                          <Checkbox checked={checked} onCheckedChange={(v) => {
+                            const current = new Set(form.benefits || []);
+                            if (v) current.add(label);
+                            else current.delete(label);
+                            setField("benefits", Array.from(current));
+                          }} />
+                          <span>{label}</span>
+                        </label>
+                      );
+                    })}
+                    <div className="grid grid-cols-1 gap-2">
+                      <Label htmlFor="benefitsOther">Other</Label>
+                      <Input id="benefitsOther" value={form.benefitsOther || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("benefitsOther", e.target.value)} />
                     </div>
                   </div>
-                </div>
-              </div>
-            </section>
+                </section>
 
-            {/* How did you hear about us? */}
-            <section className="space-y-3">
-              <h2 className="text-base font-semibold" style={{color: "#EC4899"}}>How did you hear about us?</h2>
-              <RadioGroup value={form.hearAbout||""} onValueChange={(v: string)=>setField("hearAbout", v)}>
-                <div className="space-y-2">
-                  {hearOptions.map((opt) => (
-                    <div key={opt.key} className="flex items-start gap-3">
-                      <RadioGroupItem id={`hear-${opt.key}`} value={opt.key} />
-                      <Label htmlFor={`hear-${opt.key}`} className="flex-1">
-                        <div className="font-medium">{opt.key}</div>
-                        <Input className="mt-1" placeholder={`${opt.detail}:`} value={form.hearAbout === opt.key ? (form.hearAboutDetails||"") : ""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>{
-                          setField("hearAbout", opt.key);
-                          setField("hearAboutDetails", e.target.value);
-                        }} />
-                      </Label>
+                {/* Waiver acknowledgment */}
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Waiver / Release of Liability</h2>
+                  <Textarea readOnly className="h-40 text-[13px] leading-snug" value={`The practice of dance involves the risk of physical injury (with bruises being the most likely injury and broken bones or other more serious physical injuries also being possible.) Understanding this I declare:
+
+That I am willing to accept responsibility for such an eventuality, and;
+
+That I have adequate medical insurance for such an eventuality, and;
+
+That I will not hold any club, member, instructor, or the owners or operators of any facility in which I might practice liable for any injury that I might sustain while practicing dance.
+
+Further, I understand the physical demand of this activity and the practice required for its development and mastery. As a consideration for my own safety and enjoyment, as well as that of other students, I commit to dedicate necessary practice of the instructions and techniques given to me in class.`} />
+                  <label className="flex items-center gap-3">
+                    <Checkbox checked={!!form.waiverAcknowledged} onCheckedChange={(v) => setField("waiverAcknowledged", Boolean(v))} />
+                    <span>I have read and acknowledge the Waiver / Release above.</span>
+                  </label>
+                </section>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                {/* Policies loaded from server document */}
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Studio Policies</h2>
+                  <Textarea readOnly className="h-72 text-[13px] leading-snug" value={policies} />
+                </section>
+
+                {/* Signature at bottom of policies page */}
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Signature</h2>
+                  <div className="space-y-2">
+                    <Label>Signature (Student or Parent/Guardian) *</Label>
+                    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#8B5CF6" }}>
+                      <SignatureCanvasAny
+                        ref={sigRef}
+                        penColor="#111827"
+                        canvasProps={{ width: 740, height: 180, className: "w-full h-[180px] bg-white" }}
+                        onEnd={() => setField("waiverSigned", true)}
+                      />
                     </div>
-                  ))}
-                </div>
-              </RadioGroup>
-            </section>
-
-            {/* Benefits */}
-            <section className="space-y-3">
-              <h2 className="text-base font-semibold" style={{color: "#EC4899"}}>What benefits were you hoping for?</h2>
-              <div className="grid grid-cols-1 gap-2">
-                {benefitsOptions.map((label) => {
-                  const checked = (form.benefits||[]).includes(label);
-                  return (
-                    <label key={label} className="flex items-center gap-3">
-                      <Checkbox checked={checked} onCheckedChange={(v)=>{
-                        const current = new Set(form.benefits || []);
-                        if (v) current.add(label); else current.delete(label);
-                        setField("benefits", Array.from(current));
-                      }} />
-                      <span>{label}</span>
-                    </label>
-                  );
-                })}
-                <div className="grid grid-cols-1 gap-2">
-                  <Label htmlFor="benefitsOther">Other</Label>
-                  <Input id="benefitsOther" value={form.benefitsOther||""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("benefitsOther", e.target.value)} />
-                </div>
-              </div>
-            </section>
-
-            {/* 6-12 months */}
-            <section className="space-y-3">
-              <h2 className="text-base font-semibold" style={{color: "#EC4899"}}>Are you planning on being in the area for the next 6–12 months?</h2>
-              <RadioGroup value={form.area6to12mo||""} onValueChange={(v: string)=>setField("area6to12mo", v as "Yes" | "No")} className="flex gap-6">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="Yes" id="area-yes" />
-                  <Label htmlFor="area-yes">Yes</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="No" id="area-no" />
-                  <Label htmlFor="area-no">No</Label>
-                </div>
-              </RadioGroup>
-            </section>
-
-            {/* Waiver */}
-            <section className="space-y-3">
-              <h2 className="text-base font-semibold" style={{color: "#EC4899"}}>Waiver / Release of Liability</h2>
-              <Textarea readOnly className="h-40 text-[13px] leading-snug" value={`The practice of dance involves the risk of physical injury (with bruises being the most likely injury and broken bones or other more serious physical injuries also being possible.) Understanding this I declare:\n\nThat I am willing to accept responsibility for such an eventuality, and;\n\nThat I have adequate medical insurance for such an eventuality, and;\n\nThat I will not hold any club, member, instructor, or the owners or operators of any facility in which I might practice liable for any injury that I might sustain while practicing dance.\n\nFurther, I understand the physical demand of this activity and the practice required for its development and mastery. As a consideration for my own safety and enjoyment, as well as that of other students, I commit to dedicate necessary practice of the instructions and techniques given to me in class.`} />
-
-              <div className="space-y-2">
-                <Label>Signature (Student or Parent/Guardian) *</Label>
-                <div className="rounded-xl border overflow-hidden" style={{borderColor: "#8B5CF6"}}>
-                  <SignatureCanvasAny
-                    ref={sigRef}
-                    penColor="#111827"
-                    canvasProps={{ width: 740, height: 180, className: "w-full h-[180px] bg-white" }}
-                    onEnd={() => setField("waiverSigned", true)}
-                />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="button" variant="secondary" onClick={()=>{(sigRef.current as any)?.clear(); setField("waiverSigned", false);}}>
-                    Clear
-                  </Button>
-                  <div className="grid grid-cols-2 gap-3 ml-auto items-center">
-                    <div>
-                      <Label htmlFor="waiverDate">Date *</Label>
-                      <Input id="waiverDate" type="date" required value={form.waiverDate||new Date().toISOString().slice(0,10)} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("waiverDate", e.target.value)} />
+                    <div className="grid grid-cols-2 gap-3 ml-auto items-center">
+                      <div>
+                        <Label htmlFor="waiverDate">Date *</Label>
+                        <Input id="waiverDate" type="date" required value={form.waiverDate || new Date().toISOString().slice(0, 10)} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("waiverDate", e.target.value)} />
+                      </div>
+                      <div className="flex items-end justify-end gap-2">
+                        <Button type="button" variant="secondary" onClick={() => { (sigRef.current as any)?.clear(); setField("waiverSigned", false); }}>Clear</Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </section>
+                </section>
+              </>
+            )}
 
             {/* Submit spacer */}
             <div className="h-12" />
@@ -463,25 +526,38 @@ export default function NewStudentEntry() {
         </Card>
       </main>
 
-      <footer className="fixed inset-x-0 bottom-0 z-50 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60" style={{borderColor: "#3B82F6"}}>
+      <footer className="fixed inset-x-0 bottom-0 z-50 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60" style={{ borderColor: "#3B82F6" }}>
         <div className="mx-auto max-w-screen-sm px-4 py-3 flex items-center gap-3">
           {!submitted ? (
             <>
               <div className="text-xs text-neutral-600 flex-1">
-                Tip: Keep the tablet in <span className="font-medium" style={{color: "#3B82F6"}}>portrait</span> and use the on‑screen keyboard. Fields auto-scroll into view.
-              </div>
-              <Button onClick={handleSubmit} className="px-5" style={{backgroundColor: "#8B5CF6"}} disabled={submitting}>
-                {submitting ? (
-                  <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/> Submitting…</span>
+                {step === 1 ? (
+                  <>Step 1 of 2 — Complete student & contact info, then acknowledge the waiver.</>
                 ) : (
-                  <span className="flex items-center gap-2"><Send className="h-4 w-4"/> Submit</span>
+                  <>Step 2 of 2 — Review policies and sign.</>
                 )}
-              </Button>
+              </div>
+              {step === 1 ? (
+                <Button onClick={handleSubmit} className="px-5" style={{ backgroundColor: "#8B5CF6" }} disabled={submitting}>
+                  Continue
+                </Button>
+              ) : (
+                <Button onClick={handleSubmit} className="px-5" style={{ backgroundColor: "#8B5CF6" }} disabled={submitting}>
+                  {submitting ? (
+                    <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</span>
+                  ) : (
+                    <span className="flex items-center gap-2"><Send className="h-4 w-4" /> Submit</span>
+                  )}
+                </Button>
+              )}
+              {step === 2 && (
+                <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+              )}
             </>
           ) : (
             <div className="w-full flex items-center justify-between">
-              <div className="flex items-center gap-2 text-green-700"><CheckCircle2 className="h-5 w-5"/> Submitted!</div>
-              <Button onClick={()=>{ setSubmitted(false); setForm({}); try{localStorage.removeItem(STORAGE_KEY)}catch(_){}}} variant="outline">Start another child</Button>
+              <div className="flex items-center gap-2 text-green-700"><CheckCircle2 className="h-5 w-5" /> Submitted!</div>
+              <Button onClick={() => { setSubmitted(false); setForm({}); try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ } }} variant="outline">Start another child</Button>
             </div>
           )}
         </div>
