@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import dynamic from "next/dynamic";
-import { Loader2, Send, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, CheckCircle2,Plus, Trash2 } from "lucide-react";
 
 // Signature pad must be client-only. We'll use an any-typed alias to satisfy TS for the ref.
 const SignatureCanvas = dynamic(() => import("react-signature-canvas"), { ssr: false });
@@ -115,6 +115,17 @@ export default function NewStudentEntry() {
   const derivedAge = useMemo(() => ageFromDOB(form.birthdate), [form.birthdate]);
   const derivedAgesExtra = useMemo(() => (form.additionalStudents || []).map(s => ageFromDOB(s.birthdate)), [form.additionalStudents]);
 
+  const addChild = () =>
+  setField("additionalStudents", [
+    ...(form.additionalStudents || []),
+    { firstName: "", lastName: "", birthdate: "", age: "" },
+  ]);
+
+const removeChild = (idx: number) => {
+  const arr = [...(form.additionalStudents || [])];
+  arr.splice(idx, 1);
+  setField("additionalStudents", arr);
+};
   // ---------- Payloads ----------
   function buildGhlPayload(f: NewStudentForm & { age?: string; signatureDataUrl?: string }) {
     return {
@@ -359,65 +370,100 @@ export default function NewStudentEntry() {
                 </section>
 
                 {/* Additional children */}
-                <section className="space-y-3">
-                  <div className="grid grid-cols-1 gap-4">
-                    {(form.additionalStudents || []).map((s, idx) => (
-                      <div key={idx} className="rounded-xl border p-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label htmlFor={`child${idx+2}-first`}>First name *</Label>
-                            <Input id={`child${idx+2}-first`} required autoComplete="given-name" value={s.firstName || ""}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                const arr = [...(form.additionalStudents || [])];
-                                arr[idx] = { ...arr[idx], firstName: e.target.value };
-                                setField("additionalStudents", arr);
-                              }} />
-                          </div>
-                          <div>
-                            <Label htmlFor={`child${idx+2}-last`}>Last name *</Label>
-                            <Input id={`child${idx+2}-last`} required autoComplete="family-name" value={s.lastName || ""}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                const arr = [...(form.additionalStudents || [])];
-                                arr[idx] = { ...arr[idx], lastName: e.target.value };
-                                setField("additionalStudents", arr);
-                              }} />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 mt-3">
-                          <div>
-                            <Label htmlFor={`child${idx+2}-dob`}>Birthdate *</Label>
-                            <Input id={`child${idx+2}-dob`} type="date" required value={s.birthdate || ""}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                const arr = [...(form.additionalStudents || [])];
-                                arr[idx] = { ...arr[idx], birthdate: e.target.value };
-                                setField("additionalStudents", arr);
-                              }} />
-                          </div>
-                          <div>
-                            <Label htmlFor={`child${idx+2}-age`}>Age</Label>
-                            <Input id={`child${idx+2}-age`} inputMode="numeric" value={derivedAgesExtra[idx] || s.age || ""}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                const arr = [...(form.additionalStudents || [])];
-                                arr[idx] = { ...arr[idx], age: e.target.value };
-                                setField("additionalStudents", arr);
-                              }} />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+<section className="space-y-3">
+  <div className="grid grid-cols-1 gap-4">
+    {(form.additionalStudents || []).map((s, idx) => (
+      <div key={idx} className="rounded-xl border p-3">
+        {/* header with remove */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm font-medium text-neutral-700">Child {idx + 2}</div>
+          <button
+            type="button"
+            onClick={() => removeChild(idx)}
+            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50"
+            aria-label={`Remove child ${idx + 2}`}
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="text-xs font-medium">Remove</span>
+          </button>
+        </div>
 
-                    {/* Add Another Child button (max 3 total) */}
-                    {((form.additionalStudents || []).length < 2) && (
-                      <button
-                        type="button"
-                        onClick={() => setField("additionalStudents", [ ...(form.additionalStudents || []), { firstName: "", lastName: "", birthdate: "", age: "" } ])}
-                        className="text-left text-[#3B82F6] underline"
-                      >
-                        + Add Another Child
-                      </button>
-                    )}
-                  </div>
-                </section>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor={`child${idx + 2}-first`}>First name *</Label>
+            <Input
+              id={`child${idx + 2}-first`}
+              required
+              autoComplete="given-name"
+              value={s.firstName || ""}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const arr = [...(form.additionalStudents || [])];
+                arr[idx] = { ...arr[idx], firstName: e.target.value };
+                setField("additionalStudents", arr);
+              }}
+            />
+          </div>
+          <div>
+            <Label htmlFor={`child${idx + 2}-last`}>Last name *</Label>
+            <Input
+              id={`child${idx + 2}-last`}
+              required
+              autoComplete="family-name"
+              value={s.lastName || ""}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const arr = [...(form.additionalStudents || [])];
+                arr[idx] = { ...arr[idx], lastName: e.target.value };
+                setField("additionalStudents", arr);
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <Label htmlFor={`child${idx + 2}-dob`}>Birthdate *</Label>
+            <Input
+              id={`child${idx + 2}-dob`}
+              type="date"
+              required
+              value={s.birthdate || ""}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const arr = [...(form.additionalStudents || [])];
+                arr[idx] = { ...arr[idx], birthdate: e.target.value };
+                setField("additionalStudents", arr);
+              }}
+            />
+          </div>
+          <div>
+            <Label htmlFor={`child${idx + 2}-age`}>Age</Label>
+            <Input
+              id={`child${idx + 2}-age`}
+              inputMode="numeric"
+              value={(form.additionalStudents && form.additionalStudents[idx] && (derivedAgesExtra[idx] || s.age)) || ""}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const arr = [...(form.additionalStudents || [])];
+                arr[idx] = { ...arr[idx], age: e.target.value };
+                setField("additionalStudents", arr);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    ))}
+
+    {/* Add Another Child button (max 3 total: 1 primary + 2 additional) */}
+    {(form.additionalStudents || []).length < 2 && (
+      <button
+        type="button"
+        onClick={addChild}
+        className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#E9D5FF] bg-[#F3E8FF] px-3 py-2 text-[#8B5CF6] shadow-sm hover:bg-[#EDE9FE] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
+      >
+        <Plus className="h-4 w-4" />
+        Add Another Child
+      </button>
+    )}
+  </div>
+</section>
 
                 {/* Parents */}
                 <section className="space-y-3">
