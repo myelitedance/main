@@ -125,7 +125,7 @@ async function handleLookup() {
       return;
     }
 
-    setForm(prev => ({ ...(data.formDraft || {}), ...prev, email: lookupEmail }));
+    setForm(prev => ({ ...prev, ...(data.formDraft || {}), email: lookupEmail }));
     setLookupMsg("We found your info and pre-filled the form. Please review and update if needed.");
   } catch (e: any) {
     console.error("[lookup] fetch threw", e);
