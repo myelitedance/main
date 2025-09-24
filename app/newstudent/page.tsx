@@ -498,7 +498,7 @@ const hearDetailMeta: Record<string, { label: string; placeholder: string; hint?
       <div>
         <Label htmlFor="state">State *</Label>
         <Select value={form.state || "TN"} onValueChange={(v) => setField("state", v)}>
-          <SelectTrigger id="state" aria-label="State">
+          <SelectTrigger id="state" aria-label="State" className="bg-white border-neutral-300 focus:ring--[#8B5CF6] focus:border-[#8B5CF6]">
             <SelectValue placeholder="Select state" />
           </SelectTrigger>
           <SelectContent>
