@@ -108,12 +108,10 @@ async function handleLookup() {
 
   try {
     console.debug("[lookup] starting", { lookupEmail });
-    const r = await fetch(`/api/ghl/lookup?debug=1`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: lookupEmail }),
-      signal: ctrl.signal,
-    });
+    const r = await fetch(
+        `/api/ghl/lookup/?debug=1&query=${encodeURIComponent(lookupEmail)}`, // note the trailing slash
+        { method: "GET", redirect: "manual" } // 'manual' so we can see if something is forcing redirects
+);
 
     if (!r.ok) {
       const text = await r.text().catch(() => "");
@@ -124,6 +122,7 @@ async function handleLookup() {
 
     const data = await r.json();
     console.debug("[lookup] success", data);
+    console.debug("[lookup] response", r.status, r.type, r.url);
 
     if (!data.found) {
       setLookupMsg("No existing record found. You can continue filling out the form.");
