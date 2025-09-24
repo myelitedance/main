@@ -458,9 +458,9 @@ const removeChild = (idx: number) => {
   onClick={addChild}
   size="sm"
   variant="outline"
-  className="inline-flex w-fit items-center gap-1.5 border-[#E9D5FF] bg-[#F3E8FF] text-xs font-medium text-[#8B5CF6] hover:bg-[#EDE9FE] focus:ring-[#8B5CF6]"
+  className="inline-flex w-fit items-center gap-1.5 rounded-md border-[#E9D5FF] bg-[#F3E8FF] px-2 py-1 text-xs font-medium text-[#8B5CF6] hover:bg-[#EDE9FE] focus:ring-[#8B5CF6]"
 >
-  <Plus className="h-3.5 w-3.5" />
+  <Plus className="h-3 w-3" />
   Add Another Child
 </Button>
     )}
