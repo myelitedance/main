@@ -18,6 +18,7 @@ const SignatureCanvasAny = SignatureCanvas as unknown as React.ComponentType<any
 
 // ---------- Types ----------
 export type NewStudentForm = {
+  additionalStudents?: { firstName: string; lastName: string; birthdate: string; age?: string }[];
   studentFirstName?: string;
   studentLastName?: string;
   birthdate?: string;
@@ -112,6 +113,7 @@ export default function NewStudentEntry() {
     setForm((f) => ({ ...f, [name]: value }));
 
   const derivedAge = useMemo(() => ageFromDOB(form.birthdate), [form.birthdate]);
+  const derivedAgesExtra = useMemo(() => (form.additionalStudents || []).map(s => ageFromDOB(s.birthdate)), [form.additionalStudents]);
 
   // ---------- Payloads ----------
   function buildGhlPayload(f: NewStudentForm & { age?: string; signatureDataUrl?: string }) {
@@ -300,19 +302,6 @@ export default function NewStudentEntry() {
     "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
   ] as const;
 
-const hearDetailMeta: Record<string, { label: string; placeholder: string; hint?: string }> = {
-  Referral: { label: "Who referred you?", 
-    placeholder: "Parent/Student name (optional details)" },
-  "Show/demonstration": { label: "Where did you see us?", 
-    placeholder: "Event or school name" },
-  "Print advertisement": { label: "Which publication?", 
-    placeholder: "Magazine/newspaper name" },
-  Flier: { label: "Where did you find the flier?", placeholder: "Location" },
-  "Internet Search": { label: "Search term or site", placeholder: "e.g., 'Elite Dance Nashville' or Google" },
-  "Social Media": { label: "Which platform/account?", placeholder: "e.g., Instagram @elitedancetn" },
-  Other: { label: "Please specify", placeholder: "Tell us more" },
-};
-
   // ---------- Render ----------
   return (
     <div className="min-h-screen bg-white text-neutral-900">
@@ -357,6 +346,67 @@ const hearDetailMeta: Record<string, { label: string; placeholder: string; hint?
                         <Input id="age" value={derivedAge || form.age || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("age", e.target.value)} inputMode="numeric" />
                       </div>
                     </div>
+                  </div>
+                </section>
+
+                {/* Additional children */}
+                <section className="space-y-3">
+                  <div className="grid grid-cols-1 gap-4">
+                    {(form.additionalStudents || []).map((s, idx) => (
+                      <div key={idx} className="rounded-xl border p-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor={`child${idx+2}-first`}>First name *</Label>
+                            <Input id={`child${idx+2}-first`} required autoComplete="given-name" value={s.firstName || ""}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                const arr = [...(form.additionalStudents || [])];
+                                arr[idx] = { ...arr[idx], firstName: e.target.value };
+                                setField("additionalStudents", arr);
+                              }} />
+                          </div>
+                          <div>
+                            <Label htmlFor={`child${idx+2}-last`}>Last name *</Label>
+                            <Input id={`child${idx+2}-last`} required autoComplete="family-name" value={s.lastName || ""}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                const arr = [...(form.additionalStudents || [])];
+                                arr[idx] = { ...arr[idx], lastName: e.target.value };
+                                setField("additionalStudents", arr);
+                              }} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                          <div>
+                            <Label htmlFor={`child${idx+2}-dob`}>Birthdate *</Label>
+                            <Input id={`child${idx+2}-dob`} type="date" required value={s.birthdate || ""}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                const arr = [...(form.additionalStudents || [])];
+                                arr[idx] = { ...arr[idx], birthdate: e.target.value };
+                                setField("additionalStudents", arr);
+                              }} />
+                          </div>
+                          <div>
+                            <Label htmlFor={`child${idx+2}-age`}>Age</Label>
+                            <Input id={`child${idx+2}-age`} inputMode="numeric" value={derivedAgesExtra[idx] || s.age || ""}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                const arr = [...(form.additionalStudents || [])];
+                                arr[idx] = { ...arr[idx], age: e.target.value };
+                                setField("additionalStudents", arr);
+                              }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Add Another Child button (max 3 total) */}
+                    {((form.additionalStudents || []).length < 2) && (
+                      <button
+                        type="button"
+                        onClick={() => setField("additionalStudents", [ ...(form.additionalStudents || []), { firstName: "", lastName: "", birthdate: "", age: "" } ])}
+                        className="text-left text-[#3B82F6] underline"
+                      >
+                        + Add Another Child
+                      </button>
+                    )}
                   </div>
                 </section>
 
@@ -501,7 +551,7 @@ const hearDetailMeta: Record<string, { label: string; placeholder: string; hint?
           <SelectTrigger id="state" aria-label="State">
             <SelectValue placeholder="Select state" />
           </SelectTrigger>
-          <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
+          <SelectContent>
             {usStates.map((s) => (
               <SelectItem key={s} value={s}>{s}</SelectItem>
             ))}
@@ -522,64 +572,35 @@ const hearDetailMeta: Record<string, { label: string; placeholder: string; hint?
     </div>
   </div>
 </section>
-
                 {/* How did you hear about us? */}
                 <section className="space-y-3">
-  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>
-    How did you hear about us?
-  </h2>
-  <div className="space-y-2">
-    <Label htmlFor="hear-select">Select one</Label>
-<Select
-  value={form.hearAbout || ""}
-  onValueChange={(v) => setField("hearAbout", v)}
->
-  <SelectTrigger
-    id="hear-select"
-    aria-label="How did you hear about us?"
-    className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6] focus:border-[#8B5CF6]"
-  >
-    <SelectValue placeholder="Choose an option" />
-  </SelectTrigger>
-  <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
-    {hearOptions.map((opt) => (
-      <SelectItem key={opt.key} value={opt.key} className="focus:bg-[#EEF2FF]">
-        {opt.key}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-    {form.hearAbout && (
-  <div className="pt-2">
-    <Label htmlFor="hear-details">
-      {hearDetailMeta[form.hearAbout]?.label || "Details"}
-    </Label>
-    <Input
-      id="hear-details"
-      placeholder={hearDetailMeta[form.hearAbout]?.placeholder || "Add a note"}
-      value={form.hearAboutDetails || ""}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-        setField("hearAboutDetails", e.target.value)
-      }
-      className="bg-white"
-    />
-    {hearDetailMeta[form.hearAbout]?.hint && (
-      <p className="text-xs text-neutral-500 mt-1">{hearDetailMeta[form.hearAbout]?.hint}</p>
-    )}
-  </div>
-)}
-  </div>
-</section>
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>How did you hear about us?</h2>
+                  <div className="space-y-2">
+                    <Label htmlFor="hear-select">Select one</Label>
+                    <Select value={form.hearAbout || ""} onValueChange={(v)=>setField("hearAbout", v)}>
+                      <SelectTrigger id="hear-select" aria-label="How did you hear about us?">
+                        <SelectValue placeholder="Choose an option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {hearOptions.map((opt)=> (
+                          <SelectItem key={opt.key} value={opt.key}>{opt.key}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {form.hearAbout && (
+                      <div className="pt-2">
+                        <Label htmlFor="hear-details">{hearOptions.find(o=>o.key===form.hearAbout)?.detail || "Details"}</Label>
+                        <Input id="hear-details" placeholder="Add a note" value={form.hearAboutDetails || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("hearAboutDetails", e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+                </section>
 
                 {/* Benefits */}
                 <section className="space-y-3">
-                  <h2
-  className="text-base font-semibold"
-  style={{ color: "#EC4899" }}
->
-  What benefits were you hoping for{" "}
-  <span className="font-normal">(check all that apply)</span>?
-</h2>
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>
+                        What benefits were you hoping for <span className="font-normal">(check all that apply)</span>?
+                  </h2>
                   <div className="grid grid-cols-1 gap-2">
                     {benefitsOptions.map((label) => {
                       const checked = (form.benefits || []).includes(label);
@@ -615,7 +636,7 @@ That I will not hold any club, member, instructor, or the owners or operators of
 
 Further, I understand the physical demand of this activity and the practice required for its development and mastery. As a consideration for my own safety and enjoyment, as well as that of other students, I commit to dedicate necessary practice of the instructions and techniques given to me in class.`} />
                   <label className="flex items-center gap-3">
-                    <Checkbox required checked={!!form.waiverAcknowledged} onCheckedChange={(v) => setField("waiverAcknowledged", Boolean(v))} />
+                    <Checkbox checked={!!form.waiverAcknowledged} onCheckedChange={(v) => setField("waiverAcknowledged", Boolean(v))} />
                     <span>I have read and acknowledge the Waiver / Release above.</span>
                   </label>
                   <p className="text-xs text-neutral-500">
