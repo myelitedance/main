@@ -84,6 +84,54 @@ export default function NewStudentEntry() {
     return {};
   });
 
+  // === Email lookup state ===
+const [lookupEmail, setLookupEmail] = useState("");
+const [lookupBusy, setLookupBusy] = useState(false);
+const [lookupMsg, setLookupMsg] = useState("");
+
+const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+// merge helper: server values first, user's current entries override
+const mergeForm = (serverDraft: Partial<NewStudentForm>) =>
+  setForm((prev) => ({ ...serverDraft, ...prev }));
+
+async function handleLookup() {
+  setLookupMsg("");
+  if (!isValidEmail(lookupEmail)) {
+    setLookupMsg("Enter a valid email (e.g., name@example.com).");
+    return;
+  }
+  setLookupBusy(true);
+  try {
+    const r = await fetch("/api/ghl/lookup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: lookupEmail }),
+    });
+    if (!r.ok) throw new Error("Lookup failed");
+    const data = await r.json(); // { found: boolean, contactId?: string, formDraft?: NewStudentForm }
+    if (!data.found) {
+      setLookupMsg("No existing record found. You can continue filling out the form.");
+      setField("email", lookupEmail); // prefill so they don’t retype
+      return;
+    }
+    mergeForm({ ...(data.formDraft || {}), email: lookupEmail });
+    setLookupMsg("We found your info and pre-filled the form. Please review and update if needed.");
+  } catch {
+    setLookupMsg("We couldn’t check right now. Please try again or continue filling the form.");
+  } finally {
+    setLookupBusy(false);
+  }
+}
+
+// optional UX sugar: run lookup on Enter in the email box
+function onLookupKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if (!lookupBusy) handleLookup();
+  }
+}
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
@@ -342,6 +390,43 @@ const removeChild = (idx: number) => {
           <CardContent className="space-y-6">
             {step === 1 && (
               <>
+              {/* Email lookup */}
+<section className="space-y-2 rounded-xl border p-3">
+  <h2 className="text-base font-semibold" style={{ color: "#8B5CF6" }}>Find your info</h2>
+  <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+    <div>
+      <Label htmlFor="lookupEmail">Parent email</Label>
+      <Input
+        id="lookupEmail"
+        type="email"
+        inputMode="email"
+        placeholder="name@example.com"
+        value={lookupEmail}
+        onChange={(e) => setLookupEmail(e.target.value)}
+        onKeyDown={onLookupKeyDown}
+      />
+      {lookupMsg && <p className="text-xs mt-1 text-neutral-600">{lookupMsg}</p>}
+    </div>
+    <Button
+      type="button"
+      onClick={handleLookup}
+      disabled={lookupBusy}
+      className="h-10"
+      style={{ backgroundColor: "#8B5CF6" }}
+    >
+      {lookupBusy ? (
+        <span className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Checking…
+        </span>
+      ) : (
+        "Lookup"
+      )}
+    </Button>
+  </div>
+  <p className="text-[12px] text-neutral-500">
+    We’ll pre-fill the form if we already have your info in our system. You can still edit anything before submitting.
+  </p>
+</section>
                 {/* Student */}
                 <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Student</h2>
