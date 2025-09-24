@@ -302,6 +302,15 @@ export default function NewStudentEntry() {
     "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
   ] as const;
 
+  const hearDetailMeta: Record<string, { label: string; placeholder: string; hint?: string }> = {
+  Referral: { label: "Who referred you?", placeholder: "Parent/Student name (optional details)" },
+  "Show/demonstration": { label: "Where did you see us?", placeholder: "Event or school name" },
+  "Print advertisement": { label: "Which publication?", placeholder: "Magazine/newspaper name" },
+  Flier: { label: "Where did you find the flier?", placeholder: "Location" },
+  "Internet Search": { label: "Search term or site", placeholder: "e.g., 'Elite Dance Nashville' or Google" },
+  "Social Media": { label: "Which platform/account?", placeholder: "e.g., Instagram @myelitedance" },
+  Other: { label: "Please specify", placeholder: "Tell us more" },
+};
   // ---------- Render ----------
   return (
     <div className="min-h-screen bg-white text-neutral-900">
@@ -551,7 +560,7 @@ export default function NewStudentEntry() {
           <SelectTrigger id="state" aria-label="State">
             <SelectValue placeholder="Select state" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
             {usStates.map((s) => (
               <SelectItem key={s} value={s}>{s}</SelectItem>
             ))}
@@ -577,22 +586,44 @@ export default function NewStudentEntry() {
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>How did you hear about us?</h2>
                   <div className="space-y-2">
                     <Label htmlFor="hear-select">Select one</Label>
-                    <Select value={form.hearAbout || ""} onValueChange={(v)=>setField("hearAbout", v)}>
-                      <SelectTrigger id="hear-select" aria-label="How did you hear about us?">
-                        <SelectValue placeholder="Choose an option" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {hearOptions.map((opt)=> (
-                          <SelectItem key={opt.key} value={opt.key}>{opt.key}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+<Select
+  value={form.hearAbout || ""}
+  onValueChange={(v) => setField("hearAbout", v)}
+>
+  <SelectTrigger
+    id="hear-select"
+    aria-label="How did you hear about us?"
+    className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6] focus:border-[#8B5CF6]"
+  >
+    <SelectValue placeholder="Choose an option" />
+  </SelectTrigger>
+  <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
+    {hearOptions.map((opt) => (
+      <SelectItem key={opt.key} value={opt.key} className="focus:bg-[#EEF2FF]">
+        {opt.key}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
                     {form.hearAbout && (
-                      <div className="pt-2">
-                        <Label htmlFor="hear-details">{hearOptions.find(o=>o.key===form.hearAbout)?.detail || "Details"}</Label>
-                        <Input id="hear-details" placeholder="Add a note" value={form.hearAboutDetails || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>)=>setField("hearAboutDetails", e.target.value)} />
-                      </div>
-                    )}
+  <div className="pt-2">
+    <Label htmlFor="hear-details">
+      {hearDetailMeta[form.hearAbout]?.label || "Details"}
+    </Label>
+    <Input
+      id="hear-details"
+      placeholder={hearDetailMeta[form.hearAbout]?.placeholder || "Add a note"}
+      value={form.hearAboutDetails || ""}
+      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+        setField("hearAboutDetails", e.target.value)
+      }
+      className="bg-white"
+    />
+    {hearDetailMeta[form.hearAbout]?.hint && (
+      <p className="text-xs text-neutral-500 mt-1">{hearDetailMeta[form.hearAbout]?.hint}</p>
+    )}
+  </div>
+)}
                   </div>
                 </section>
 
