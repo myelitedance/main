@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import dynamic from "next/dynamic";
 import { Loader2, Send, CheckCircle2 } from "lucide-react";
 
@@ -291,8 +292,13 @@ export default function NewStudentEntry() {
     { key: "Print advertisement", detail: "Type/Publication" },
     { key: "Flier", detail: "Location" },
     { key: "Internet Search", detail: "Search term or site" },
+    { key: "Social Media", detail: "Platform" },
     { key: "Other", detail: "Please specify" },
-  ];
+  ] as const;
+
+  const usStates = [
+    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
+  ] as const;
 
   // ---------- Render ----------
   return (
@@ -357,92 +363,202 @@ export default function NewStudentEntry() {
                 </section>
 
                 {/* Contact */}
-                <section className="space-y-3">
-                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Contact</h2>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="grid grid-cols-1 gap-2">
-                      <div className="grid grid-cols-1 gap-2">
-                        <Label htmlFor="primaryPhone">Primary phone *</Label>
-                        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-                          <Input id="primaryPhone" required placeholder="###-###-####" inputMode="tel" autoComplete="tel" value={form.primaryPhone || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("primaryPhone", e.target.value)} />
-                          <div className="flex items-center gap-2">
-                            <Checkbox id="primaryPhoneIsCell" checked={!!form.primaryPhoneIsCell} onCheckedChange={(v) => setField("primaryPhoneIsCell", Boolean(v))} />
-                            <Label htmlFor="primaryPhoneIsCell" className="text-xs">cell</Label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Checkbox id="primaryPhoneSmsOptIn" checked={!!form.primaryPhoneSmsOptIn} onCheckedChange={(v) => setField("primaryPhoneSmsOptIn", Boolean(v))} />
-                            <Label htmlFor="primaryPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
-                          </div>
-                        </div>
-                      </div>
+<section className="space-y-3">
+  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Contact</h2>
 
-                      <div className="grid grid-cols-1 gap-2">
-                        <Label htmlFor="altPhone">Alternate phone</Label>
-                        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-                          <Input id="altPhone" placeholder="###-###-####" inputMode="tel" autoComplete="tel" value={form.altPhone || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("altPhone", e.target.value)} />
-                          <div className="flex items-center gap-2">
-                            <Checkbox id="altPhoneIsCell" checked={!!form.altPhoneIsCell} onCheckedChange={(v) => setField("altPhoneIsCell", Boolean(v))} />
-                            <Label htmlFor="altPhoneIsCell" className="text-xs">cell</Label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Checkbox id="altPhoneSmsOptIn" checked={!!form.altPhoneSmsOptIn} onCheckedChange={(v) => setField("altPhoneSmsOptIn", Boolean(v))} />
-                            <Label htmlFor="altPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
-                          </div>
-                        </div>
-                      </div>
+  <div className="grid grid-cols-1 gap-3">
+    {/* Primary phone */}
+    <div className="grid grid-cols-1 gap-2">
+      <Label htmlFor="primaryPhone">Primary phone *</Label>
+      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+        <Input
+          id="primaryPhone"
+          required
+          placeholder="###-###-####"
+          inputMode="tel"
+          autoComplete="tel"
+          value={form.primaryPhone || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("primaryPhone", e.target.value)}
+        />
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="primaryPhoneIsCell"
+            checked={!!form.primaryPhoneIsCell}
+            onCheckedChange={(v) => setField("primaryPhoneIsCell", Boolean(v))}
+          />
+          <Label htmlFor="primaryPhoneIsCell" className="text-xs">cell</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="primaryPhoneSmsOptIn"
+            checked={!!form.primaryPhoneSmsOptIn}
+            onCheckedChange={(v) => setField("primaryPhoneSmsOptIn", Boolean(v))}
+          />
+          <Label htmlFor="primaryPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+        </div>
+      </div>
+      {form.primaryPhoneSmsOptIn && (
+        <p className="text-xs mt-1 text-neutral-600">
+          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
+          text messages from Elite Dance & Music at the number provided. Consent is not a condition of
+          purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
+        </p>
+      )}
+    </div>
 
-                      <div className="grid grid-cols-1 gap-2">
-                        <Label htmlFor="email">Email address *</Label>
-                        <Input id="email" type="email" required autoComplete="email" inputMode="email" value={form.email || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("email", e.target.value)} />
-                      </div>
+    {/* Alternate phone */}
+    <div className="grid grid-cols-1 gap-2">
+      <Label htmlFor="altPhone">Alternate phone</Label>
+      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+        <Input
+          id="altPhone"
+          placeholder="###-###-####"
+          inputMode="tel"
+          autoComplete="tel"
+          value={form.altPhone || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("altPhone", e.target.value)}
+        />
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="altPhoneIsCell"
+            checked={!!form.altPhoneIsCell}
+            onCheckedChange={(v) => setField("altPhoneIsCell", Boolean(v))}
+          />
+          <Label htmlFor="altPhoneIsCell" className="text-xs">cell</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="altPhoneSmsOptIn"
+            checked={!!form.altPhoneSmsOptIn}
+            onCheckedChange={(v) => setField("altPhoneSmsOptIn", Boolean(v))}
+          />
+          <Label htmlFor="altPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+        </div>
+      </div>
+      {form.altPhoneSmsOptIn && (
+        <p className="text-xs mt-1 text-neutral-600">
+          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
+          text messages from Elite Dance & Music at the number provided. Consent is not a condition of
+          purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
+        </p>
+      )}
+    </div>
 
-                      <div className="grid grid-cols-1 gap-2">
-                        <Label htmlFor="street">Street address *</Label>
-                        <Input id="street" required autoComplete="address-line1" value={form.street || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("street", e.target.value)} />
-                      </div>
+    {/* Email */}
+    <div className="grid grid-cols-1 gap-2">
+      <Label htmlFor="email">Email address *</Label>
+      <Input
+        id="email"
+        type="email"
+        required
+        autoComplete="email"
+        inputMode="email"
+        value={form.email || ""}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("email", e.target.value)}
+      />
+    </div>
 
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <Label htmlFor="city">City *</Label>
-                          <Input id="city" required autoComplete="address-level2" value={form.city || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("city", e.target.value)} />
-                        </div>
-                        <div>
-                          <Label htmlFor="state">State *</Label>
-                          <Input id="state" required autoComplete="address-level1" maxLength={2} placeholder="IL" value={form.state || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("state", e.target.value.toUpperCase())} />
-                        </div>
-                        <div>
-                          <Label htmlFor="zip">Zip *</Label>
-                          <Input id="zip" required inputMode="numeric" autoComplete="postal-code" value={form.zip || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("zip", e.target.value)} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
+    {/* Street */}
+    <div className="grid grid-cols-1 gap-2">
+      <Label htmlFor="street">Street address *</Label>
+      <Input
+        id="street"
+        required
+        autoComplete="address-line1"
+        value={form.street || ""}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("street", e.target.value)}
+      />
+    </div>
+
+    {/* City / State / Zip */}
+    <div className="grid grid-cols-3 gap-2">
+      <div>
+        <Label htmlFor="city">City *</Label>
+        <Input
+          id="city"
+          required
+          autoComplete="address-level2"
+          value={form.city || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("city", e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="state">State *</Label>
+        <Select value={form.state || "TN"} onValueChange={(v) => setField("state", v)}>
+          <SelectTrigger id="state" aria-label="State">
+            <SelectValue placeholder="Select state" />
+          </SelectTrigger>
+          <SelectContent>
+            {usStates.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="zip">Zip *</Label>
+        <Input
+          id="zip"
+          required
+          inputMode="numeric"
+          autoComplete="postal-code"
+          value={form.zip || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("zip", e.target.value)}
+        />
+      </div>
+    </div>
+  </div>
+</section>
 
                 {/* How did you hear about us? */}
                 <section className="space-y-3">
-                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>How did you hear about us?</h2>
-                  <RadioGroup value={form.hearAbout || ""} onValueChange={(v: string) => setField("hearAbout", v)}>
-                    <div className="space-y-2">
-                      {hearOptions.map((opt) => (
-                        <div key={opt.key} className="flex items-start gap-3">
-                          <RadioGroupItem id={`hear-${opt.key}`} value={opt.key} />
-                          <Label htmlFor={`hear-${opt.key}`} className="flex-1">
-                            <div className="font-medium">{opt.key}</div>
-                            <Input className="mt-1" placeholder={`${opt.detail}:`} value={form.hearAbout === opt.key ? (form.hearAboutDetails || "") : ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                              setField("hearAbout", opt.key);
-                              setField("hearAboutDetails", e.target.value);
-                            }} />
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </RadioGroup>
-                </section>
+  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>
+    How did you hear about us?
+  </h2>
+  <div className="space-y-2">
+    <Label htmlFor="hear-select">Select one</Label>
+    <Select
+      value={form.hearAbout || ""}
+      onValueChange={(v) => setField("hearAbout", v)}
+    >
+      <SelectTrigger id="hear-select" aria-label="How did you hear about us?">
+        <SelectValue placeholder="Choose an option" />
+      </SelectTrigger>
+      <SelectContent>
+        {hearOptions.map((opt) => (
+          <SelectItem key={opt.key} value={opt.key}>
+            {opt.key}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+    {form.hearAbout && (
+      <div className="pt-2">
+        <Label htmlFor="hear-details">
+          {hearOptions.find((o) => o.key === form.hearAbout)?.detail || "Details"}
+        </Label>
+        <Input
+          id="hear-details"
+          placeholder="Add a note"
+          value={form.hearAboutDetails || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setField("hearAboutDetails", e.target.value)
+          }
+        />
+      </div>
+    )}
+  </div>
+</section>
 
                 {/* Benefits */}
                 <section className="space-y-3">
-                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>What benefits were you hoping for?</h2>
+                  <h2
+  className="text-base font-semibold"
+  style={{ color: "#EC4899" }}
+>
+  What benefits were you hoping for{" "}
+  <span className="font-normal">(check all that apply)</span>?
+</h2>
                   <div className="grid grid-cols-1 gap-2">
                     {benefitsOptions.map((label) => {
                       const checked = (form.benefits || []).includes(label);
@@ -478,9 +594,15 @@ That I will not hold any club, member, instructor, or the owners or operators of
 
 Further, I understand the physical demand of this activity and the practice required for its development and mastery. As a consideration for my own safety and enjoyment, as well as that of other students, I commit to dedicate necessary practice of the instructions and techniques given to me in class.`} />
                   <label className="flex items-center gap-3">
-                    <Checkbox checked={!!form.waiverAcknowledged} onCheckedChange={(v) => setField("waiverAcknowledged", Boolean(v))} />
+                    <Checkbox required checked={!!form.waiverAcknowledged} onCheckedChange={(v) => setField("waiverAcknowledged", Boolean(v))} />
                     <span>I have read and acknowledge the Waiver / Release above.</span>
                   </label>
+                  <p className="text-xs text-neutral-500">
+                    By continuing, you also agree to our {" "}
+                    <a href="/privacy-policy" className="underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                    {" "}and{" "}
+                    <a href="/terms" className="underline" target="_blank" rel="noopener noreferrer">Terms & Conditions</a>.
+                  </p>
                 </section>
               </>
             )}
