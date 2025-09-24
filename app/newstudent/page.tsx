@@ -103,45 +103,35 @@ async function handleLookup() {
   }
   setLookupBusy(true);
 
+  const url = `/api/ghl/lookup?debug=1&query=${encodeURIComponent(lookupEmail)}`;
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 10000);
+  const to = setTimeout(() => ctrl.abort(), 10000);
 
   try {
-    console.debug("[lookup] starting", { lookupEmail });
-    const r = await fetch(
-        `/api/ghl/lookup/?debug=1&query=${encodeURIComponent(lookupEmail)}`, // note the trailing slash
-        { method: "GET", redirect: "manual" } // 'manual' so we can see if something is forcing redirects
-);
+    console.debug("[lookup] →", url);
+    const r = await fetch(url, { method: "GET", cache: "no-store", signal: ctrl.signal });
+    const raw = await r.text(); // read once for debug
+    console.debug("[lookup] status", r.status, "body:", raw);
 
     if (!r.ok) {
-      const text = await r.text().catch(() => "");
-      console.error("[lookup] http error", r.status, text);
-      setLookupMsg(`Lookup failed (HTTP ${r.status}). ${text || "See console for details."}`);
+      setLookupMsg(`Lookup failed (HTTP ${r.status}). See console for details.`);
       return;
     }
 
-    const data = await r.json();
-    console.debug("[lookup] success", data);
-    console.debug("[lookup] response", r.status, r.type, r.url);
-
+    const data = JSON.parse(raw);
     if (!data.found) {
       setLookupMsg("No existing record found. You can continue filling out the form.");
       setField("email", lookupEmail);
       return;
     }
 
-    // merge server values first; keep any fields the user already typed
-    setForm((prev) => ({ ...(data.formDraft || {}), ...prev, email: lookupEmail }));
+    setForm(prev => ({ ...(data.formDraft || {}), ...prev, email: lookupEmail }));
     setLookupMsg("We found your info and pre-filled the form. Please review and update if needed.");
   } catch (e: any) {
     console.error("[lookup] fetch threw", e);
-    setLookupMsg(
-      e?.name === "AbortError"
-        ? "Lookup timed out. Please try again."
-        : `We couldn’t check right now. ${e?.message || ""}`
-    );
+    setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
   } finally {
-    clearTimeout(t);
+    clearTimeout(to);
     setLookupBusy(false);
   }
 }
