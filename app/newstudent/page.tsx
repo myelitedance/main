@@ -274,35 +274,76 @@ const removeChild = (idx: number) => {
     setSubmitting(true);
 
     // ... inside handleSubmit, after setSubmitting(true)
+// --- Robust signature capture ---
 let signatureDataUrl = "";
 const pad = sigRef.current as any;
 
-// 1) Block submit if the pad is empty (most reliable signal)
+// 1) Must have a pad and not be empty
 if (!pad || typeof pad.isEmpty !== "function" || pad.isEmpty()) {
   alert("Please sign to acknowledge the studio policies.");
   setSubmitting(false);
   return;
 }
 
-// 2) Safely extract a data URL (try trimmed, then full canvas)
+// 2) Get the source canvas (prefer trimmed, fall back to full)
+let srcCanvas: HTMLCanvasElement | null = null;
 try {
-  const cnv =
-    (typeof pad.getTrimmedCanvas === "function" && pad.getTrimmedCanvas()) ||
-    (typeof pad.getCanvas === "function" && pad.getCanvas()) ||
-    null;
+  if (typeof pad.getTrimmedCanvas === "function") srcCanvas = pad.getTrimmedCanvas();
+  if (!srcCanvas && typeof pad.getCanvas === "function") srcCanvas = pad.getCanvas();
+} catch {
+  /* ignore */
+}
 
-  if (cnv && typeof cnv.toDataURL === "function") {
-    signatureDataUrl = cnv.toDataURL("image/png");
-  }
-} catch { /* ignore */ }
-
-// 3) Final sanity check — if we couldn't serialize for some reason, still allow submit since pad isn’t empty
-if (!signatureDataUrl) {
-  // optional: you can still require a PNG by uncommenting the next 3 lines:
-  alert("We captured your signature but couldn't save the image. Please try again.");
+// 3) If we still didn’t get one, bail
+if (!srcCanvas) {
+  alert("We captured your signature but couldn't access the canvas. Please try again.");
   setSubmitting(false);
   return;
 }
+
+// 4) Ensure we have size > 0 (some layouts can report 0x0 if measured too early)
+let w = srcCanvas.width;
+let h = srcCanvas.height;
+if (!w || !h) {
+  const rect = srcCanvas.getBoundingClientRect?.();
+  if (rect && rect.width && rect.height) {
+    w = Math.max(1, Math.round(rect.width));
+    h = Math.max(1, Math.round(rect.height));
+  } else {
+    // last resort: use your intended size
+    w = 740;
+    h = 180;
+  }
+}
+
+// 5) Draw onto an offscreen canvas with a white background, then serialize
+try {
+  const off = document.createElement("canvas");
+  off.width = w;
+  off.height = h;
+  const ctx = off.getContext("2d");
+  if (!ctx) throw new Error("2D context unavailable");
+  // white background prevents transparency artifacts
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+  // center the src if sizes differ
+  const dx = Math.max(0, (w - srcCanvas.width) / 2);
+  const dy = Math.max(0, (h - srcCanvas.height) / 2);
+  ctx.drawImage(srcCanvas, dx, dy);
+  signatureDataUrl = off.toDataURL("image/png");
+} catch (e) {
+  // As a fallback, try the source canvas directly
+  try {
+    signatureDataUrl = srcCanvas.toDataURL("image/png");
+  } catch {}
+}
+
+// 6) Optional: strictly require a PNG (uncomment to enforce)
+// if (!signatureDataUrl) {
+//   alert("We captured your signature but couldn't save the image. Please try again.");
+//   setSubmitting(false);
+//   return;
+// }
 
     const payload = { ...form, age: derivedAge, signatureDataUrl, waiverSigned: true };
 
@@ -857,6 +898,7 @@ Further, I understand the physical demand of this activity and the practice requ
                       <SignatureCanvasAny
                             ref={sigRef}
                             penColor="#111827"
+                            backgroundColor="#FFFFFF"
                             canvasProps={{ width: 740, height: 180, className: "w-full h-[180px] bg-white" }}
                             onEnd={() => setField("waiverSigned", true)}
                         />
