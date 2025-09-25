@@ -63,26 +63,15 @@ function ageFromDOB(dob?: string): string {
   return String(age);
 }
 
-const STORAGE_KEY = "elite-newstudent-draft";
-
 export default function NewStudentEntry() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [step, setStep] = useState<1 | 2>(1); // two-page flow
+  const [step, setStep] = useState<1 | 2>(1);
   const [policies, setPolicies] = useState<string>("");
   const sigRef = useRef<any>(null);
 
-  const [form, setForm] = useState<NewStudentForm>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? (JSON.parse(raw) as NewStudentForm) : {};
-      } catch {
-        // ignore
-      }
-    }
-    return {};
-  });
+  const [form, setForm] = useState<NewStudentForm>({});
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string>("");
 
   // === Email lookup state ===
 const [lookupEmail, setLookupEmail] = useState("");
@@ -143,14 +132,6 @@ function onLookupKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!lookupBusy) handleLookup();
   }
 }
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-    } catch {
-      // ignore
-    }
-  }, [form]);
 
   // Ensure 16px base font-size to prevent zoom on mobile inputs
   useEffect(() => {
@@ -257,6 +238,29 @@ const removeChild = (idx: number) => {
       },
     };
   }
+    // ---------- Signature capture ----------
+  function snapshotSignature(): string {
+  const pad = sigRef.current as any;
+  if (!pad || typeof pad.isEmpty !== "function" || pad.isEmpty()) return "";
+
+  // Prefer trimmed; fall back to full
+  let src: HTMLCanvasElement | null = null;
+  try { src = typeof pad.getTrimmedCanvas === "function" ? pad.getTrimmedCanvas() : null; } catch {}
+  if (!src) try { src = typeof pad.getCanvas === "function" ? pad.getCanvas() : null; } catch {}
+  if (!src) return "";
+
+  // Offscreen copy w/ white background (bullet-proof)
+  const w = src.width || 740;
+  const h = src.height || 180;
+  const off = document.createElement("canvas");
+  off.width = w; off.height = h;
+  const ctx = off.getContext("2d");
+  if (!ctx) return "";
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(src, 0, 0);
+  return off.toDataURL("image/png");
+}
 
   // ---------- Submit ----------
   async function handleSubmit(e: React.FormEvent<HTMLButtonElement | HTMLFormElement>) {
@@ -274,76 +278,12 @@ const removeChild = (idx: number) => {
     setSubmitting(true);
 
     // ... inside handleSubmit, after setSubmitting(true)
-// --- Robust signature capture ---
-let signatureDataUrl = "";
-const pad = sigRef.current as any;
-
-// 1) Must have a pad and not be empty
-if (!pad || typeof pad.isEmpty !== "function" || pad.isEmpty()) {
+// Require a signature that we already captured onEnd
+if (!signatureDataUrl) {
   alert("Please sign to acknowledge the studio policies.");
   setSubmitting(false);
   return;
 }
-
-// 2) Get the source canvas (prefer trimmed, fall back to full)
-let srcCanvas: HTMLCanvasElement | null = null;
-try {
-  if (typeof pad.getTrimmedCanvas === "function") srcCanvas = pad.getTrimmedCanvas();
-  if (!srcCanvas && typeof pad.getCanvas === "function") srcCanvas = pad.getCanvas();
-} catch {
-  /* ignore */
-}
-
-// 3) If we still didn’t get one, bail
-if (!srcCanvas) {
-  alert("We captured your signature but couldn't access the canvas. Please try again.");
-  setSubmitting(false);
-  return;
-}
-
-// 4) Ensure we have size > 0 (some layouts can report 0x0 if measured too early)
-let w = srcCanvas.width;
-let h = srcCanvas.height;
-if (!w || !h) {
-  const rect = srcCanvas.getBoundingClientRect?.();
-  if (rect && rect.width && rect.height) {
-    w = Math.max(1, Math.round(rect.width));
-    h = Math.max(1, Math.round(rect.height));
-  } else {
-    // last resort: use your intended size
-    w = 740;
-    h = 180;
-  }
-}
-
-// 5) Draw onto an offscreen canvas with a white background, then serialize
-try {
-  const off = document.createElement("canvas");
-  off.width = w;
-  off.height = h;
-  const ctx = off.getContext("2d");
-  if (!ctx) throw new Error("2D context unavailable");
-  // white background prevents transparency artifacts
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, w, h);
-  // center the src if sizes differ
-  const dx = Math.max(0, (w - srcCanvas.width) / 2);
-  const dy = Math.max(0, (h - srcCanvas.height) / 2);
-  ctx.drawImage(srcCanvas, dx, dy);
-  signatureDataUrl = off.toDataURL("image/png");
-} catch (e) {
-  // As a fallback, try the source canvas directly
-  try {
-    signatureDataUrl = srcCanvas.toDataURL("image/png");
-  } catch {}
-}
-
-// 6) Optional: strictly require a PNG (uncomment to enforce)
-// if (!signatureDataUrl) {
-//   alert("We captured your signature but couldn't save the image. Please try again.");
-//   setSubmitting(false);
-//   return;
-// }
 
     const payload = { ...form, age: derivedAge, signatureDataUrl, waiverSigned: true };
 
@@ -387,11 +327,6 @@ try {
         alert(`Submitted, but there was a problem sending to: ${errors.join(", ")}. Please notify the office.`);
       } else {
         setSubmitted(true);
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch {
-          // ignore
-        }
       }
     } catch (err) {
       console.error(err);
@@ -896,12 +831,17 @@ Further, I understand the physical demand of this activity and the practice requ
                     <Label>Signature (Student or Parent/Guardian) *</Label>
                     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#8B5CF6" }}>
                       <SignatureCanvasAny
-                            ref={sigRef}
-                            penColor="#111827"
-                            backgroundColor="#FFFFFF"
-                            canvasProps={{ width: 740, height: 180, className: "w-full h-[180px] bg-white" }}
-                            onEnd={() => setField("waiverSigned", true)}
-                        />
+                        ref={sigRef}
+                        penColor="#111827"
+                        backgroundColor="#ffffff"                    // important for a solid background
+                        canvasProps={{ width: 740, height: 180, className: "w-full h-[180px] bg-white" }}
+                        onBegin={() => setSignatureDataUrl("")}      // user started a new stroke
+                        onEnd={() => {                               // user finished a stroke → snapshot
+                            const png = snapshotSignature();
+                            setSignatureDataUrl(png);
+                            setField("waiverSigned", true);            // keep your flag if you want
+                        }}
+/>
                     </div>
                     <div className="grid grid-cols-2 gap-3 ml-auto items-center">
                       <div>
@@ -909,7 +849,17 @@ Further, I understand the physical demand of this activity and the practice requ
                         <Input id="waiverDate" type="date" required value={form.waiverDate || new Date().toISOString().slice(0, 10)} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("waiverDate", e.target.value)} />
                       </div>
                       <div className="flex items-end justify-end gap-2">
-                        <Button type="button" variant="secondary" onClick={() => { (sigRef.current as any)?.clear(); setField("waiverSigned", false); }}>Clear</Button>
+                        <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                            (sigRef.current as any)?.clear();
+                            setSignatureDataUrl("");
+                            setField("waiverSigned", false);
+                        }}
+                        >
+                        Clear
+                            </Button>
                       </div>
                     </div>
                   </div>
@@ -954,7 +904,7 @@ Further, I understand the physical demand of this activity and the practice requ
           ) : (
             <div className="w-full flex items-center justify-between">
               <div className="flex items-center gap-2 text-green-700"><CheckCircle2 className="h-5 w-5" /> Submitted!</div>
-              <Button onClick={() => { setSubmitted(false); setForm({}); try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ } }} variant="outline">Start another child</Button>
+              <Button onClick={() => { setSubmitted(false); setForm({}); }} variant="outline">Start another child</Button>
             </div>
           )}
         </div>
