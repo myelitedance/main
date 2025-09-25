@@ -16,6 +16,27 @@ function headers() {
   };
 }
 
+// ——— utilities ———
+function titleCaseName(s: string) {
+  // Handles spaces, hyphens, and apostrophes: e.g., "mary-kate o'neal"
+  return String(s || "")
+    .toLowerCase()
+    .split(" ")
+    .map((chunk) =>
+      chunk
+        .split("-")
+        .map((part) =>
+          part
+            .split("'")
+            .map((seg) => (seg ? seg[0].toUpperCase() + seg.slice(1) : seg))
+            .join("'")
+        )
+        .join("-")
+    )
+    .join(" ")
+    .trim();
+}
+
 // CF IDs you shared
 const CF = {
   DANCER_FIRST: "scpp296TInQvCwknlSXt",
@@ -38,20 +59,16 @@ const CF = {
 const getCF = (arr: Array<{id:string,value:any}>, id: string) =>
   arr.find(f => f.id === id)?.value ?? "";
 
-async function searchContact(query: string, debug = false) {
+async function searchContact(query: string) {
   const u = new URL(API + "/contacts/");
   u.searchParams.set("locationId", LOCATION_ID);
   u.searchParams.set("query", query);
 
   const res = await fetch(u.toString(), { headers: headers(), cache: "no-store" });
-  const text = await res.text();
-  let json: any = null;
-  try { json = text ? JSON.parse(text) : null; } catch {}
-  if (debug) console.log("[lookup] upstream", res.status, text?.slice(0,500));
-
   if (!res.ok) {
     return NextResponse.json({ error: `GHL search failed (${res.status})` }, { status: 502 });
   }
+  const json = await res.json() as any;
 
   const contacts = json?.contacts || [];
   if (!Array.isArray(contacts) || !contacts.length) {
@@ -66,12 +83,19 @@ async function searchContact(query: string, debug = false) {
   let additionalStudents: any[] = [];
   try { additionalStudents = JSON.parse(String(getCF(cf, CF.ADDL_JSON) || "[]")); } catch {}
 
+  const parentFirst = c.firstName ?? "";
+  const parentLast  = c.lastName ?? "";
+  const parentFull  = (parentFirst || parentLast)
+    ? `${parentFirst} ${parentLast}`.trim()
+    : (c.contactName || "");
+
   const formDraft = {
     studentFirstName: String(getCF(cf, CF.DANCER_FIRST) || ""),
     studentLastName:  String(getCF(cf, CF.DANCER_LAST)  || ""),
     birthdate:        String(getCF(cf, CF.DANCER_DOB)   || ""),
     age:              String(getCF(cf, CF.DANCER_AGE)   || ""),
-    parent1:          `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || c.contactName || "",
+    // Title-case to avoid all-lowercase coming from GHL
+    parent1:          titleCaseName(parentFull),
     parent2:          String(getCF(cf, CF.PARENT2)      || ""),
     primaryPhone:     c.phone || "",
     primaryPhoneIsCell: !!getCF(cf, CF.PRI_CELL),
@@ -101,16 +125,13 @@ async function searchContact(query: string, debug = false) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const query = url.searchParams.get("query") || url.searchParams.get("email") || "";
-  const debug = url.searchParams.get("debug") === "1";
   if (!query) return NextResponse.json({ error: "Missing query" }, { status: 400 });
-  return searchContact(query, debug);
+  return searchContact(query);
 }
 
 export async function POST(req: Request) {
-  const url = new URL(req.url);
-  const debug = url.searchParams.get("debug") === "1";
   const body = await req.json().catch(() => null) as { query?: string } | null;
   const query = body?.query || "";
   if (!query) return NextResponse.json({ error: "Missing query" }, { status: 400 });
-  return searchContact(query, debug);
+  return searchContact(query);
 }

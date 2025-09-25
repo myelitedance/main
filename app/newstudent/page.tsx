@@ -103,15 +103,15 @@ async function handleLookup() {
   }
   setLookupBusy(true);
 
-  const url = `/api/ghl/lookup?debug=1&query=${encodeURIComponent(lookupEmail)}`;
+  const url = `/api/ghl/lookup?query=${encodeURIComponent(lookupEmail)}`;
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), 10000);
 
   try {
-    console.debug("[lookup] →", url);
+    //console.debug("[lookup] →", url);
     const r = await fetch(url, { method: "GET", cache: "no-store", signal: ctrl.signal });
     const raw = await r.text(); // read once for debug
-    console.debug("[lookup] status", r.status, "body:", raw);
+    //console.debug("[lookup] status", r.status, "body:", raw);
 
     if (!r.ok) {
       setLookupMsg(`Lookup failed (HTTP ${r.status}). See console for details.`);
