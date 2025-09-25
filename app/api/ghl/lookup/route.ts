@@ -71,7 +71,7 @@ async function searchContact(query: string, debug = false) {
     studentLastName:  String(getCF(cf, CF.DANCER_LAST)  || ""),
     birthdate:        String(getCF(cf, CF.DANCER_DOB)   || ""),
     age:              String(getCF(cf, CF.DANCER_AGE)   || ""),
-    parent1:          c.contactName || `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim(),
+    parent1:          `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || c.contactName || "",
     parent2:          String(getCF(cf, CF.PARENT2)      || ""),
     primaryPhone:     c.phone || "",
     primaryPhoneIsCell: !!getCF(cf, CF.PRI_CELL),
