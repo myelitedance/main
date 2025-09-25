@@ -7,14 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import dynamic from "next/dynamic";
-import { Loader2, Send, CheckCircle2,Plus, Trash2 } from "lucide-react";
+import { Loader2, Send, CheckCircle2, Plus, Trash2 } from "lucide-react";
 
-// Signature pad must be client-only. We'll use an any-typed alias to satisfy TS for the ref.
-const SignatureCanvas = dynamic(() => import("react-signature-canvas"), { ssr: false });
-const SignatureCanvasAny = SignatureCanvas as unknown as React.ComponentType<any>;
+// Signature pad must be client-only.
+const SignatureCanvas = dynamic(() => import("react-signature-canvas"), { ssr: false }) as any;
 
 // ---------- Types ----------
 export type NewStudentForm = {
@@ -48,10 +46,6 @@ export type NewStudentForm = {
 };
 
 // ---------- Utils ----------
-function cx(...classes: (string | false | null | undefined)[]): string {
-  return classes.filter(Boolean).join(" ");
-}
-
 function ageFromDOB(dob?: string): string {
   if (!dob) return "";
   const d = new Date(dob);
@@ -62,210 +56,141 @@ function ageFromDOB(dob?: string): string {
   if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
   return String(age);
 }
+const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
+// ---------- Component ----------
 export default function NewStudentEntry() {
+  // page state
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [policies, setPolicies] = useState<string>("");
-  const sigRef = useRef<any>(null);
 
+  // form state
   const [form, setForm] = useState<NewStudentForm>({});
-  const [signatureDataUrl, setSignatureDataUrl] = useState<string>("");
-
-  // === Email lookup state ===
-const [lookupEmail, setLookupEmail] = useState("");
-const [lookupBusy, setLookupBusy] = useState(false);
-const [lookupMsg, setLookupMsg] = useState("");
-
-const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-
-// merge helper: server values first, user's current entries override
-const mergeForm = (serverDraft: Partial<NewStudentForm>) =>
-  setForm((prev) => ({ ...serverDraft, ...prev }));
-
-async function handleLookup() {
-  setLookupMsg("");
-  if (!isValidEmail(lookupEmail)) {
-    setLookupMsg("Enter a valid email (e.g., name@example.com).");
-    return;
-  }
-  setLookupBusy(true);
-
-  const url = `/api/ghl/lookup?query=${encodeURIComponent(lookupEmail)}`;
-  const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), 10000);
-
-  try {
-    //console.debug("[lookup] →", url);
-    const r = await fetch(url, { method: "GET", cache: "no-store", signal: ctrl.signal });
-    const raw = await r.text(); // read once for debug
-    //console.debug("[lookup] status", r.status, "body:", raw);
-
-    if (!r.ok) {
-      setLookupMsg(`Lookup failed (HTTP ${r.status}). See console for details.`);
-      return;
-    }
-
-    const data = JSON.parse(raw);
-    if (!data.found) {
-      setLookupMsg("No existing record found. You can continue filling out the form.");
-      setField("email", lookupEmail);
-      return;
-    }
-
-    setForm(prev => ({ ...prev, ...(data.formDraft || {}), email: lookupEmail }));
-    setLookupMsg("We found your info and pre-filled the form. Please review and update if needed.");
-  } catch (e: any) {
-    console.error("[lookup] fetch threw", e);
-    setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
-  } finally {
-    clearTimeout(to);
-    setLookupBusy(false);
-  }
-}
-
-// optional UX sugar: run lookup on Enter in the email box
-function onLookupKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    if (!lookupBusy) handleLookup();
-  }
-}
-
-  // Ensure 16px base font-size to prevent zoom on mobile inputs
-  useEffect(() => {
-    if (typeof document !== "undefined") {
-      document.documentElement.style.fontSize = "16px";
-    }
-  }, []);
-
-  // Load studio policies from a server document so content stays centralized
-  useEffect(() => {
-    if (step === 2) {
-      fetch("/api/policies")
-        .then((r) => (r.ok ? r.text() : Promise.reject(new Error("Policies not found"))))
-        .then((txt) => setPolicies(txt))
-        .catch(() => setPolicies("Studio Policies currently unavailable. Please see the office for a printed copy."));
-    }
-  }, [step]);
-
   const setField = <K extends keyof NewStudentForm>(name: K, value: NewStudentForm[K]) =>
     setForm((f) => ({ ...f, [name]: value }));
 
+  // signature
+  const sigRef = useRef<any>(null);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string>("");
+
+  // lookup state
+  const [lookupEmail, setLookupEmail] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupMsg, setLookupMsg] = useState("");
+  const [foundContactId, setFoundContactId] = useState<string | null>(null);
+
+  // derived
   const derivedAge = useMemo(() => ageFromDOB(form.birthdate), [form.birthdate]);
-  const derivedAgesExtra = useMemo(() => (form.additionalStudents || []).map(s => ageFromDOB(s.birthdate)), [form.additionalStudents]);
+  const derivedAgesExtra = useMemo(
+    () => (form.additionalStudents || []).map(s => ageFromDOB(s.birthdate)),
+    [form.additionalStudents]
+  );
 
+  // base font to avoid iOS zoom
+  useEffect(() => {
+    document.documentElement.style.fontSize = "16px";
+  }, []);
+
+  // load policies when entering step 2
+  useEffect(() => {
+    if (step !== 2) return;
+    let cancelled = false;
+    fetch("/api/policies")
+      .then(r => (r.ok ? r.text() : Promise.reject(new Error("Policies not found"))))
+      .then(txt => { if (!cancelled) setPolicies(txt); })
+      .catch(() => { if (!cancelled) setPolicies("Studio Policies currently unavailable. Please see the office for a printed copy."); });
+    return () => { cancelled = true; };
+  }, [step]);
+
+  // helpers
   const addChild = () =>
-  setField("additionalStudents", [
-    ...(form.additionalStudents || []),
-    { firstName: "", lastName: "", birthdate: "", age: "" },
-  ]);
+    setField("additionalStudents", [
+      ...(form.additionalStudents || []),
+      { firstName: "", lastName: "", birthdate: "", age: "" },
+    ]);
 
-const removeChild = (idx: number) => {
-  const arr = [...(form.additionalStudents || [])];
-  arr.splice(idx, 1);
-  setField("additionalStudents", arr);
-};
-  // ---------- Payloads ----------
-  function buildGhlPayload(f: NewStudentForm & { age?: string; signatureDataUrl?: string }) {
-    return {
-      source: "newstudent",
-      contact: {
-        name: f.parent1 || "",
-        firstName: (f.parent1 || "").split(" ")[0] || f.parent1 || "",
-        lastName: (f.parent1 || "").split(" ").slice(1).join(" ") || "",
-        email: f.email || "",
-        phone: f.primaryPhone || "",
-        smsOptIn: !!f.primaryPhoneSmsOptIn || !!f.altPhoneSmsOptIn,
-        address1: f.street || "",
-        city: f.city || "",
-        state: f.state || "",
-        postalCode: f.zip || "",
-        customFields: {
-          student_name: `${f.studentFirstName || ""} ${f.studentLastName || ""}`.trim(),
-          student_birthdate: f.birthdate || "",
-          parent2_name: f.parent2 || "",
-          alt_phone: f.altPhone || "",
-          primary_phone_is_cell: !!f.primaryPhoneIsCell,
-          alt_phone_is_cell: !!f.altPhoneIsCell,
-          hear_about: f.hearAbout || "",
-          hear_details: f.hearAboutDetails || "",
-          benefits: (f.benefits || []).join(", ") || "",
-          benefits_other: f.benefitsOther || "",
-          area6to12mo: f.area6to12mo || "",
-          waiverAcknowledged: !!f.waiverAcknowledged,
-            signature_data_url: f.signatureDataUrl || "",
-          waiverSignedAt: f.waiverDate || "",
-            additional_students_json: JSON.stringify(f.additionalStudents || []),
+  const removeChild = (idx: number) => {
+    const arr = [...(form.additionalStudents || [])];
+    arr.splice(idx, 1);
+    setField("additionalStudents", arr);
+  };
 
-        },
-      },
-    };
-  }
-
-  function buildAkadaPayload(f: NewStudentForm & { age?: string; signatureDataUrl?: string }) {
-    return {
-      source: "newstudent",
-      account: {
-        accountName: f.parent1 || "",
-        email: f.email || "",
-        phone: f.primaryPhone || "",
-        address: {
-          street: f.street || "",
-          city: f.city || "",
-          state: f.state || "",
-          zip: f.zip || "",
-        },
-        alternatePhone: f.altPhone || "",
-        parent2: f.parent2 || "",
-        smsOptIn: !!f.primaryPhoneSmsOptIn || !!f.altPhoneSmsOptIn,
-        marketing: {
-          howHeard: f.hearAbout || "",
-          details: f.hearAboutDetails || "",
-          benefits: f.benefits || [],
-          area6to12mo: f.area6to12mo || "",
-        },
-      },
-      student: {
-        firstName: f.studentFirstName || "",
-        lastName: f.studentLastName || "",
-        birthdate: f.birthdate || "",
-        age: derivedAge || f.age || "",
-        waiver: {
-          acknowledged: !!f.waiverAcknowledged,
-          signed: !!f.waiverSigned,
-          signedAt: f.waiverDate || "",
-          signatureDataUrl: f.signatureDataUrl || "",
-        },
-      },
-    };
-  }
-    // ---------- Signature capture ----------
   function snapshotSignature(): string {
-  const pad = sigRef.current as any;
-  if (!pad || typeof pad.isEmpty !== "function" || pad.isEmpty()) return "";
+    const pad = sigRef.current as any;
+    if (!pad || typeof pad.isEmpty !== "function" || pad.isEmpty()) return "";
 
-  // Prefer trimmed; fall back to full
-  let src: HTMLCanvasElement | null = null;
-  try { src = typeof pad.getTrimmedCanvas === "function" ? pad.getTrimmedCanvas() : null; } catch {}
-  if (!src) try { src = typeof pad.getCanvas === "function" ? pad.getCanvas() : null; } catch {}
-  if (!src) return "";
+    // Prefer trimmed; fall back to full
+    let src: HTMLCanvasElement | null = null;
+    try { src = typeof pad.getTrimmedCanvas === "function" ? pad.getTrimmedCanvas() : null; } catch {}
+    if (!src) try { src = typeof pad.getCanvas === "function" ? pad.getCanvas() : null; } catch {}
+    if (!src) return "";
 
-  // Offscreen copy w/ white background (bullet-proof)
-  const w = src.width || 740;
-  const h = src.height || 180;
-  const off = document.createElement("canvas");
-  off.width = w; off.height = h;
-  const ctx = off.getContext("2d");
-  if (!ctx) return "";
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, w, h);
-  ctx.drawImage(src, 0, 0);
-  return off.toDataURL("image/png");
-}
+    // Offscreen copy with white background
+    const w = src.width || 740;
+    const h = src.height || 180;
+    const off = document.createElement("canvas");
+    off.width = w; off.height = h;
+    const ctx = off.getContext("2d");
+    if (!ctx) return "";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, w, h);
+    // center if sizes differ
+    const dx = Math.max(0, (w - src.width) / 2);
+    const dy = Math.max(0, (h - src.height) / 2);
+    ctx.drawImage(src, dx, dy);
+    return off.toDataURL("image/png");
+  }
 
-  // ---------- Submit ----------
+  // === Lookup ===
+  async function handleLookup() {
+    setLookupMsg("");
+    if (!isValidEmail(lookupEmail)) {
+      setLookupMsg("Enter a valid email (e.g., name@example.com).");
+      return;
+    }
+    setLookupBusy(true);
+
+    const url = `/api/ghl/lookup?query=${encodeURIComponent(lookupEmail)}`;
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 10000);
+
+    try {
+      const r = await fetch(url, { method: "GET", cache: "no-store", signal: ctrl.signal });
+      const raw = await r.text();
+      if (!r.ok) {
+        setLookupMsg(`Lookup failed (HTTP ${r.status}). See console for details.`);
+        console.error("[lookup] http", r.status, raw);
+        return;
+      }
+      const data = JSON.parse(raw);
+      if (data.found) {
+        setFoundContactId(data.contactId || null);
+        setForm(prev => ({ ...prev, ...(data.formDraft || {}), email: lookupEmail }));
+        setLookupMsg("We found your info and pre-filled the form. Please review and update if needed.");
+      } else {
+        setFoundContactId(null);
+        setField("email", lookupEmail);
+        setLookupMsg("No existing record found. You can continue filling out the form.");
+      }
+    } catch (e: any) {
+      console.error("[lookup] fetch threw", e);
+      setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
+    } finally {
+      clearTimeout(to);
+      setLookupBusy(false);
+    }
+  }
+
+  function onLookupKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!lookupBusy) handleLookup();
+    }
+  }
+
+  // === Submit ===
   async function handleSubmit(e: React.FormEvent<HTMLButtonElement | HTMLFormElement>) {
     e.preventDefault();
 
@@ -278,74 +203,71 @@ const removeChild = (idx: number) => {
       return;
     }
 
+    // step 2
     setSubmitting(true);
 
-    // ... inside handleSubmit, after setSubmitting(true)
-// Require a signature that we already captured onEnd
-if (!signatureDataUrl) {
-  alert("Please sign to acknowledge the studio policies.");
-  setSubmitting(false);
-  return;
-}
+    // Require a signature (captured in onEnd)
+    if (!signatureDataUrl) {
+      alert("Please sign to acknowledge the studio policies.");
+      setSubmitting(false);
+      return;
+    }
 
-    const payload = { ...form, age: derivedAge, signatureDataUrl, waiverSigned: true };
-
-    const ghlPayload = buildGhlPayload(payload);
-    const akadaPayload = buildAkadaPayload(payload);
-
-    const AKADA_ENABLED = false; // No create/update endpoints available yet
+    // Build one clean payload for your API route.
+    const ghlPayload = {
+      source: "newstudent",
+      contact: {
+        name: form.parent1 || "",
+        firstName: (form.parent1 || "").split(" ")[0] || form.parent1 || "",
+        lastName: (form.parent1 || "").split(" ").slice(1).join(" ") || "",
+        email: form.email || "",
+        phone: form.primaryPhone || "",
+        address1: form.street || "",
+        city: form.city || "",
+        state: form.state || "",
+        postalCode: form.zip || "",
+        // your server route maps these logical keys to GHL custom field IDs
+        customFields: {
+          student_first_name: form.studentFirstName || "",
+          student_last_name: form.studentLastName || "",
+          student_birthdate: form.birthdate || "",
+          student_age: (form.age || ageFromDOB(form.birthdate)) || "",
+          parent2_name: form.parent2 || "",
+          alt_phone: form.altPhone || "",
+          primary_phone_is_cell: !!form.primaryPhoneIsCell,
+          alt_phone_is_cell: !!form.altPhoneIsCell,
+          sms_opt_in_any: !!form.primaryPhoneSmsOptIn || !!form.altPhoneSmsOptIn,
+          hear_about: form.hearAbout || "",
+          hear_details: form.hearAboutDetails || "",
+          benefits_other: form.benefitsOther || "",
+          area6to12mo: form.area6to12mo || "",
+          waiver_acknowledged: !!form.waiverAcknowledged,
+          waiver_date: form.waiverDate || "",
+          signature_data_url: signatureDataUrl,
+          additional_students_json: JSON.stringify(form.additionalStudents || []),
+          form_source: "newstudent",
+        },
+      },
+      meta: { contactId: foundContactId || undefined },
+    } as const;
 
     try {
-      const promises: Promise<Response>[] = [
-        fetch("/api/ghl/new-student", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(ghlPayload),
-        }),
-      ];
+      const resp = await fetch("/api/ghl/new-student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ghlPayload),
+      });
 
-      if (AKADA_ENABLED) {
-        promises.push(
-          fetch("/api/akada/new-student", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(akadaPayload),
-          })
-        );
+      const j = await resp.json().catch(() => null);
+
+      if (!resp.ok || !j?.ok) {
+        console.error("GHL submit failed", j);
+        alert(`GHL error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
+        return;
       }
 
-      const results = await Promise.allSettled(promises);
-      const errors: string[] = [];
-      // GHL
-      // After Promise.allSettled(promises)
-if (results[0].status === "fulfilled") {
-  const r = results[0].value;
-  if (!r.ok) {
-    const body = await r.text().catch(() => "");
-    console.error("GHL upsert failed", r.status, body);
-    alert(`GHL error (HTTP ${r.status}): ${body || "See console"}`);
-    return;
-  }
-  const out = await r.json().catch(() => null);
-  if (!out?.ok) {
-    alert(`GHL error: ${out?.status || ""} ${out?.body || ""}`);
-    return;
-  }
-} else {
-  alert("GHL network error.");
-  return;
-}
-
-      if (AKADA_ENABLED) {
-        const r = results[1];
-        if (r && (r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok))) errors.push("AKADA");
-      }
-
-      if (errors.length) {
-        alert(`Submitted, but there was a problem sending to: ${errors.join(", ")}. Please notify the office.`);
-      } else {
-        setSubmitted(true);
-      }
+      // success UI
+      setSubmitted(true);
     } catch (err) {
       console.error(err);
       alert("Something went wrong while submitting. Please try again.");
@@ -378,19 +300,20 @@ if (results[0].status === "fulfilled") {
     { key: "Other", detail: "Please specify" },
   ] as const;
 
+  const hearDetailMeta: Record<string, { label: string; placeholder: string; hint?: string }> = {
+    Referral: { label: "Who referred you?", placeholder: "Parent/Student name (optional details)" },
+    "Show/demonstration": { label: "Where did you see us?", placeholder: "Event or school name" },
+    "Print advertisement": { label: "Which publication?", placeholder: "Magazine/newspaper name" },
+    Flier: { label: "Where did you find the flier?", placeholder: "Location" },
+    "Internet Search": { label: "Search term or site", placeholder: "e.g., 'Elite Dance Nashville' or Google" },
+    "Social Media": { label: "Which platform/account?", placeholder: "e.g., Instagram @myelitedance" },
+    Other: { label: "Please specify", placeholder: "Tell us more" },
+  };
+
   const usStates = [
     "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
   ] as const;
 
-  const hearDetailMeta: Record<string, { label: string; placeholder: string; hint?: string }> = {
-  Referral: { label: "Who referred you?", placeholder: "Parent/Student name (optional details)" },
-  "Show/demonstration": { label: "Where did you see us?", placeholder: "Event or school name" },
-  "Print advertisement": { label: "Which publication?", placeholder: "Magazine/newspaper name" },
-  Flier: { label: "Where did you find the flier?", placeholder: "Location" },
-  "Internet Search": { label: "Search term or site", placeholder: "e.g., 'Elite Dance Nashville' or Google" },
-  "Social Media": { label: "Which platform/account?", placeholder: "e.g., Instagram @myelitedance" },
-  Other: { label: "Please specify", placeholder: "Tell us more" },
-};
   // ---------- Render ----------
   return (
     <div className="min-h-screen bg-white text-neutral-900">
@@ -408,46 +331,48 @@ if (results[0].status === "fulfilled") {
             <CardTitle className="text-lg">New Student Information</CardTitle>
             <div className="text-sm text-neutral-500">Please complete one form per child.</div>
           </CardHeader>
+
           <CardContent className="space-y-6">
             {step === 1 && (
               <>
-              {/* Email lookup */}
-<section className="space-y-2 rounded-xl border p-3">
-  <h2 className="text-base font-semibold" style={{ color: "#8B5CF6" }}>Find your info</h2>
-  <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-    <div>
-      <Label htmlFor="lookupEmail">Parent email</Label>
-      <Input
-        id="lookupEmail"
-        type="email"
-        inputMode="email"
-        placeholder="name@example.com"
-        value={lookupEmail}
-        onChange={(e) => setLookupEmail(e.target.value)}
-        onKeyDown={onLookupKeyDown}
-      />
-      {lookupMsg && <p className="text-xs mt-1 text-neutral-600">{lookupMsg}</p>}
-    </div>
-    <Button
-      type="button"
-      onClick={handleLookup}
-      disabled={lookupBusy}
-      className="h-10"
-      style={{ backgroundColor: "#8B5CF6" }}
-    >
-      {lookupBusy ? (
-        <span className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Checking…
-        </span>
-      ) : (
-        "Lookup"
-      )}
-    </Button>
-  </div>
-  <p className="text-[12px] text-neutral-500">
-    We’ll pre-fill the form if we already have your info in our system. You can still edit anything before submitting.
-  </p>
-</section>
+                {/* Email lookup */}
+                <section className="space-y-2 rounded-xl border p-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#8B5CF6" }}>Find your info</h2>
+                  <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+                    <div>
+                      <Label htmlFor="lookupEmail">Parent email</Label>
+                      <Input
+                        id="lookupEmail"
+                        type="email"
+                        inputMode="email"
+                        placeholder="name@example.com"
+                        value={lookupEmail}
+                        onChange={(e) => setLookupEmail(e.target.value)}
+                        onKeyDown={onLookupKeyDown}
+                      />
+                      {lookupMsg && <p className="text-xs mt-1 text-neutral-600">{lookupMsg}</p>}
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleLookup}
+                      disabled={lookupBusy}
+                      className="h-10"
+                      style={{ backgroundColor: "#8B5CF6" }}
+                    >
+                      {lookupBusy ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Checking…
+                        </span>
+                      ) : (
+                        "Lookup"
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-[12px] text-neutral-500">
+                    We’ll pre-fill the form if we already have your info in our system. You can still edit anything before submitting.
+                  </p>
+                </section>
+
                 {/* Student */}
                 <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Student</h2>
@@ -455,123 +380,146 @@ if (results[0].status === "fulfilled") {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label htmlFor="studentFirstName">First name *</Label>
-                        <Input id="studentFirstName" required autoComplete="given-name" inputMode="text" value={form.studentFirstName || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("studentFirstName", e.target.value)} />
+                        <Input
+                          id="studentFirstName"
+                          required
+                          autoComplete="given-name"
+                          inputMode="text"
+                          value={form.studentFirstName || ""}
+                          onChange={(e) => setField("studentFirstName", e.target.value)}
+                        />
                       </div>
                       <div>
                         <Label htmlFor="studentLastName">Last name *</Label>
-                        <Input id="studentLastName" required autoComplete="family-name" inputMode="text" value={form.studentLastName || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("studentLastName", e.target.value)} />
+                        <Input
+                          id="studentLastName"
+                          required
+                          autoComplete="family-name"
+                          inputMode="text"
+                          value={form.studentLastName || ""}
+                          onChange={(e) => setField("studentLastName", e.target.value)}
+                        />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label htmlFor="birthdate">Birthdate *</Label>
-                        <Input id="birthdate" type="date" required value={form.birthdate || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("birthdate", e.target.value)} />
+                        <Input
+                          id="birthdate"
+                          type="date"
+                          required
+                          value={form.birthdate || ""}
+                          onChange={(e) => setField("birthdate", e.target.value)}
+                        />
                       </div>
                       <div>
                         <Label htmlFor="age">Age</Label>
-                        <Input id="age" value={derivedAge || form.age || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("age", e.target.value)} inputMode="numeric" />
+                        <Input
+                          id="age"
+                          value={derivedAge || form.age || ""}
+                          onChange={(e) => setField("age", e.target.value)}
+                          inputMode="numeric"
+                        />
                       </div>
                     </div>
                   </div>
                 </section>
 
                 {/* Additional children */}
-<section className="space-y-3">
-  <div className="grid grid-cols-1 gap-4">
-    {(form.additionalStudents || []).map((s, idx) => (
-      <div key={idx} className="rounded-xl border p-3">
-        {/* header with remove */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-medium text-neutral-700">Child {idx + 2}</div>
-          <button
-            type="button"
-            onClick={() => removeChild(idx)}
-            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50"
-            aria-label={`Remove child ${idx + 2}`}
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="text-xs font-medium">Remove</span>
-          </button>
-        </div>
+                <section className="space-y-3">
+                  <div className="grid grid-cols-1 gap-4">
+                    {(form.additionalStudents || []).map((s, idx) => (
+                      <div key={idx} className="rounded-xl border p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-medium text-neutral-700">Child {idx + 2}</div>
+                          <button
+                            type="button"
+                            onClick={() => removeChild(idx)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50"
+                            aria-label={`Remove child ${idx + 2}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="text-xs font-medium">Remove</span>
+                          </button>
+                        </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor={`child${idx + 2}-first`}>First name *</Label>
-            <Input
-              id={`child${idx + 2}-first`}
-              required
-              autoComplete="given-name"
-              value={s.firstName || ""}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const arr = [...(form.additionalStudents || [])];
-                arr[idx] = { ...arr[idx], firstName: e.target.value };
-                setField("additionalStudents", arr);
-              }}
-            />
-          </div>
-          <div>
-            <Label htmlFor={`child${idx + 2}-last`}>Last name *</Label>
-            <Input
-              id={`child${idx + 2}-last`}
-              required
-              autoComplete="family-name"
-              value={s.lastName || ""}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const arr = [...(form.additionalStudents || [])];
-                arr[idx] = { ...arr[idx], lastName: e.target.value };
-                setField("additionalStudents", arr);
-              }}
-            />
-          </div>
-        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor={`child${idx + 2}-first`}>First name *</Label>
+                            <Input
+                              id={`child${idx + 2}-first`}
+                              required
+                              autoComplete="given-name"
+                              value={s.firstName || ""}
+                              onChange={(e) => {
+                                const arr = [...(form.additionalStudents || [])];
+                                arr[idx] = { ...arr[idx], firstName: e.target.value };
+                                setField("additionalStudents", arr);
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`child${idx + 2}-last`}>Last name *</Label>
+                            <Input
+                              id={`child${idx + 2}-last`}
+                              required
+                              autoComplete="family-name"
+                              value={s.lastName || ""}
+                              onChange={(e) => {
+                                const arr = [...(form.additionalStudents || [])];
+                                arr[idx] = { ...arr[idx], lastName: e.target.value };
+                                setField("additionalStudents", arr);
+                              }}
+                            />
+                          </div>
+                        </div>
 
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          <div>
-            <Label htmlFor={`child${idx + 2}-dob`}>Birthdate *</Label>
-            <Input
-              id={`child${idx + 2}-dob`}
-              type="date"
-              required
-              value={s.birthdate || ""}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const arr = [...(form.additionalStudents || [])];
-                arr[idx] = { ...arr[idx], birthdate: e.target.value };
-                setField("additionalStudents", arr);
-              }}
-            />
-          </div>
-          <div>
-            <Label htmlFor={`child${idx + 2}-age`}>Age</Label>
-            <Input
-              id={`child${idx + 2}-age`}
-              inputMode="numeric"
-              value={(form.additionalStudents && form.additionalStudents[idx] && (derivedAgesExtra[idx] || s.age)) || ""}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const arr = [...(form.additionalStudents || [])];
-                arr[idx] = { ...arr[idx], age: e.target.value };
-                setField("additionalStudents", arr);
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    ))}
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                          <div>
+                            <Label htmlFor={`child${idx + 2}-dob`}>Birthdate *</Label>
+                            <Input
+                              id={`child${idx + 2}-dob`}
+                              type="date"
+                              required
+                              value={s.birthdate || ""}
+                              onChange={(e) => {
+                                const arr = [...(form.additionalStudents || [])];
+                                arr[idx] = { ...arr[idx], birthdate: e.target.value };
+                                setField("additionalStudents", arr);
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`child${idx + 2}-age`}>Age</Label>
+                            <Input
+                              id={`child${idx + 2}-age`}
+                              inputMode="numeric"
+                              value={(form.additionalStudents && form.additionalStudents[idx] && (derivedAgesExtra[idx] || s.age)) || ""}
+                              onChange={(e) => {
+                                const arr = [...(form.additionalStudents || [])];
+                                arr[idx] = { ...arr[idx], age: e.target.value };
+                                setField("additionalStudents", arr);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
 
-    {/* Add Another Child button (max 3 total: 1 primary + 2 additional) */}
-    {(form.additionalStudents || []).length < 2 && (
-      <Button
-  type="button"
-  onClick={addChild}
-  size="sm"
-  variant="outline"
-  className="inline-flex w-fit items-center gap-1.5 rounded-md border-[#E9D5FF] bg-[#F3E8FF] px-2 py-1 text-xs font-medium text-[#8B5CF6] hover:bg-[#EDE9FE] focus:ring-[#8B5CF6]"
->
-  <Plus className="h-3 w-3" />
-  Add Another Child
-</Button>
-    )}
-  </div>
-</section>
+                    {(form.additionalStudents || []).length < 2 && (
+                      <Button
+                        type="button"
+                        onClick={addChild}
+                        size="sm"
+                        variant="outline"
+                        className="inline-flex w-fit items-center gap-1.5 rounded-md border-[#E9D5FF] bg-[#F3E8FF] px-2 py-1 text-xs font-medium text-[#8B5CF6] hover:bg-[#EDE9FE] focus:ring-[#8B5CF6]"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add Another Child
+                      </Button>
+                    )}
+                  </div>
+                </section>
 
                 {/* Parents */}
                 <section className="space-y-3">
@@ -579,231 +527,249 @@ if (results[0].status === "fulfilled") {
                   <div className="grid grid-cols-1 gap-3">
                     <div>
                       <Label htmlFor="parent1">Parent/Guardian 1 (Account Name) *</Label>
-                      <Input id="parent1" required autoComplete="name" value={form.parent1 || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("parent1", e.target.value)} />
+                      <Input
+                        id="parent1"
+                        required
+                        autoComplete="name"
+                        value={form.parent1 || ""}
+                        onChange={(e) => setField("parent1", e.target.value)}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="parent2">Parent/Guardian 2 (optional)</Label>
-                      <Input id="parent2" autoComplete="name" value={form.parent2 || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("parent2", e.target.value)} />
+                      <Input
+                        id="parent2"
+                        autoComplete="name"
+                        value={form.parent2 || ""}
+                        onChange={(e) => setField("parent2", e.target.value)}
+                      />
                     </div>
                   </div>
                 </section>
 
                 {/* Contact */}
-<section className="space-y-3">
-  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Contact</h2>
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Contact</h2>
 
-  <div className="grid grid-cols-1 gap-3">
-    {/* Primary phone */}
-    <div className="grid grid-cols-1 gap-2">
-      <Label htmlFor="primaryPhone">Primary phone *</Label>
-      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-        <Input
-          id="primaryPhone"
-          required
-          placeholder="###-###-####"
-          inputMode="tel"
-          autoComplete="tel"
-          value={form.primaryPhone || ""}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("primaryPhone", e.target.value)}
-        />
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="primaryPhoneIsCell"
-            checked={!!form.primaryPhoneIsCell}
-            onCheckedChange={(v) => setField("primaryPhoneIsCell", Boolean(v))}
-          />
-          <Label htmlFor="primaryPhoneIsCell" className="text-xs">cell</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="primaryPhoneSmsOptIn"
-            checked={!!form.primaryPhoneSmsOptIn}
-            onCheckedChange={(v) => setField("primaryPhoneSmsOptIn", Boolean(v))}
-          />
-          <Label htmlFor="primaryPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
-        </div>
-      </div>
-      {form.primaryPhoneSmsOptIn && (
-        <p className="text-xs mt-1 text-neutral-600">
-          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
-          text messages from Elite Dance & Music at the number provided. Consent is not a condition of
-          purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
-        </p>
-      )}
-    </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Primary phone */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <Label htmlFor="primaryPhone">Primary phone *</Label>
+                      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                        <Input
+                          id="primaryPhone"
+                          required
+                          placeholder="###-###-####"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={form.primaryPhone || ""}
+                          onChange={(e) => setField("primaryPhone", e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="primaryPhoneIsCell"
+                            checked={!!form.primaryPhoneIsCell}
+                            onCheckedChange={(v) => setField("primaryPhoneIsCell", Boolean(v))}
+                          />
+                          <Label htmlFor="primaryPhoneIsCell" className="text-xs">cell</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="primaryPhoneSmsOptIn"
+                            checked={!!form.primaryPhoneSmsOptIn}
+                            onCheckedChange={(v) => setField("primaryPhoneSmsOptIn", Boolean(v))}
+                          />
+                          <Label htmlFor="primaryPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+                        </div>
+                      </div>
+                      {form.primaryPhoneSmsOptIn && (
+                        <p className="text-xs mt-1 text-neutral-600">
+                          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
+                          text messages from Elite Dance & Music at the number provided. Consent is not a condition of
+                          purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
+                        </p>
+                      )}
+                    </div>
 
-    {/* Alternate phone */}
-    <div className="grid grid-cols-1 gap-2">
-      <Label htmlFor="altPhone">Alternate phone</Label>
-      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-        <Input
-          id="altPhone"
-          placeholder="###-###-####"
-          inputMode="tel"
-          autoComplete="tel"
-          value={form.altPhone || ""}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("altPhone", e.target.value)}
-        />
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="altPhoneIsCell"
-            checked={!!form.altPhoneIsCell}
-            onCheckedChange={(v) => setField("altPhoneIsCell", Boolean(v))}
-          />
-          <Label htmlFor="altPhoneIsCell" className="text-xs">cell</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="altPhoneSmsOptIn"
-            checked={!!form.altPhoneSmsOptIn}
-            onCheckedChange={(v) => setField("altPhoneSmsOptIn", Boolean(v))}
-          />
-          <Label htmlFor="altPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
-        </div>
-      </div>
-      {form.altPhoneSmsOptIn && (
-        <p className="text-xs mt-1 text-neutral-600">
-          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
-          text messages from Elite Dance & Music at the number provided. Consent is not a condition of
-          purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
-        </p>
-      )}
-    </div>
+                    {/* Alternate phone */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <Label htmlFor="altPhone">Alternate phone</Label>
+                      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                        <Input
+                          id="altPhone"
+                          placeholder="###-###-####"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={form.altPhone || ""}
+                          onChange={(e) => setField("altPhone", e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="altPhoneIsCell"
+                            checked={!!form.altPhoneIsCell}
+                            onCheckedChange={(v) => setField("altPhoneIsCell", Boolean(v))}
+                          />
+                          <Label htmlFor="altPhoneIsCell" className="text-xs">cell</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="altPhoneSmsOptIn"
+                            checked={!!form.altPhoneSmsOptIn}
+                            onCheckedChange={(v) => setField("altPhoneSmsOptIn", Boolean(v))}
+                          />
+                          <Label htmlFor="altPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+                        </div>
+                      </div>
+                      {form.altPhoneSmsOptIn && (
+                        <p className="text-xs mt-1 text-neutral-600">
+                          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
+                          text messages from Elite Dance & Music at the number provided. Consent is not a condition of
+                          purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
+                        </p>
+                      )}
+                    </div>
 
-    {/* Email */}
-    <div className="grid grid-cols-1 gap-2">
-      <Label htmlFor="email">Email address *</Label>
-      <Input
-        id="email"
-        type="email"
-        required
-        autoComplete="email"
-        inputMode="email"
-        value={form.email || ""}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("email", e.target.value)}
-      />
-    </div>
+                    {/* Email */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <Label htmlFor="email">Email address *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        required
+                        autoComplete="email"
+                        inputMode="email"
+                        value={form.email || ""}
+                        onChange={(e) => setField("email", e.target.value)}
+                      />
+                    </div>
 
-    {/* Street */}
-    <div className="grid grid-cols-1 gap-2">
-      <Label htmlFor="street">Street address *</Label>
-      <Input
-        id="street"
-        required
-        autoComplete="address-line1"
-        value={form.street || ""}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("street", e.target.value)}
-      />
-    </div>
+                    {/* Street */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <Label htmlFor="street">Street address *</Label>
+                      <Input
+                        id="street"
+                        required
+                        autoComplete="address-line1"
+                        value={form.street || ""}
+                        onChange={(e) => setField("street", e.target.value)}
+                      />
+                    </div>
 
-    {/* City / State / Zip */}
-    <div className="grid grid-cols-3 gap-2">
-      <div>
-        <Label htmlFor="city">City *</Label>
-        <Input
-          id="city"
-          required
-          autoComplete="address-level2"
-          value={form.city || ""}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("city", e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="state">State *</Label>
-        <Select value={form.state || "TN"} onValueChange={(v) => setField("state", v)}>
-          <SelectTrigger id="state" aria-label="State">
-            <SelectValue placeholder="Select state" />
-          </SelectTrigger>
-          <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
-            {usStates.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label htmlFor="zip">Zip *</Label>
-        <Input
-          id="zip"
-          required
-          inputMode="numeric"
-          autoComplete="postal-code"
-          value={form.zip || ""}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("zip", e.target.value)}
-        />
-      </div>
-    </div>
-  </div>
-</section>
+                    {/* City / State / Zip */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label htmlFor="city">City *</Label>
+                        <Input
+                          id="city"
+                          required
+                          autoComplete="address-level2"
+                          value={form.city || ""}
+                          onChange={(e) => setField("city", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="state">State *</Label>
+                        <Select value={form.state || "TN"} onValueChange={(v) => setField("state", v)}>
+                          <SelectTrigger id="state" aria-label="State">
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
+                            {usStates.map((s) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="zip">Zip *</Label>
+                        <Input
+                          id="zip"
+                          required
+                          inputMode="numeric"
+                          autoComplete="postal-code"
+                          value={form.zip || ""}
+                          onChange={(e) => setField("zip", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
                 {/* How did you hear about us? */}
                 <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>How did you hear about us?</h2>
                   <div className="space-y-2">
                     <Label htmlFor="hear-select">Select one</Label>
-<Select
-  value={form.hearAbout || ""}
-  onValueChange={(v) => setField("hearAbout", v)}
->
-  <SelectTrigger
-    id="hear-select"
-    aria-label="How did you hear about us?"
-    className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6] focus:border-[#8B5CF6]"
-  >
-    <SelectValue placeholder="Choose an option" />
-  </SelectTrigger>
-  <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
-    {hearOptions.map((opt) => (
-      <SelectItem key={opt.key} value={opt.key} className="focus:bg-[#EEF2FF]">
-        {opt.key}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+                    <Select
+                      value={form.hearAbout || ""}
+                      onValueChange={(v) => setField("hearAbout", v)}
+                    >
+                      <SelectTrigger
+                        id="hear-select"
+                        aria-label="How did you hear about us?"
+                        className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6] focus:border-[#8B5CF6]"
+                      >
+                        <SelectValue placeholder="Choose an option" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
+                        {hearOptions.map((opt) => (
+                          <SelectItem key={opt.key} value={opt.key} className="focus:bg-[#EEF2FF]">
+                            {opt.key}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
                     {form.hearAbout && (
-  <div className="pt-2">
-    <Label htmlFor="hear-details">
-      {hearDetailMeta[form.hearAbout]?.label || "Details"}
-    </Label>
-    <Input
-      id="hear-details"
-      placeholder={hearDetailMeta[form.hearAbout]?.placeholder || "Add a note"}
-      value={form.hearAboutDetails || ""}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-        setField("hearAboutDetails", e.target.value)
-      }
-      className="bg-white"
-    />
-    {hearDetailMeta[form.hearAbout]?.hint && (
-      <p className="text-xs text-neutral-500 mt-1">{hearDetailMeta[form.hearAbout]?.hint}</p>
-    )}
-  </div>
-)}
+                      <div className="pt-2">
+                        <Label htmlFor="hear-details">
+                          {hearDetailMeta[form.hearAbout]?.label || "Details"}
+                        </Label>
+                        <Input
+                          id="hear-details"
+                          placeholder={hearDetailMeta[form.hearAbout]?.placeholder || "Add a note"}
+                          value={form.hearAboutDetails || ""}
+                          onChange={(e) => setField("hearAboutDetails", e.target.value)}
+                          className="bg-white"
+                        />
+                        {hearDetailMeta[form.hearAbout]?.hint && (
+                          <p className="text-xs text-neutral-500 mt-1">{hearDetailMeta[form.hearAbout]?.hint}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </section>
 
                 {/* Benefits */}
                 <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>
-                        What benefits were you hoping for <span className="font-normal">(check all that apply)</span>?
+                    What benefits were you hoping for <span className="font-normal">(check all that apply)</span>?
                   </h2>
                   <div className="grid grid-cols-1 gap-2">
                     {benefitsOptions.map((label) => {
                       const checked = (form.benefits || []).includes(label);
                       return (
                         <label key={label} className="flex items-center gap-3">
-                          <Checkbox checked={checked} onCheckedChange={(v) => {
-                            const current = new Set(form.benefits || []);
-                            if (v) current.add(label);
-                            else current.delete(label);
-                            setField("benefits", Array.from(current));
-                          }} />
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const current = new Set(form.benefits || []);
+                              if (v) current.add(label);
+                              else current.delete(label);
+                              setField("benefits", Array.from(current));
+                            }}
+                          />
                           <span>{label}</span>
                         </label>
                       );
                     })}
                     <div className="grid grid-cols-1 gap-2">
                       <Label htmlFor="benefitsOther">Other</Label>
-                      <Input id="benefitsOther" value={form.benefitsOther || ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("benefitsOther", e.target.value)} />
+                      <Input
+                        id="benefitsOther"
+                        value={form.benefitsOther || ""}
+                        onChange={(e) => setField("benefitsOther", e.target.value)}
+                      />
                     </div>
                   </div>
                 </section>
@@ -811,7 +777,10 @@ if (results[0].status === "fulfilled") {
                 {/* Waiver acknowledgment */}
                 <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Waiver / Release of Liability</h2>
-                  <Textarea readOnly className="h-40 text-[13px] leading-snug" value={`The practice of dance involves the risk of physical injury (with bruises being the most likely injury and broken bones or other more serious physical injuries also being possible.) Understanding this I declare:
+                  <Textarea
+                    readOnly
+                    className="h-40 text-[13px] leading-snug"
+                    value={`The practice of dance involves the risk of physical injury (with bruises being the most likely injury and broken bones or other more serious physical injuries also being possible.) Understanding this I declare:
 
 That I am willing to accept responsibility for such an eventuality, and;
 
@@ -819,15 +788,19 @@ That I have adequate medical insurance for such an eventuality, and;
 
 That I will not hold any club, member, instructor, or the owners or operators of any facility in which I might practice liable for any injury that I might sustain while practicing dance.
 
-Further, I understand the physical demand of this activity and the practice required for its development and mastery. As a consideration for my own safety and enjoyment, as well as that of other students, I commit to dedicate necessary practice of the instructions and techniques given to me in class.`} />
+Further, I understand the physical demand of this activity and the practice required for its development and mastery. As a consideration for my own safety and enjoyment, as well as that of other students, I commit to dedicate necessary practice of the instructions and techniques given to me in class.`}
+                  />
                   <label className="flex items-center gap-3">
-                    <Checkbox checked={!!form.waiverAcknowledged} onCheckedChange={(v) => setField("waiverAcknowledged", Boolean(v))} />
+                    <Checkbox
+                      checked={!!form.waiverAcknowledged}
+                      onCheckedChange={(v) => setField("waiverAcknowledged", Boolean(v))}
+                    />
                     <span>I have read and acknowledge the Waiver / Release above.</span>
                   </label>
                   <p className="text-xs text-neutral-500">
-                    By continuing, you also agree to our {" "}
-                    <a href="/privacy-policy" className="underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
-                    {" "}and{" "}
+                    By continuing, you also agree to our{" "}
+                    <a href="/privacy-policy" className="underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>{" "}
+                    and{" "}
                     <a href="/terms" className="underline" target="_blank" rel="noopener noreferrer">Terms & Conditions</a>.
                   </p>
                 </section>
@@ -836,48 +809,54 @@ Further, I understand the physical demand of this activity and the practice requ
 
             {step === 2 && (
               <>
-                {/* Policies loaded from server document */}
+                {/* Policies */}
                 <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Studio Policies</h2>
                   <Textarea readOnly className="h-72 text-[13px] leading-snug" value={policies} />
                 </section>
 
-                {/* Signature at bottom of policies page */}
+                {/* Signature */}
                 <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Signature</h2>
                   <div className="space-y-2">
                     <Label>Signature (Student or Parent/Guardian) *</Label>
                     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#8B5CF6" }}>
-                      <SignatureCanvasAny
+                      <SignatureCanvas
                         ref={sigRef}
                         penColor="#111827"
-                        backgroundColor="#ffffff"                    // important for a solid background
+                        backgroundColor="#ffffff"
                         canvasProps={{ width: 740, height: 180, className: "w-full h-[180px] bg-white" }}
-                        onBegin={() => setSignatureDataUrl("")}      // user started a new stroke
-                        onEnd={() => {                               // user finished a stroke → snapshot
-                            const png = snapshotSignature();
-                            setSignatureDataUrl(png);
-                            setField("waiverSigned", true);            // keep your flag if you want
+                        onBegin={() => setSignatureDataUrl("")}
+                        onEnd={() => {
+                          const png = snapshotSignature();
+                          setSignatureDataUrl(png);
+                          setField("waiverSigned", true);
                         }}
-/>
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-3 ml-auto items-center">
                       <div>
                         <Label htmlFor="waiverDate">Date *</Label>
-                        <Input id="waiverDate" type="date" required value={form.waiverDate || new Date().toISOString().slice(0, 10)} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField("waiverDate", e.target.value)} />
+                        <Input
+                          id="waiverDate"
+                          type="date"
+                          required
+                          value={form.waiverDate || new Date().toISOString().slice(0, 10)}
+                          onChange={(e) => setField("waiverDate", e.target.value)}
+                        />
                       </div>
                       <div className="flex items-end justify-end gap-2">
                         <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => {
-                            (sigRef.current as any)?.clear();
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            sigRef.current?.clear?.();
                             setSignatureDataUrl("");
                             setField("waiverSigned", false);
-                        }}
+                          }}
                         >
-                        Clear
-                            </Button>
+                          Clear
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -922,7 +901,23 @@ Further, I understand the physical demand of this activity and the practice requ
           ) : (
             <div className="w-full flex items-center justify-between">
               <div className="flex items-center gap-2 text-green-700"><CheckCircle2 className="h-5 w-5" /> Submitted!</div>
-              <Button onClick={() => { setSubmitted(false); setForm({}); }} variant="outline">Start another child</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // full reset for another child
+                  setSubmitted(false);
+                  setForm({});
+                  setSignatureDataUrl("");
+                  setFoundContactId(null);
+                  setLookupEmail("");
+                  setLookupMsg("");
+                  setStep(1);
+                  // clear canvas if present
+                  sigRef.current?.clear?.();
+                }}
+              >
+                Start another child
+              </Button>
             </div>
           )}
         </div>
