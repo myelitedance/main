@@ -195,7 +195,7 @@ function validateStep1(form: NewStudentForm) {
   const requiredPairs: Array<[string, string | undefined]> = [
     ["studentFirstName", form.studentFirstName],
     ["studentLastName",  form.studentLastName],
-    ["birthdate",        form.birthdate],
+    ["age",        form.age],
     ["parent1",          form.parent1],
     ["primaryPhone",     form.primaryPhone],
     ["email",            form.email],
@@ -472,7 +472,7 @@ try {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label htmlFor="birthdate">Birthdate *</Label>
+                        <Label htmlFor="birthdate">Birthdate </Label>
                         <Input
                           id="birthdate"
                           type="date"
@@ -482,7 +482,7 @@ try {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="age">Age</Label>
+                        <Label htmlFor="age">Age *</Label>
                         <Input
                           id="age"
                           value={derivedAge || form.age || ""}
