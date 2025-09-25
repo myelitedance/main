@@ -41,7 +41,7 @@ const CF = {
 const yesNo = (v: any) => (v ? "Yes" : "");
 
 async function searchByEmail(email: string) {
-  const u = new URL(API + "/contacts/");
+  const u = new URL(API + "/contacts");
   u.searchParams.set("locationId", LOCATION_ID);
   u.searchParams.set("query", email);
   const res = await fetch(u.toString(), { headers: apiHeaders(), cache: "no-store" });
