@@ -251,31 +251,49 @@ export default function NewStudentEntry() {
       meta: { contactId: foundContactId || undefined },
     } as const;
 
-    try {
-      const resp = await fetch("/api/ghl/new-student", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ghlPayload),
-      });
+try {
+  const resp = await fetch("/api/ghl/new-student", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(ghlPayload),
+  });
 
-      const j = await resp.json().catch(() => null);
+  const j = await resp.json().catch(() => null);
 
-      if (!resp.ok || !j?.ok) {
-        console.error("GHL submit failed", j);
-        alert(`GHL error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
-        return;
-      }
-
-      // success UI
-      setSubmitted(true);
-    } catch (err) {
-      console.error(err);
-      alert("Something went wrong while submitting. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+  if (!resp.ok || !j?.ok) {
+    console.error("GHL submit failed", j);
+    alert(`GHL error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
+    return;
   }
 
+  // Success UI first
+  setSubmitted(true);
+
+  // Fire-and-forget email; failure shouldn't affect UX
+  (async () => {
+    try {
+      await fetch("/api/notify/new-student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          form: { ...form, signatureDataUrl },     // full form for the email
+          meta: { contactId: foundContactId || null },
+        }),
+      });
+    } catch (e) {
+      console.warn("Notify email failed:", e);
+      // optional: toast/log only—no alert
+    }
+  })();
+
+} catch (err) {
+  console.error(err);
+  alert("Something went wrong while submitting. Please try again.");
+} finally {
+  setSubmitting(false);
+}
+}
   // ---------- Options ----------
   const benefitsOptions = [
     "improve confidence",
