@@ -190,18 +190,69 @@ export default function NewStudentEntry() {
     }
   }
 
+function validateStep1(form: NewStudentForm) {
+  // List of required fields (ids must match your input ids)
+  const requiredPairs: Array<[string, string | undefined]> = [
+    ["studentFirstName", form.studentFirstName],
+    ["studentLastName",  form.studentLastName],
+    ["birthdate",        form.birthdate],
+    ["parent1",          form.parent1],
+    ["primaryPhone",     form.primaryPhone],
+    ["email",            form.email],
+    ["street",           form.street],
+    ["city",             form.city],
+    // state handled separately (shadcn Select)
+    ["zip",              form.zip],
+  ];
+
+  for (const [id, val] of requiredPairs) {
+    if (!String(val || "").trim()) {
+      const el = document.getElementById(id) as HTMLElement | null;
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.focus?.();
+      alert("Please complete all required fields (*) before continuing.");
+      return false;
+    }
+  }
+
+  // Validate state (Select)
+  if (!String(form.state || "").trim()) {
+    const el = document.getElementById("state") as HTMLElement | null;
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.focus?.();
+    alert("Please select a State (*).");
+    return false;
+  }
+
+  // Validate additional children required fields
+  for (let i = 0; i < (form.additionalStudents?.length || 0); i++) {
+    const s = form.additionalStudents![i];
+    if (!s.firstName?.trim() || !s.lastName?.trim() || !s.birthdate?.trim()) {
+      alert(`Please complete all required fields (*) for Child ${i + 2}.`);
+      return false;
+    }
+  }
+
+  // Waiver acknowledgement is already enforced below, but leave it here if you want
+  return true;
+}
   // === Submit ===
   async function handleSubmit(e: React.FormEvent<HTMLButtonElement | HTMLFormElement>) {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (step === 1) {
-      if (!form.waiverAcknowledged) {
-        alert("Please acknowledge the Waiver / Release to continue.");
-        return;
-      }
-      setStep(2);
+  if (step === 1) {
+    // Run required-field validation for Step 1
+    if (!validateStep1(form)) return;
+
+    // Also enforce the waiver checkbox (not starred, but required by policy)
+    if (!form.waiverAcknowledged) {
+      alert("Please acknowledge the Waiver / Release to continue.");
       return;
     }
+
+    setStep(2);
+    return;
+  }
 
     // step 2
     setSubmitting(true);
@@ -806,7 +857,9 @@ That I have adequate medical insurance for such an eventuality, and;
 
 That I will not hold any club, member, instructor, or the owners or operators of any facility in which I might practice liable for any injury that I might sustain while practicing dance.
 
-Further, I understand the physical demand of this activity and the practice required for its development and mastery. As a consideration for my own safety and enjoyment, as well as that of other students, I commit to dedicate necessary practice of the instructions and techniques given to me in class.`}
+Further, I understand the physical demand of this activity and the practice required for its development and mastery. As a consideration for my own safety and enjoyment, as well as that of other students, I commit to dedicate necessary practice of the instructions and techniques given to me in class.
+PHOTOGRAPHY/VIDEO RELEASE:
+I, the undersigned parent or legal guardian of the student, hereby grant permission to Elite Dance LLC d/b/a Elite Dance & Music (“Elite Dance”) to photograph and/or video record my child during classes, rehearsals, and performances. I authorize Elite Dance to use such photos or videos for any lawful purpose, including but not limited to internal client files, company website, printed materials, social media, advertising, and promotional content. I understand that all such photos and videos are the property of Elite Dance and that I will not receive any compensation for their use. This consent is ongoing and may only be revoked by providing written notice to Elite Dance.`}
                   />
                   <label className="flex items-center gap-3">
                     <Checkbox
