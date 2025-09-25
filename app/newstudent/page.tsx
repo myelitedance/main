@@ -195,7 +195,10 @@ const removeChild = (idx: number) => {
           benefits_other: f.benefitsOther || "",
           area6to12mo: f.area6to12mo || "",
           waiverAcknowledged: !!f.waiverAcknowledged,
+            signature_data_url: f.signatureDataUrl || "",
           waiverSignedAt: f.waiverDate || "",
+            additional_students_json: JSON.stringify(f.additionalStudents || []),
+
         },
       },
     };
@@ -314,9 +317,24 @@ if (!signatureDataUrl) {
       const results = await Promise.allSettled(promises);
       const errors: string[] = [];
       // GHL
-      if (results[0].status === "rejected" || (results[0].status === "fulfilled" && !results[0].value.ok)) {
-        errors.push("GHL");
-      }
+      // After Promise.allSettled(promises)
+if (results[0].status === "fulfilled") {
+  const r = results[0].value;
+  if (!r.ok) {
+    const body = await r.text().catch(() => "");
+    console.error("GHL upsert failed", r.status, body);
+    alert(`GHL error (HTTP ${r.status}): ${body || "See console"}`);
+    return;
+  }
+  const out = await r.json().catch(() => null);
+  if (!out?.ok) {
+    alert(`GHL error: ${out?.status || ""} ${out?.body || ""}`);
+    return;
+  }
+} else {
+  alert("GHL network error.");
+  return;
+}
 
       if (AKADA_ENABLED) {
         const r = results[1];
