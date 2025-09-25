@@ -273,21 +273,36 @@ const removeChild = (idx: number) => {
 
     setSubmitting(true);
 
-    // Capture signature as data URL (required on page 2)
-    let signatureDataUrl = "";
-    try {
-      if (sigRef.current && !sigRef.current.isEmpty()) {
-        signatureDataUrl = sigRef.current.getTrimmedCanvas().toDataURL("image/png");
-      }
-    } catch {
-      // ignore
-    }
+    // ... inside handleSubmit, after setSubmitting(true)
+let signatureDataUrl = "";
+const pad = sigRef.current as any;
 
-    if (!signatureDataUrl) {
-      alert("Please sign to acknowledge the studio policies.");
-      setSubmitting(false);
-      return;
-    }
+// 1) Block submit if the pad is empty (most reliable signal)
+if (!pad || typeof pad.isEmpty !== "function" || pad.isEmpty()) {
+  alert("Please sign to acknowledge the studio policies.");
+  setSubmitting(false);
+  return;
+}
+
+// 2) Safely extract a data URL (try trimmed, then full canvas)
+try {
+  const cnv =
+    (typeof pad.getTrimmedCanvas === "function" && pad.getTrimmedCanvas()) ||
+    (typeof pad.getCanvas === "function" && pad.getCanvas()) ||
+    null;
+
+  if (cnv && typeof cnv.toDataURL === "function") {
+    signatureDataUrl = cnv.toDataURL("image/png");
+  }
+} catch { /* ignore */ }
+
+// 3) Final sanity check — if we couldn't serialize for some reason, still allow submit since pad isn’t empty
+if (!signatureDataUrl) {
+  // optional: you can still require a PNG by uncommenting the next 3 lines:
+  alert("We captured your signature but couldn't save the image. Please try again.");
+  setSubmitting(false);
+  return;
+}
 
     const payload = { ...form, age: derivedAge, signatureDataUrl, waiverSigned: true };
 
@@ -840,11 +855,11 @@ Further, I understand the physical demand of this activity and the practice requ
                     <Label>Signature (Student or Parent/Guardian) *</Label>
                     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#8B5CF6" }}>
                       <SignatureCanvasAny
-                        ref={sigRef}
-                        penColor="#111827"
-                        canvasProps={{ width: 740, height: 180, className: "w-full h-[180px] bg-white" }}
-                        onEnd={() => setField("waiverSigned", true)}
-                      />
+                            ref={sigRef}
+                            penColor="#111827"
+                            canvasProps={{ width: 740, height: 180, className: "w-full h-[180px] bg-white" }}
+                            onEnd={() => setField("waiverSigned", true)}
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-3 ml-auto items-center">
                       <div>
