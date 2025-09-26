@@ -104,7 +104,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Suspense>
 
         {/* Fire PageView on client-side route changes */}
-        {isProd && PIXEL_ID && <MetaPixel />}
+        {isProd && PIXEL_ID && (
+          <Suspense fallback={null}>
+            <MetaPixel />
+            </Suspense>
+          )}
 
         {/* Page content offset for fixed header */}
         <div className="pt-16">{children}</div>
