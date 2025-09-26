@@ -615,7 +615,10 @@ function ContactMessageForm() {
       });
 
       if (!res.ok) throw new Error(await res.text());
-
+      // somewhere in a client component after a successful action
+if (typeof window !== "undefined" && typeof window.fbq === "function") {
+  window.fbq("track", "Lead");
+}
       setDone(true);
       setForm({
         parent: "",

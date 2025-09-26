@@ -227,6 +227,10 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
 
     setSubmitted(true);
 setMsg(thankYou);
+// somewhere in a client component after a successful action
+if (typeof window !== "undefined" && typeof window.fbq === "function") {
+  window.fbq("track", "Lead");
+}
 
 setTimeout(() => {
   onClose?.();
