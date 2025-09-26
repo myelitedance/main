@@ -651,13 +651,14 @@ if (typeof window !== "undefined" && typeof window.fbq === "function") {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-          <input
-            type="tel"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dance-purple focus:border-transparent"
-          />
+<input
+  type="tel"
+  inputMode="tel"
+  pattern="[\d\s\-\(\)\+]{7,}"
+  title="Please enter a valid phone number"
+  value={form.phone}
+  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+/>
         </div>
       </div>
       <div>
