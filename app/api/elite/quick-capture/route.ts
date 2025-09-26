@@ -1,113 +1,88 @@
-// /app/api/elite/quick-capture/route.ts
-import { NextResponse, type NextRequest } from "next/server";
-export const runtime = "nodejs";
+import { NextRequest, NextResponse } from "next/server";
 
-const GHL_API = "https://services.leadconnectorhq.com";
+export async function POST(req: NextRequest) {
+  try {
+    const {
+      parentFirst,
+      parentLast,
+      parentPhone,
+      email,
+      dancerFirst,
+      dancerLast,
+      age,
+      interest,
+      notes,
+      utm,
+      page,
+    } = await req.json();
 
-const reqEnv = (k: string) => {
+    const GHL_API = "https://services.leadconnectorhq.com";
+
+const need = (k: string) => {
   const v = process.env[k];
   if (!v) throw new Error(`Missing env: ${k}`);
   return v;
 };
 
-const GHL_KEY        = reqEnv("GHL_API_KEY");        // Private app access_token OR Location API key
-const LOCATION_ID    = reqEnv("GHL_LOCATION_ID");
-const PIPELINE_ID    = reqEnv("GHL_PIPELINE_ID");
-const STAGE_NEW_LEAD = reqEnv("GHL_STAGE_NEW_LEAD");
+const GHL_KEY        = need("GHL_API_KEY");
+const LOCATION_ID    = need("GHL_LOCATION_ID");
 
-async function ghl(path: string, init: RequestInit = {}) {
-  const res = await fetch(`${GHL_API}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${GHL_KEY}`,
-      Version: "2021-07-28",
-      ...(init.headers || {}),
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`GHL ${path} ${res.status}: ${txt}`);
-  }
-  return res.json();
-}
+    // 1) Upsert the contact (safe if they already exist)
+    const upsertRes = await fetch("https://services.leadconnectorhq.com/contacts/upsert", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GHL_KEY}`,
+        Version: "2021-07-28",
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        LOCATION_ID,
+        firstName: parentFirst,
+        lastName: parentLast,
+        email,
+        phone: parentPhone,
+        source: utm?.source || "Website",
+        tags: ["Website Lead", interest].filter(Boolean),
+        // Include dancer info in custom fields if you have them set up in GHL:
+        // customFields: [{ id: "<DANCER_FIRST_CF_ID>", value: dancerFirst }, ...]
+      }),
+    });
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-
-    // Validate like the client does
-    const required = ["parentFirst","parentLast","email","phone","smsConsent","dancerFirst","age"] as const;
-    for (const k of required) {
-      if (!body?.[k]) return NextResponse.json({ error: `Missing field: ${k}` }, { status: 400 });
+    const upsertJson = await upsertRes.json();
+    if (!upsertRes.ok) {
+      // Surface the upstream error so the client shows your "Something went wrong" path
+      return NextResponse.json({ error: upsertJson }, { status: upsertRes.status });
     }
 
-    // 1) Upsert contact (core), gracefully handle "no duplicates" by using meta.contactId
-    let contactId: string | undefined;
-    try {
-      const upsert = await ghl(`/contacts/`, {
+    const contactId =
+      upsertJson?.contact?.id || upsertJson?.id || upsertJson?.data?.id; // handle different shapes
+
+    // 2) Add the message as a Note on the contact (so staff can see it in CRM)
+    if (contactId && notes) {
+      await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${GHL_KEY}`,
+          Version: "2021-07-28",
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({
-          locationId: LOCATION_ID,
-          firstName: body.parentFirst,
-          lastName: body.parentLast,
-          email: body.email,
-          phone: body.phone,
-          tags: ["EliteLead", "DanceInterest"],
-          source: body.utm?.source || "Website",
+          body:
+            `${notes}\n\n` +
+            `Interest: ${interest}\n` +
+            (dancerFirst || dancerLast ? `Dancer: ${[dancerFirst, dancerLast].filter(Boolean).join(" ")}${age ? `, Age ${age}` : ""}\n` : "") +
+            (page ? `Page: ${page}\n` : "") +
+            (utm?.campaign || utm?.medium || utm?.source
+              ? `UTM: ${utm?.source || ""} / ${utm?.medium || ""} / ${utm?.campaign || ""}`
+              : ""),
         }),
       });
-      contactId = upsert.contact?.id || upsert.id;
-    } catch (e: any) {
-      const msg = String(e?.message || "");
-      // Parse error JSON if available to extract existing contactId
-      try {
-        const start = msg.indexOf("{");
-        const j = start >= 0 ? JSON.parse(msg.slice(start)) : null;
-        if (
-          j?.statusCode === 400 &&
-          typeof j?.message === "string" &&
-          j.message.includes("does not allow duplicated contacts") &&
-          j?.meta?.contactId
-        ) {
-          contactId = j.meta.contactId;
-        } else {
-          throw e;
-        }
-      } catch {
-        throw e;
-      }
-    }
-
-    if (!contactId) throw new Error("No contactId returned");
-
-    // 2) Create Opportunity (v2 uses pipelineStageId)
-    const oppPayload = {
-      locationId: LOCATION_ID,
-      pipelineId: PIPELINE_ID,
-      pipelineStageId: STAGE_NEW_LEAD,
-      name: `${body.parentFirst} ${body.parentLast} – Dance Inquiry`,
-      contactId,
-      status: "open",
-      monetaryValue: 0,
-      source: body.utm?.source || "Website",
-    };
-
-    try {
-      await ghl(`/opportunities/`, {
-        method: "POST",
-        body: JSON.stringify(oppPayload),
-      });
-    } catch (e) {
-      // not fatal; we still return contactId so the flow can continue
-      console.warn("Opportunity create failed:", e);
     }
 
     return NextResponse.json({ ok: true, contactId });
   } catch (err: any) {
-    console.error("quick-capture error:", err);
-    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
+    return NextResponse.json({ error: err?.message || "Unknown error" }, { status: 500 });
   }
 }

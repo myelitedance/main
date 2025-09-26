@@ -608,7 +608,7 @@ function ContactMessageForm() {
         selectedClassId: undefined,
       };
 
-      const res = await fetch("/api/elite/lead-complete", {
+      const res = await fetch("/api/elite/quick-capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
