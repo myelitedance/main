@@ -37,12 +37,12 @@ const LOCATION_ID    = need("GHL_LOCATION_ID");
         Accept: "application/json",
       },
       body: JSON.stringify({
-        LOCATION_ID,
+        locationId: LOCATION_ID,
         firstName: parentFirst,
         lastName: parentLast,
         email,
         phone: parentPhone,
-        source: utm?.source || "Website",
+        source: utm?.source || "Website"  ,
         tags: ["Website Lead", interest].filter(Boolean),
         // Include dancer info in custom fields if you have them set up in GHL:
         // customFields: [{ id: "<DANCER_FIRST_CF_ID>", value: dancerFirst }, ...]
@@ -51,6 +51,7 @@ const LOCATION_ID    = need("GHL_LOCATION_ID");
 
     const upsertJson = await upsertRes.json();
     if (!upsertRes.ok) {
+       console.error("GHL upsert error", upsertRes.status, upsertJson);
       // Surface the upstream error so the client shows your "Something went wrong" path
       return NextResponse.json({ error: upsertJson }, { status: upsertRes.status });
     }
@@ -83,6 +84,7 @@ const LOCATION_ID    = need("GHL_LOCATION_ID");
 
     return NextResponse.json({ ok: true, contactId });
   } catch (err: any) {
+    
     return NextResponse.json({ error: err?.message || "Unknown error" }, { status: 500 });
   }
 }
