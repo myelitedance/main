@@ -224,15 +224,6 @@ function validateStep1(form: NewStudentForm) {
     return false;
   }
 
-  // Validate additional children required fields
-  for (let i = 0; i < (form.additionalStudents?.length || 0); i++) {
-    const s = form.additionalStudents![i];
-    if (!s.firstName?.trim() || !s.lastName?.trim() || !s.birthdate?.trim()) {
-      alert(`Please complete all required fields (*) for Child ${i + 2}.`);
-      return false;
-    }
-  }
-
   // Waiver acknowledgement is already enforced below, but leave it here if you want
   return true;
 }
