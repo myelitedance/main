@@ -216,14 +216,14 @@ function validateStep1(form: NewStudentForm) {
   }
 
   // Validate state (Select)
-  if (!String(form.state || "").trim()) {
+ /* if (!String(form.state || "").trim()) {
     const el = document.getElementById("state") as HTMLElement | null;
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
     el?.focus?.();
     alert("Please select a State (*).");
     return false;
   }
-
+*/
   // Waiver acknowledgement is already enforced below, but leave it here if you want
   return true;
 }
