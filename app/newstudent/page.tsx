@@ -442,7 +442,6 @@ try {
                         <Label htmlFor="studentFirstName">First name *</Label>
                         <Input
                           id="studentFirstName"
-                          required
                           autoComplete="given-name"
                           inputMode="text"
                           value={form.studentFirstName || ""}
@@ -453,7 +452,6 @@ try {
                         <Label htmlFor="studentLastName">Last name *</Label>
                         <Input
                           id="studentLastName"
-                          required
                           autoComplete="family-name"
                           inputMode="text"
                           value={form.studentLastName || ""}
@@ -467,7 +465,6 @@ try {
                         <Input
                           id="birthdate"
                           type="date"
-                          required
                           value={form.birthdate || ""}
                           onChange={(e) => setField("birthdate", e.target.value)}
                         />
@@ -505,10 +502,9 @@ try {
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <Label htmlFor={`child${idx + 2}-first`}>First name *</Label>
+                            <Label htmlFor={`child${idx + 2}-first`}>First name</Label>
                             <Input
                               id={`child${idx + 2}-first`}
-                              required
                               autoComplete="given-name"
                               value={s.firstName || ""}
                               onChange={(e) => {
@@ -519,10 +515,9 @@ try {
                             />
                           </div>
                           <div>
-                            <Label htmlFor={`child${idx + 2}-last`}>Last name *</Label>
+                            <Label htmlFor={`child${idx + 2}-last`}>Last name</Label>
                             <Input
                               id={`child${idx + 2}-last`}
-                              required
                               autoComplete="family-name"
                               value={s.lastName || ""}
                               onChange={(e) => {
@@ -536,11 +531,10 @@ try {
 
                         <div className="grid grid-cols-2 gap-3 mt-3">
                           <div>
-                            <Label htmlFor={`child${idx + 2}-dob`}>Birthdate *</Label>
+                            <Label htmlFor={`child${idx + 2}-dob`}>Birthdate</Label>
                             <Input
                               id={`child${idx + 2}-dob`}
                               type="date"
-                              required
                               value={s.birthdate || ""}
                               onChange={(e) => {
                                 const arr = [...(form.additionalStudents || [])];
@@ -589,7 +583,6 @@ try {
                       <Label htmlFor="parent1">Parent/Guardian 1 (Account Name) *</Label>
                       <Input
                         id="parent1"
-                        required
                         autoComplete="name"
                         value={form.parent1 || ""}
                         onChange={(e) => setField("parent1", e.target.value)}
@@ -618,7 +611,6 @@ try {
                       <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
                         <Input
                           id="primaryPhone"
-                          required
                           placeholder="###-###-####"
                           inputMode="tel"
                           autoComplete="tel"
@@ -695,7 +687,6 @@ try {
                       <Input
                         id="email"
                         type="email"
-                        required
                         autoComplete="email"
                         inputMode="email"
                         value={form.email || ""}
@@ -708,7 +699,6 @@ try {
                       <Label htmlFor="street">Street address *</Label>
                       <Input
                         id="street"
-                        required
                         autoComplete="address-line1"
                         value={form.street || ""}
                         onChange={(e) => setField("street", e.target.value)}
@@ -721,7 +711,6 @@ try {
                         <Label htmlFor="city">City *</Label>
                         <Input
                           id="city"
-                          required
                           autoComplete="address-level2"
                           value={form.city || ""}
                           onChange={(e) => setField("city", e.target.value)}
@@ -744,7 +733,6 @@ try {
                         <Label htmlFor="zip">Zip *</Label>
                         <Input
                           id="zip"
-                          required
                           inputMode="numeric"
                           autoComplete="postal-code"
                           value={form.zip || ""}
@@ -902,7 +890,6 @@ I, the undersigned parent or legal guardian of the student, hereby grant permiss
                         <Input
                           id="waiverDate"
                           type="date"
-                          required
                           value={form.waiverDate || new Date().toISOString().slice(0, 10)}
                           onChange={(e) => setField("waiverDate", e.target.value)}
                         />
