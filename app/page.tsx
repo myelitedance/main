@@ -173,7 +173,7 @@ export default function HomePage() {
                     A weekday creative movement program that blends dance, music, and play in a joyful, nurturing environment. Ideal for children ages 3–6 (must be potty trained).
                   </p>
                   <ul className="space-y-2 opacity-90 mb-6">
-                    <li>• Offered M/W/F – 9:01 AM to 12:00 PM</li>
+                    <li>• Offered M/W/F – 9:00 AM to 2:00 PM</li>
                     <li>• 1 Day – $250/mo | 2 Days – $400/mo | 3 Days – $550/mo</li>
                     <li>• $35/day Annual Supply Fee</li>
                     <li>• $75 Registration per student ($85 per family)</li>
