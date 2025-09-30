@@ -64,16 +64,7 @@ export function formatPrice(cents?: number) {
  */
 export const workshops: WorkshopTile[] = [
   // --- Sample placeholders (safe to remove) ---
-  {
-  "slug": "fall-break-musical-theater",
-  "title": "Fall Break - Musical Theater Workshop",
-  "dateStart": "2025-10-06",
-  "dateEnd": "2025-10-10",
-  "location": "Elite Dance & Music",
-  "priceCents": 30000,
-  "imageUrl": "/images/workshops/fallbreakworkshop.png",
-  "status": "open"
-}
+
 ];
 
 /* Optional async shape if you later swap to a DB/API */
