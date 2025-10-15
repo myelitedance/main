@@ -50,8 +50,7 @@ type StudioClass = {
 type DWItem = { sku: string; name: string; price: number };
 type DanceWearPackage = { id: string; name: string; items: DWItem[] };
 type TuitionRow = { duration: number; price: number };
-const [tuitionRows, setTuitionRows] = useState<TuitionRow[]>([]);
-const [tuitionError, setTuitionError] = useState<string>("");
+
 
 function priceFromDurationExact(mins: number, rows: TuitionRow[]): number {
   if (!Number.isFinite(mins) || mins <= 0) return 0;
@@ -114,6 +113,10 @@ export default function RegistrationDetailsPage() {
   const [lookupEmail, setLookupEmail] = useState("");
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupMsg, setLookupMsg] = useState("");
+
+  // Tuition
+  const [tuitionRows, setTuitionRows] = useState<TuitionRow[]>([]);
+  const [tuitionError, setTuitionError] = useState<string>("");
 
   // Data
   const [household, setHousehold] = useState<Household | null>(null);
