@@ -47,16 +47,20 @@ type StudioClass = {
   lengthMinutes: number; // from API (exact number)
 };
 
+type Registration = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  age: number | string;
+  classesList: StudioClass[];
+  selectedClassIds: Record<string, boolean>;
+};
+
 type DWItem = { sku: string; name: string; price: number };
 type DanceWearPackage = { id: string; name: string; items: DWItem[] };
+
 type TuitionRow = { duration: number; price: number };
 
-
-function priceFromDurationExact(mins: number, rows: TuitionRow[]): number {
-  if (!Number.isFinite(mins) || mins <= 0) return 0;
-  const hit = rows.find(r => r.duration === mins);
-  return hit ? hit.price : 0;
-}
 // ---------- utils ----------
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 const currency = (n: number) => `$${(n || 0).toFixed(2)}`;
@@ -107,6 +111,30 @@ function snapshotSignature(ref?: any): string {
   return off.toDataURL("image/png");
 }
 
+// Tuition price lookup (exact duration match)
+function priceFromDurationExact(mins: number, rows: TuitionRow[]): number {
+  if (!Number.isFinite(mins) || mins <= 0) return 0;
+  const hit = rows.find(r => r.duration === mins);
+  return hit ? hit.price : 0;
+}
+
+// Registration helpers
+function regFeeForIndex(i: number) {
+  if (i === 0) return 75;
+  if (i === 1) return 30;
+  return 0;
+}
+function makeRegFromGHL(d?: Dancer): Registration {
+  return {
+    id: d?.id || `reg_${Date.now()}`,
+    firstName: (d?.firstName || "").trim(),
+    lastName: (d?.lastName || "").trim(),
+    age: d?.age ?? "",
+    classesList: [],
+    selectedClassIds: {},
+  };
+}
+
 // ---------- component ----------
 export default function RegistrationDetailsPage() {
   // Lookup
@@ -121,13 +149,13 @@ export default function RegistrationDetailsPage() {
   // Data
   const [household, setHousehold] = useState<Household | null>(null);
 
-  // Classes (Akada)
+  // Classes (per-dancer)
   const [classesLoading, setClassesLoading] = useState(false);
   const [classesError, setClassesError] = useState<string>("");
-  const [classesList, setClassesList] = useState<StudioClass[]>([]);
-  const [selectedClassIds, setSelectedClassIds] = useState<Record<string, boolean>>({});
+  const [regs, setRegs] = useState<Registration[]>([]);
+  const [activeRegIdx, setActiveRegIdx] = useState(0);
 
-  // Dance Wear
+  // Dance Wear (global)
   const [danceWear, setDanceWear] = useState<DanceWearPackage[]>([]);
   const [selectedWearItems, setSelectedWearItems] = useState<Record<string, Record<string, boolean>>>({});
   const [wearError, setWearError] = useState<string>("");
@@ -227,9 +255,13 @@ export default function RegistrationDetailsPage() {
 
       setLookupMsg("Found your account. Review below.");
 
-      // Load dependent data
+      // Seed registrations with the primary dancer & load dependents
+      const seed = makeRegFromGHL(dancers[0]);
+      setRegs([seed]);
+      setActiveRegIdx(0);
+
       await loadDanceWear();
-      await loadClassesForPrimaryAge(dancers[0]?.age);
+      await loadClassesForAge(seed.age, 0);
       await loadTuition();
     } catch (e: any) {
       console.error("[details/lookup] fetch threw", e);
@@ -247,31 +279,32 @@ export default function RegistrationDetailsPage() {
       handleLookup();
     }
   }
-async function loadTuition() {
-  setTuitionError("");
-  setTuitionRows([]);
-  try {
-    const r = await fetch("/api/elite/tuition", { cache: "no-store" });
-    const text = await r.text();
-    if (!r.ok) {
-      let msg = `Unable to load Tuition (${r.status}).`;
-      try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch {}
-      setTuitionError(msg);
-      return;
+
+  // ---------- Tuition ----------
+  async function loadTuition() {
+    setTuitionError("");
+    setTuitionRows([]);
+    try {
+      const r = await fetch("/api/elite/tuition", { cache: "no-store" });
+      const text = await r.text();
+      if (!r.ok) {
+        let msg = `Unable to load Tuition (${r.status}).`;
+        try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch {}
+        setTuitionError(msg);
+        return;
+      }
+      const j = JSON.parse(text);
+      setTuitionRows(Array.isArray(j?.rows) ? j.rows : []);
+    } catch (e: any) {
+      console.error("tuition load failed:", e);
+      setTuitionError(e?.message || "Tuition load failed.");
     }
-    const j = JSON.parse(text);
-    setTuitionRows(Array.isArray(j?.rows) ? j.rows : []);
-  } catch (e: any) {
-    console.error("tuition load failed:", e);
-    setTuitionError(e?.message || "Tuition load failed.");
   }
-}
+
   // ---------- Classes (Akada) ----------
-  async function loadClassesForPrimaryAge(age?: number | string) {
+  async function loadClassesForAge(age?: number | string, regIndex: number = activeRegIdx) {
     setClassesLoading(true);
     setClassesError("");
-    setClassesList([]);
-    setSelectedClassIds({});
 
     try {
       const ageNum = Number(age);
@@ -301,7 +334,17 @@ async function loadTuition() {
         lengthMinutes: Number(c.lengthMinutes ?? 0),
       }));
 
-      setClassesList(norm);
+      // write into that registration slot
+      setRegs((prev) => {
+        const next = [...prev];
+        if (!next[regIndex]) return prev;
+        next[regIndex] = {
+          ...next[regIndex],
+          classesList: norm,
+          selectedClassIds: {}, // reset selections for the new list
+        };
+        return next;
+      });
     } catch (e: any) {
       console.error("classes load failed:", e);
       setClassesError(e?.message || "Classes load failed.");
@@ -311,21 +354,33 @@ async function loadTuition() {
   }
 
   function toggleClass(id: string, on: boolean) {
-    setSelectedClassIds(prev => ({ ...prev, [id]: on }));
+    setRegs((prev) => {
+      const next = [...prev];
+      const cur = next[activeRegIdx];
+      if (!cur) return prev;
+      next[activeRegIdx] = {
+        ...cur,
+        selectedClassIds: { ...cur.selectedClassIds, [id]: on },
+      };
+      return next;
+    });
   }
 
+  const activeReg = regs[activeRegIdx];
+
   const selectedClasses = useMemo(
-    () => classesList.filter(c => !!selectedClassIds[c.id]),
-    [classesList, selectedClassIds]
+    () => (activeReg?.classesList || []).filter(c => !!activeReg?.selectedClassIds?.[c.id]),
+    [activeReg?.classesList, activeReg?.selectedClassIds]
   );
 
   const selectedWeeklyMinutes = useMemo(
     () => selectedClasses.reduce((sum, c) => sum + (c.lengthMinutes || 0), 0),
     [selectedClasses]
   );
-const monthlyTuitionExact = useMemo(() => {
-  return priceFromDurationExact(selectedWeeklyMinutes, tuitionRows);
-}, [selectedWeeklyMinutes, tuitionRows]);
+
+  const monthlyTuitionExact = useMemo(() => {
+    return priceFromDurationExact(selectedWeeklyMinutes, tuitionRows);
+  }, [selectedWeeklyMinutes, tuitionRows]);
 
   // ---------- Dance Wear ----------
   async function loadDanceWear() {
@@ -401,25 +456,26 @@ const monthlyTuitionExact = useMemo(() => {
     return packageSubtotal(selectedPkg);
   }, [selectedPkg, selectedWearItems]);
 
-  // ---------- totals with proration ----------
- const breakdown = useMemo(() => {
-  if (!household) return { reg: 0, prorated: 0, wear: 0, today: 0, monthly: 0 };
-  const { registrationFee, monthlyTuitionPerDancer, billDay } = household.pricing;
+  // ---------- totals with proration (active dancer) ----------
+  const breakdown = useMemo(() => {
+    if (!household) return { reg: 0, prorated: 0, wear: 0, today: 0, monthly: 0 };
 
-  // Prefer exact-match sheet price; fallback to legacy per-dancer calc if not found.
-  const computedMonthly = monthlyTuitionExact || (monthlyTuitionPerDancer * household.dancers.length);
+    // First/Second/Additional tier by the active registration slot
+    const reg = regFeeForIndex(activeRegIdx);
 
-  const today = new Date();
-  const factor = prorate(today, billDay); // fraction of monthly for proration
-  const prorated = computedMonthly * factor;
+    // Monthly from Tuition sheet (exact match)
+    const computedMonthly = monthlyTuitionExact || 0;
 
-  const reg = registrationFee;
-  const wear = wearSubtotal;
-  const dueToday = reg + prorated + wear;
-  const dueMonthly = computedMonthly;
+    const today = new Date();
+    const factor = prorate(today, household.pricing.billDay); // fraction of monthly for proration
+    const prorated = computedMonthly * factor;
 
-  return { reg, prorated, wear, today: dueToday, monthly: dueMonthly };
-}, [household, wearSubtotal, monthlyTuitionExact]);
+    const wear = wearSubtotal; // global for now
+    const dueToday = reg + prorated + wear;
+    const dueMonthly = computedMonthly;
+
+    return { reg, prorated, wear, today: dueToday, monthly: dueMonthly };
+  }, [household, wearSubtotal, monthlyTuitionExact, activeRegIdx]);
 
   const canSubmit = !!household && autoPayConsent && !!signatureDataUrl;
 
@@ -433,8 +489,10 @@ const monthlyTuitionExact = useMemo(() => {
       contactId: household.contactId,
       email: household.email,
       parent: household.parent,
-      dancers: household.dancers,
+      dancers: household.dancers, // original GHL read (for reference)
       pricing: household.pricing,
+
+      // Per-active-dancer selections
       selectedClasses: selectedClasses.map(c => ({
         id: c.id,
         name: c.name,
@@ -445,20 +503,40 @@ const monthlyTuitionExact = useMemo(() => {
         lengthMinutes: c.lengthMinutes,
       })),
       selectedWeeklyMinutes,
+
+      // All registrations snapshot (so backend can see multi-dancer context)
+      activeDancerIndex: activeRegIdx,
+      registrations: regs.map(r => ({
+        id: r.id,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        age: r.age,
+        selectedClassIds: r.selectedClassIds,
+        selectedWeeklyMinutes: Object.entries(r.selectedClassIds || {}).reduce((mins, [id, on]) => {
+          if (!on) return mins;
+          const cls = r.classesList.find(cc => cc.id === id);
+          return mins + (cls?.lengthMinutes || 0);
+        }, 0),
+      })),
+
+      // Dance wear
       selectedWearPackages: selectedPkg ? [{
         id: selectedPkg.id,
         name: selectedPkg.name,
         items: selectedPkg.items.filter((it) => selectedWearItems[selectedPkg.id]?.[it.sku]),
         subtotal: packageSubtotal(selectedPkg),
       }] : [],
+
       totals: breakdown, // includes reg, prorated, wear, today, monthly
+
       consent: { autoPay: true, signatureDataUrl, termsAcceptedAt: new Date().toISOString() },
       notes,
+
       tuition: {
-  weeklyMinutes: selectedWeeklyMinutes,
-  monthlyFromSheet: monthlyTuitionExact,
-  source: "Tuition tab (duration→price exact match)",
-},
+        weeklyMinutes: selectedWeeklyMinutes,
+        monthlyFromSheet: monthlyTuitionExact,
+        source: "Tuition tab (duration→price exact match)",
+      },
     };
 
     try {
@@ -535,26 +613,108 @@ const monthlyTuitionExact = useMemo(() => {
                 <CardDescription>Pulled from your signup and GHL custom fields.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Switcher */}
+                {regs.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {regs.map((r, i) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setActiveRegIdx(i)}
+                        className={`px-3 py-1.5 rounded-full border ${
+                          i === activeRegIdx
+                            ? "border-[#BFDBFE] bg-[#F0F9FF] text-[#1e40af]"
+                            : "border-neutral-200 bg-white text-neutral-700"
+                        } text-sm`}
+                        aria-label={`Switch to dancer ${i + 1}`}
+                      >
+                        {r.firstName || "Dancer"} {r.lastName || ""} {i === activeRegIdx ? "• active" : ""}
+                      </button>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setRegs((prev) => {
+                          const newIdx = prev.length;
+                          const next = [...prev, makeRegFromGHL(undefined)];
+                          setActiveRegIdx(newIdx);
+                          return next;
+                        });
+                      }}
+                      className="text-xs"
+                    >
+                      Register another
+                    </Button>
+                  </div>
+                )}
+
+                {/* Account name (from parent) */}
                 <div className="rounded-xl border p-3">
                   <div className="text-sm text-neutral-500">Account Name</div>
                   <div className="text-lg font-medium">
                     {household.parent.full || `${household.parent.firstName} ${household.parent.lastName}`.trim()}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  {household.dancers.map((d) => (
-                    <div key={d.id} className="flex items-center justify-between rounded-xl border p-3">
-                      <div>
-                        <div className="font-medium">{d.firstName} {d.lastName}</div>
-                        <div className="text-sm text-neutral-500">Age {String(d.age ?? "")}</div>
+
+                {/* Active dancer info (editable) */}
+                {activeReg && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor="d-first">Dancer first name</Label>
+                      <Input
+                        id="d-first"
+                        value={activeReg.firstName}
+                        onChange={(e) =>
+                          setRegs((prev) => {
+                            const next = [...prev];
+                            next[activeRegIdx] = { ...next[activeRegIdx], firstName: e.target.value };
+                            return next;
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="d-last">Dancer last name</Label>
+                      <Input
+                        id="d-last"
+                        value={activeReg.lastName}
+                        onChange={(e) =>
+                          setRegs((prev) => {
+                            const next = [...prev];
+                            next[activeRegIdx] = { ...next[activeRegIdx], lastName: e.target.value };
+                            return next;
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="d-age">Age</Label>
+                      <Input
+                        id="d-age"
+                        inputMode="numeric"
+                        value={String(activeReg.age ?? "")}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setRegs((prev) => {
+                            const next = [...prev];
+                            next[activeRegIdx] = { ...next[activeRegIdx], age: v };
+                            return next;
+                          });
+                        }}
+                        onBlur={() => loadClassesForAge(activeReg.age, activeRegIdx)}
+                        placeholder="e.g., 7"
+                      />
+                      <div className="text-[11px] text-neutral-500 mt-1">
+                        Changing age will refresh class options for this dancer.
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Select Classes */}
+            {/* Select Classes (per active dancer) */}
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_BLUE }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -570,7 +730,12 @@ const monthlyTuitionExact = useMemo(() => {
                 {classesError && (
                   <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                     {classesError}{" "}
-                    <Button size="sm" variant="link" className="p-0 ml-1" onClick={() => loadClassesForPrimaryAge(household?.dancers?.[0]?.age)}>
+                    <Button
+                      size="sm"
+                      variant="link"
+                      className="p-0 ml-1"
+                      onClick={() => loadClassesForAge(activeReg?.age, activeRegIdx)}
+                    >
                       Retry
                     </Button>
                   </div>
@@ -582,15 +747,15 @@ const monthlyTuitionExact = useMemo(() => {
                   </div>
                 )}
 
-                {!classesError && !classesLoading && classesList.length === 0 && (
+                {!classesError && !classesLoading && (activeReg?.classesList?.length || 0) === 0 && (
                   <div className="text-sm text-neutral-500">No classes available for the selected age.</div>
                 )}
 
-                {!classesError && !classesLoading && classesList.length > 0 && (
+                {!classesError && !classesLoading && (activeReg?.classesList?.length || 0) > 0 && (
                   <div className="space-y-2">
-                    {classesList.map((c) => {
+                    {activeReg!.classesList.map((c) => {
                       const seatsLeft = Math.max(0, Number(c.maxEnrollment || 0) - Number(c.currentEnrollment || 0));
-                      const selected = !!selectedClassIds[c.id];
+                      const selected = !!activeReg!.selectedClassIds[c.id];
                       return (
                         <label key={c.id} className={`flex items-center justify-between rounded-xl border p-3 ${selected ? "bg-[#F8FAFF] border-[#BFDBFE]" : ""}`}>
                           <div className="min-w-0">
@@ -730,7 +895,9 @@ const monthlyTuitionExact = useMemo(() => {
                   <Pencil className="h-5 w-5" style={{ color: DANCE_PINK }} />
                   Review & Sign
                 </CardTitle>
-                <CardDescription>Auto-Pay required. Monthly tuition is billed on the {household.pricing.billDay === 1 ? "1st" : `${household.pricing.billDay}th`}.</CardDescription>
+                <CardDescription>
+                  Auto-Pay required. Monthly tuition is billed on the {household.pricing.billDay === 1 ? "1st" : `${household.pricing.billDay}th`}.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="rounded-2xl bg-neutral-50 p-3 space-y-1">
@@ -751,14 +918,21 @@ const monthlyTuitionExact = useMemo(() => {
                     <div className="text-sm">DUE TODAY</div>
                     <div className="text-xl font-semibold" style={{ color: DANCE_PINK }}>{currency(breakdown.today)}</div>
                   </div>
+
+                  {/* DUE MONTHLY */}
                   <div className="mt-1 flex items-center justify-between">
                     <div className="text-sm">DUE MONTHLY</div>
-                    <div className="text-xs text-neutral-500">
-  {selectedWeeklyMinutes} minutes → {currency(monthlyTuitionExact)}
-</div>
-{tuitionError && (
-  <div className="mt-2 text-xs text-red-600">{tuitionError}</div>
-)}
+                    <div className="text-right">
+                      <div className="text-xs text-neutral-500">
+                        {selectedWeeklyMinutes} minutes
+                      </div>
+                      <div className="text-xl font-semibold" style={{ color: DANCE_BLUE }}>
+                        {currency(monthlyTuitionExact)}
+                      </div>
+                      {tuitionError && (
+                        <div className="mt-1 text-[11px] text-red-600">{tuitionError}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
