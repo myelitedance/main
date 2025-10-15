@@ -160,7 +160,7 @@ export default function RegistrationDetailsPage() {
       const dancers: Dancer[] = [];
       // primary student
       const primaryAge =
-        (typeof f.student_age === "number" ? f.student_age : Number(f.student_age)) ||
+        (typeof f.dancer_age === "number" ? f.dancer_age : Number(f.dancer_age)) ||
         calcAgeFromDOB(f.student_birthdate) || "";
       if (f.studentFirstName || f.studentLastName || primaryAge !== "") {
         dancers.push({
