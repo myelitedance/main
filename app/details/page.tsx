@@ -11,7 +11,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-
 // Signature pad must be client-only (same approach as /newstudent)
 const SignatureCanvas = dynamic(() => import("react-signature-canvas"), { ssr: false }) as any;
 
@@ -34,6 +33,20 @@ type Household = {
   };
 };
 
+type StudioClass = {
+  id: string;
+  name: string;
+  level: string;
+  type: string;
+  day: string;      // "Mon"
+  time: string;     // "4:30 PM - 5:15 PM"
+  ageMin: number;
+  ageMax: number;
+  currentEnrollment: number;
+  maxEnrollment: number;
+  lengthMinutes: number; // from API (exact number)
+};
+
 type DWItem = { sku: string; name: string; price: number };
 type DanceWearPackage = { id: string; name: string; items: DWItem[] };
 
@@ -54,16 +67,13 @@ function calcAgeFromDOB(dob?: string): number | "" {
 
 // Bill proration from TODAY until next bill day (simple daily basis on current month length)
 function prorate(today: Date, billDay: number): number {
-  // If bill day is today, charge full month today; else charge fraction to the upcoming bill day
   const y = today.getFullYear();
   const m = today.getMonth();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   if (billDay <= today.getDate()) {
-    // next bill day is next month
     const daysLeftThisMonth = daysInMonth - today.getDate() + 1; // include today
     return Math.min(1, daysLeftThisMonth / daysInMonth);
   } else {
-    // bill day later this month
     const days = billDay - today.getDate();
     return Math.min(1, days / daysInMonth);
   }
@@ -72,14 +82,10 @@ function prorate(today: Date, billDay: number): number {
 function snapshotSignature(ref?: any): string {
   const pad = (ref as any)?.current;
   if (!pad || typeof pad.isEmpty !== "function" || pad.isEmpty()) return "";
-
-  // Prefer trimmed; fall back to full
   let src: HTMLCanvasElement | null = null;
   try { src = typeof pad.getTrimmedCanvas === "function" ? pad.getTrimmedCanvas() : null; } catch {}
   if (!src) try { src = typeof pad.getCanvas === "function" ? pad.getCanvas() : null; } catch {}
   if (!src) return "";
-
-  // Offscreen copy with white background
   const w = src.width || 740;
   const h = src.height || 180;
   const off = document.createElement("canvas");
@@ -104,12 +110,19 @@ export default function RegistrationDetailsPage() {
   // Data
   const [household, setHousehold] = useState<Household | null>(null);
 
+  // Classes (Akada)
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [classesError, setClassesError] = useState<string>("");
+  const [classesList, setClassesList] = useState<StudioClass[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = useState<Record<string, boolean>>({});
+
   // Dance Wear
   const [danceWear, setDanceWear] = useState<DanceWearPackage[]>([]);
   const [selectedWearItems, setSelectedWearItems] = useState<Record<string, Record<string, boolean>>>({});
-  const [wearError, setWearError] = useState<string>(""); // <-- show errors
+  const [wearError, setWearError] = useState<string>("");
   const [wearLoaded, setWearLoaded] = useState(false);
-  
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
+
   // Consent / signature / notes
   const [autoPayConsent, setAutoPayConsent] = useState(false);
   const sigRef = useRef<any>(null);
@@ -144,56 +157,49 @@ export default function RegistrationDetailsPage() {
         return;
       }
       const data = JSON.parse(raw);
-
       if (!data.found) {
         setLookupMsg("No record found for that email. Please verify spelling or contact the office.");
         setHousehold(null);
         return;
       }
 
-     // ----- AGE FIX: build dancers from GHL (use keys from your lookup route) -----
-const f = (data.formDraft || {}) as Record<string, any>;
+      // ----- Build dancers from GHL (keys from your route) -----
+      const f = (data.formDraft || {}) as Record<string, any>;
+      const parentFull = f.parent1 || f.name || "";
+      const [pf, ...plRest] = parentFull.split(" ").filter(Boolean);
+      const parent = { firstName: pf || parentFull || "", lastName: plRest.join(" ") || "", full: parentFull || "" };
 
-const parentFull = f.parent1 || f.name || "";
-const [pf, ...plRest] = parentFull.split(" ").filter(Boolean);
-const parent = { firstName: pf || parentFull || "", lastName: plRest.join(" ") || "", full: parentFull || "" };
+      const dancers: Dancer[] = [];
+      const primaryAge =
+        (Number.isFinite(Number(f.age)) ? Number(f.age) : "") ||
+        calcAgeFromDOB(f.birthdate) || "";
+      if (f.studentFirstName || f.studentLastName || primaryAge !== "") {
+        dancers.push({
+          id: "primary",
+          firstName: f.studentFirstName || "",
+          lastName: f.studentLastName || "",
+          age: primaryAge,
+        });
+      }
+      try {
+        const arr = Array.isArray(f.additionalStudents) ? f.additionalStudents : [];
+        arr.forEach((s: any, i: number) => {
+          const sAge =
+            (Number.isFinite(Number(s.age)) ? Number(s.age) : "") ||
+            calcAgeFromDOB(s.birthdate) || "";
+          dancers.push({
+            id: s.id || `extra_${i}`,
+            firstName: s.firstName || s.studentFirstName || "",
+            lastName: s.lastName || s.studentLastName || "",
+            age: sAge,
+          });
+        });
+      } catch {}
 
-const dancers: Dancer[] = [];
+      if (dancers.length === 0) {
+        dancers.push({ id: "primary", firstName: "Student", lastName: "", age: "" });
+      }
 
-// Primary student
-const primaryAge =
-  (Number.isFinite(Number(f.age)) ? Number(f.age) : "") ||
-  calcAgeFromDOB(f.birthdate) || "";
-if (f.studentFirstName || f.studentLastName || primaryAge !== "") {
-  dancers.push({
-    id: "primary",
-    firstName: f.studentFirstName || "",
-    lastName: f.studentLastName || "",
-    age: primaryAge,
-  });
-}
-
-// Additional students (already parsed array in formDraft.additionalStudents)
-try {
-  const arr = Array.isArray(f.additionalStudents) ? f.additionalStudents : [];
-  arr.forEach((s: any, i: number) => {
-    const sAge =
-      (Number.isFinite(Number(s.age)) ? Number(s.age) : "") ||
-      calcAgeFromDOB(s.birthdate) || "";
-    dancers.push({
-      id: s.id || `extra_${i}`,
-      firstName: s.firstName || s.studentFirstName || "",
-      lastName: s.lastName || s.studentLastName || "",
-      age: sAge,
-    });
-  });
-} catch { /* ignore */ }
-
-if (dancers.length === 0) {
-  dancers.push({ id: "primary", firstName: "Student", lastName: "", age: "" });
-}
-
-      // pricing – source from server if available; fallback defaults
       const pricing = {
         registrationFee: Number(data.registrationFee ?? 25),
         monthlyTuitionPerDancer: Number(data.monthlyTuitionPerDancer ?? 89),
@@ -209,7 +215,10 @@ if (dancers.length === 0) {
       });
 
       setLookupMsg("Found your account. Review below.");
-      await loadDanceWear(); // load after household
+
+      // Load dependent data
+      await loadDanceWear();
+      await loadClassesForPrimaryAge(dancers[0]?.age);
     } catch (e: any) {
       console.error("[details/lookup] fetch threw", e);
       setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
@@ -227,46 +236,101 @@ if (dancers.length === 0) {
     }
   }
 
-  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
+  // ---------- Classes (Akada) ----------
+  async function loadClassesForPrimaryAge(age?: number | string) {
+    setClassesLoading(true);
+    setClassesError("");
+    setClassesList([]);
+    setSelectedClassIds({});
 
-  // ---------- dance wear ----------
-async function loadDanceWear() {
-  setWearError("");
-  setDanceWear([]);
-  setSelectedWearItems({});
-  setWearLoaded(false);
-  try {
-    const r = await fetch("/api/elite/dancewear", { method: "GET", cache: "no-store" });
-    const text = await r.text();
-    if (!r.ok) {
-      let msg = "Unable to load Dance Wear from Google Sheets.";
-      try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch {}
-      setWearError(msg);
-      setWearLoaded(true);
-      return;
+    try {
+      const ageNum = Number(age);
+      const q = Number.isFinite(ageNum) ? `?age=${ageNum}` : "";
+      const r = await fetch(`/api/elite/classes${q}`, { cache: "no-store" });
+      const text = await r.text();
+      if (!r.ok) {
+        let msg = `Unable to load classes (${r.status}).`;
+        try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch {}
+        setClassesError(msg);
+        return;
+      }
+      const j = JSON.parse(text);
+      const apiClasses = (j?.classes || []) as any[];
+
+      const norm: StudioClass[] = apiClasses.map((c) => ({
+        id: String(c.id),
+        name: String(c.name ?? c.description ?? "").trim(),
+        level: String(c.level ?? c.levelDescription ?? "").trim(),
+        type: String(c.type ?? c.typeDescription ?? "").trim(),
+        day: String(c.day ?? "").trim(),
+        time: String(c.time ?? "").trim(),
+        ageMin: Number(c.ageMin ?? c.lowerAgeLimit ?? 0),
+        ageMax: Number(c.ageMax ?? c.upperAgeLimit ?? 99),
+        currentEnrollment: Number(c.currentEnrollment ?? 0),
+        maxEnrollment: Number(c.maxEnrollment ?? 0),
+        lengthMinutes: Number(c.lengthMinutes ?? 0),
+      }));
+
+      setClassesList(norm);
+    } catch (e: any) {
+      console.error("classes load failed:", e);
+      setClassesError(e?.message || "Classes load failed.");
+    } finally {
+      setClassesLoading(false);
     }
-    const list: DanceWearPackage[] = JSON.parse(text);
-    setDanceWear(Array.isArray(list) ? list : []);
-    setWearLoaded(true);
-
-    // Default: select the first package, and preselect its items
-    if (Array.isArray(list) && list.length > 0) {
-      const firstId = list[0].id;
-      setSelectedPackageId(firstId);
-
-      const defaults: Record<string, Record<string, boolean>> = {};
-      list.forEach((pkg) => {
-        defaults[pkg.id] = {};
-        pkg.items.forEach((it) => { defaults[pkg.id][it.sku] = true; });
-      });
-      setSelectedWearItems(defaults);
-    }
-  } catch (e: any) {
-    console.error("Dance Wear load failed:", e);
-    setWearError(e?.message || "Dance Wear load failed.");
-    setWearLoaded(true);
   }
-}
+
+  function toggleClass(id: string, on: boolean) {
+    setSelectedClassIds(prev => ({ ...prev, [id]: on }));
+  }
+
+  const selectedClasses = useMemo(
+    () => classesList.filter(c => !!selectedClassIds[c.id]),
+    [classesList, selectedClassIds]
+  );
+
+  const selectedWeeklyMinutes = useMemo(
+    () => selectedClasses.reduce((sum, c) => sum + (c.lengthMinutes || 0), 0),
+    [selectedClasses]
+  );
+
+  // ---------- Dance Wear ----------
+  async function loadDanceWear() {
+    setWearError("");
+    setDanceWear([]);
+    setSelectedWearItems({});
+    setWearLoaded(false);
+    try {
+      const r = await fetch("/api/elite/dancewear", { method: "GET", cache: "no-store" });
+      const text = await r.text();
+      if (!r.ok) {
+        let msg = "Unable to load Dance Wear from Google Sheets.";
+        try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch {}
+        setWearError(msg);
+        setWearLoaded(true);
+        return;
+      }
+      const list: DanceWearPackage[] = JSON.parse(text);
+      setDanceWear(Array.isArray(list) ? list : []);
+      setWearLoaded(true);
+
+      if (Array.isArray(list) && list.length > 0) {
+        const firstId = list[0].id;
+        setSelectedPackageId(firstId);
+
+        const defaults: Record<string, Record<string, boolean>> = {};
+        list.forEach((pkg) => {
+          defaults[pkg.id] = {};
+          pkg.items.forEach((it) => { defaults[pkg.id][it.sku] = true; });
+        });
+        setSelectedWearItems(defaults);
+      }
+    } catch (e: any) {
+      console.error("Dance Wear load failed:", e);
+      setWearError(e?.message || "Dance Wear load failed.");
+      setWearLoaded(true);
+    }
+  }
 
   function toggleWearItem(pkgId: string, sku: string, checked: boolean) {
     setSelectedWearItems((prev) => ({
@@ -274,34 +338,35 @@ async function loadDanceWear() {
       [pkgId]: { ...(prev[pkgId] || {}), [sku]: checked },
     }));
   }
-function getSelectedPackage(): DanceWearPackage | null {
-  if (!selectedPackageId) return null;
-  return danceWear.find((p) => p.id === selectedPackageId) || null;
-}
 
-function ensureDefaultsForPackage(pkgId: string) {
-  // if we don’t have selections for this pkg yet, default all items selected
-  const pkg = danceWear.find((p) => p.id === pkgId);
-  if (!pkg) return;
-  setSelectedWearItems((prev) => {
-    if (prev[pkgId]) return prev;
-    const next = { ...prev, [pkgId]: {} as Record<string, boolean> };
-    pkg.items.forEach((it) => { next[pkgId][it.sku] = true; });
-    return next;
-  });
-}
- const selectedPkg = getSelectedPackage();
+  function getSelectedPackage(): DanceWearPackage | null {
+    if (!selectedPackageId) return null;
+    return danceWear.find((p) => p.id === selectedPackageId) || null;
+  }
 
-const packageSubtotal = (pkg: DanceWearPackage) =>
-  (pkg.items || []).reduce((sum, it) => {
-    const on = selectedWearItems[pkg.id]?.[it.sku];
-    return sum + (on ? it.price : 0);
-  }, 0);
+  function ensureDefaultsForPackage(pkgId: string) {
+    const pkg = danceWear.find((p) => p.id === pkgId);
+    if (!pkg) return;
+    setSelectedWearItems((prev) => {
+      if (prev[pkgId]) return prev;
+      const next = { ...prev, [pkgId]: {} as Record<string, boolean> };
+      pkg.items.forEach((it) => { next[pkgId][it.sku] = true; });
+      return next;
+    });
+  }
 
-const wearSubtotal = useMemo(() => {
-  if (!selectedPkg) return 0;
-  return packageSubtotal(selectedPkg);
-}, [selectedPkg, selectedWearItems]);
+  const selectedPkg = getSelectedPackage();
+
+  const packageSubtotal = (pkg: DanceWearPackage) =>
+    (pkg.items || []).reduce((sum, it) => {
+      const on = selectedWearItems[pkg.id]?.[it.sku];
+      return sum + (on ? it.price : 0);
+    }, 0);
+
+  const wearSubtotal = useMemo(() => {
+    if (!selectedPkg) return 0;
+    return packageSubtotal(selectedPkg);
+  }, [selectedPkg, selectedWearItems]);
 
   // ---------- totals with proration ----------
   const breakdown = useMemo(() => {
@@ -313,7 +378,7 @@ const wearSubtotal = useMemo(() => {
     const factor = prorate(today, billDay); // 0..1
     const prorated = monthlyTuitionPerDancer * dancerCount * factor;
 
-    const reg = registrationFee;       // one-time per family
+    const reg = registrationFee;
     const wear = wearSubtotal;
     const dueToday = reg + prorated + wear;
     const dueMonthly = monthlyTuitionPerDancer * dancerCount;
@@ -327,6 +392,7 @@ const wearSubtotal = useMemo(() => {
   async function handleSubmit() {
     if (!canSubmit || !household) return;
     setSubmitting(true);
+
     const payload = {
       source: "registration-details",
       contactId: household.contactId,
@@ -334,12 +400,22 @@ const wearSubtotal = useMemo(() => {
       parent: household.parent,
       dancers: household.dancers,
       pricing: household.pricing,
+      selectedClasses: selectedClasses.map(c => ({
+        id: c.id,
+        name: c.name,
+        level: c.level,
+        type: c.type,
+        day: c.day,
+        time: c.time,
+        lengthMinutes: c.lengthMinutes,
+      })),
+      selectedWeeklyMinutes,
       selectedWearPackages: selectedPkg ? [{
-  id: selectedPkg.id,
-  name: selectedPkg.name,
-  items: selectedPkg.items.filter((it) => selectedWearItems[selectedPkg.id]?.[it.sku]),
-  subtotal: packageSubtotal(selectedPkg),
-}] : [],
+        id: selectedPkg.id,
+        name: selectedPkg.name,
+        items: selectedPkg.items.filter((it) => selectedWearItems[selectedPkg.id]?.[it.sku]),
+        subtotal: packageSubtotal(selectedPkg),
+      }] : [],
       totals: breakdown, // includes reg, prorated, wear, today, monthly
       consent: { autoPay: true, signatureDataUrl, termsAcceptedAt: new Date().toISOString() },
       notes,
@@ -380,10 +456,6 @@ const wearSubtotal = useMemo(() => {
 
       <main className="mx-auto max-w-screen-sm px-4 pb-28 pt-4">
         {/* Lookup */}
-        {/* ...lookup card unchanged except handler references... */}
-
-        {/* Show lookup card (same as previous message) */}
-        {/* --- START condensed lookup card --- */}
         <Card className="shadow-lg rounded-2xl border mb-6" style={{ borderColor: DANCE_BLUE }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Find Your Account</CardTitle>
@@ -410,40 +482,113 @@ const wearSubtotal = useMemo(() => {
             </div>
           </CardContent>
         </Card>
-        {/* --- END condensed lookup card --- */}
 
         {household && (
           <div className="space-y-6">
             {/* Account & Dancers */}
-<Card className="rounded-2xl border" style={{ borderColor: DANCE_PURPLE }}>
-  <CardHeader>
-    <CardTitle className="flex items-center gap-2">
-      <Users className="h-5 w-5" style={{ color: DANCE_PURPLE }} />
-      Account & Dancers
-    </CardTitle>
-    <CardDescription>Pulled from your signup and GHL custom fields.</CardDescription>
-  </CardHeader>
-  <CardContent className="space-y-4">
-    <div className="rounded-xl border p-3">
-      <div className="text-sm text-neutral-500">Account Name</div>
-      <div className="text-lg font-medium">
-        {household.parent.full || `${household.parent.firstName} ${household.parent.lastName}`.trim()}
-      </div>
-    </div>
-    <div className="space-y-2">
-      {household.dancers.map((d) => (
-        <div key={d.id} className="flex items-center justify-between rounded-xl border p-3">
-          <div>
-            <div className="font-medium">{d.firstName} {d.lastName}</div>
-            <div className="text-sm text-neutral-500">Age {String(d.age ?? "")}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </CardContent>
-</Card>
+            <Card className="rounded-2xl border" style={{ borderColor: DANCE_PURPLE }}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" style={{ color: DANCE_PURPLE }} />
+                  Account & Dancers
+                </CardTitle>
+                <CardDescription>Pulled from your signup and GHL custom fields.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-xl border p-3">
+                  <div className="text-sm text-neutral-500">Account Name</div>
+                  <div className="text-lg font-medium">
+                    {household.parent.full || `${household.parent.firstName} ${household.parent.lastName}`.trim()}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {household.dancers.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between rounded-xl border p-3">
+                      <div>
+                        <div className="font-medium">{d.firstName} {d.lastName}</div>
+                        <div className="text-sm text-neutral-500">Age {String(d.age ?? "")}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Dance Wear — now with error surface + subtotal footer */}
+            {/* Select Classes */}
+            <Card className="rounded-2xl border" style={{ borderColor: DANCE_BLUE }}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shirt className="h-5 w-5" style={{ color: DANCE_BLUE }} />
+                  Select your dance classes
+                </CardTitle>
+                <CardDescription>
+                  Choose one or more classes that fit your schedule. Length is used to calculate tuition.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {classesError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {classesError}{" "}
+                    <Button size="sm" variant="link" className="p-0 ml-1" onClick={() => loadClassesForPrimaryAge(household?.dancers?.[0]?.age)}>
+                      Retry
+                    </Button>
+                  </div>
+                )}
+
+                {!classesError && classesLoading && (
+                  <div className="text-sm text-neutral-500 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading classes…
+                  </div>
+                )}
+
+                {!classesError && !classesLoading && classesList.length === 0 && (
+                  <div className="text-sm text-neutral-500">No classes available for the selected age.</div>
+                )}
+
+                {!classesError && !classesLoading && classesList.length > 0 && (
+                  <div className="space-y-2">
+                    {classesList.map((c) => {
+                      const seatsLeft = Math.max(0, Number(c.maxEnrollment || 0) - Number(c.currentEnrollment || 0));
+                      const selected = !!selectedClassIds[c.id];
+                      return (
+                        <label key={c.id} className={`flex items-center justify-between rounded-xl border p-3 ${selected ? "bg-[#F8FAFF] border-[#BFDBFE]" : ""}`}>
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{c.name}</div>
+                            <div className="text-xs text-neutral-600">
+                              {c.type}{c.level ? ` • ${c.level}` : ""} • {c.day} {c.time} • {Number(c.lengthMinutes) || 0} min
+                            </div>
+                            <div className="text-xs text-neutral-500">
+                              {seatsLeft} seat{seatsLeft === 1 ? "" : "s"} left
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 pl-3 shrink-0">
+                            <Label htmlFor={`cls-${c.id}`} className="text-sm">Select</Label>
+                            <Checkbox
+                              id={`cls-${c.id}`}
+                              checked={selected}
+                              onCheckedChange={(v) => toggleClass(c.id, Boolean(v))}
+                            />
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Classes summary bar */}
+                <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
+                  <div className="text-sm">
+                    Selected classes: <span className="font-medium">{selectedClasses.length}</span>
+                  </div>
+                  <div className="text-sm">
+                    Weekly minutes: <span className="font-semibold" style={{ color: DANCE_BLUE }}>{selectedWeeklyMinutes}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dance Wear — dropdown + items */}
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_BLUE }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -453,89 +598,89 @@ const wearSubtotal = useMemo(() => {
                 <CardDescription>All items are preselected. Uncheck anything you don’t need—your price updates automatically.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-  {wearError && (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-start gap-2">
-      <AlertTriangle className="h-4 w-4 mt-0.5" />
-      <div>
-        <div className="font-medium">Dance Wear unavailable</div>
-        <div>{wearError}</div>
-        <div className="mt-2">
-          <Button size="sm" variant="outline" onClick={loadDanceWear}>Retry</Button>
-          <Button size="sm" variant="link" className="ml-2 p-0" onClick={() => window.open("/api/elite/dancewear?debug=1", "_blank")}>View API error</Button>
-        </div>
-      </div>
-    </div>
-  )}
+                {wearError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5" />
+                    <div>
+                      <div className="font-medium">Dance Wear unavailable</div>
+                      <div>{wearError}</div>
+                      <div className="mt-2">
+                        <Button size="sm" variant="outline" onClick={loadDanceWear}>Retry</Button>
+                        <Button size="sm" variant="link" className="ml-2 p-0" onClick={() => window.open("/api/elite/dancewear?debug=1", "_blank")}>View API error</Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-  {!wearError && !wearLoaded && (
-    <div className="text-sm text-neutral-500">Loading packages…</div>
-  )}
+                {!wearError && !wearLoaded && (
+                  <div className="text-sm text-neutral-500">Loading packages…</div>
+                )}
 
-  {!wearError && wearLoaded && danceWear.length === 0 && (
-    <div className="text-sm text-neutral-500">No packages available right now.</div>
-  )}
+                {!wearError && wearLoaded && danceWear.length === 0 && (
+                  <div className="text-sm text-neutral-500">No packages available right now.</div>
+                )}
 
-  {/* Package selector */}
-  {!wearError && danceWear.length > 0 && (
-    <div className="space-y-2">
-      <Label htmlFor="dw-package">Select the right package for your dancer</Label>
-      <Select
-        value={selectedPackageId}
-        onValueChange={(v) => { setSelectedPackageId(v); ensureDefaultsForPackage(v); }}
-      >
-        <SelectTrigger id="dw-package" className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6]">
-          <SelectValue placeholder="Choose a package" />
-        </SelectTrigger>
-        <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
-          {danceWear.map((pkg) => (
-            <SelectItem key={pkg.id} value={pkg.id}>{pkg.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  )}
+                {/* Package selector */}
+                {!wearError && danceWear.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="dw-package">Select the right package for your dancer</Label>
+                    <Select
+                      value={selectedPackageId}
+                      onValueChange={(v) => { setSelectedPackageId(v); ensureDefaultsForPackage(v); }}
+                    >
+                      <SelectTrigger id="dw-package" className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6]">
+                        <SelectValue placeholder="Choose a package" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
+                        {danceWear.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>{pkg.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
-  {/* Selected package details */}
-  {selectedPkg && (
-    <div className="rounded-xl border p-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-medium">{selectedPkg.name}</div>
-          <div className="text-sm text-neutral-500">
-            Package subtotal: <span className="font-medium">{currency(packageSubtotal(selectedPkg))}</span>
-          </div>
-        </div>
-      </div>
+                {/* Selected package details */}
+                {selectedPkg && (
+                  <div className="rounded-xl border p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{selectedPkg.name}</div>
+                        <div className="text-sm text-neutral-500">
+                          Package subtotal: <span className="font-medium">{currency(packageSubtotal(selectedPkg))}</span>
+                        </div>
+                      </div>
+                    </div>
 
-      <ul className="mt-2 divide-y">
-        {selectedPkg.items.map((it) => (
-          <li key={it.sku} className="py-2 flex items-center justify-between">
-            <div className="flex-1 pr-3">
-              <div className="text-sm">{it.name}</div>
-              <div className="text-xs text-neutral-500">{currency(it.price)}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor={`${selectedPkg.id}-${it.sku}`} className="text-sm">Include</Label>
-              <Checkbox
-                id={`${selectedPkg.id}-${it.sku}`}
-                checked={!!selectedWearItems[selectedPkg.id]?.[it.sku]}
-                onCheckedChange={(v) => toggleWearItem(selectedPkg.id, it.sku, Boolean(v))}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )}
+                    <ul className="mt-2 divide-y">
+                      {selectedPkg.items.map((it) => (
+                        <li key={it.sku} className="py-2 flex items-center justify-between">
+                          <div className="flex-1 pr-3">
+                            <div className="text-sm">{it.name}</div>
+                            <div className="text-xs text-neutral-500">{currency(it.price)}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={`${selectedPkg.id}-${it.sku}`} className="text-sm">Include</Label>
+                            <Checkbox
+                              id={`${selectedPkg.id}-${it.sku}`}
+                              checked={!!selectedWearItems[selectedPkg.id]?.[it.sku]}
+                              onCheckedChange={(v) => toggleWearItem(selectedPkg.id, it.sku, Boolean(v))}
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-  {/* Dynamic subtotal footer for Dance Wear */}
-  {!wearError && (
-    <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
-      <div className="text-sm">Dance Wear Subtotal</div>
-      <div className="text-lg font-semibold" style={{ color: DANCE_BLUE }}>{currency(wearSubtotal)}</div>
-    </div>
-  )}
-</CardContent>
+                {/* Dynamic subtotal footer for Dance Wear */}
+                {!wearError && (
+                  <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
+                    <div className="text-sm">Dance Wear Subtotal</div>
+                    <div className="text-lg font-semibold" style={{ color: DANCE_BLUE }}>{currency(wearSubtotal)}</div>
+                  </div>
+                )}
+              </CardContent>
             </Card>
 
             {/* Review & Sign — full math breakdown */}
@@ -572,7 +717,6 @@ const wearSubtotal = useMemo(() => {
                   </div>
                 </div>
 
-                {/* Consent + signature + notes (same as before) */}
                 <div className="flex items-start gap-2 rounded-xl border p-3">
                   <Checkbox id="autopay" checked={autoPayConsent} onCheckedChange={(v) => setAutoPayConsent(Boolean(v))} />
                   <Label htmlFor="autopay" className="text-sm">
