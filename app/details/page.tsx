@@ -32,7 +32,8 @@ type Household = {
   };
 };
 
-type DanceWearItem = { sku: string; label: string; price: number };
+type DWItem = { sku: string; name: string; price: number };
+type DanceWearPackage = { id: string; name: string; items: DWItem[] };
 
 // ---------- Utils ----------
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -47,8 +48,8 @@ export default function RegistrationDetailsPage() {
 
   // Data
   const [household, setHousehold] = useState<Household | null>(null);
-  const [danceWear, setDanceWear] = useState<DanceWearItem[]>([]);
-  const [selectedWear, setSelectedWear] = useState<Record<string, boolean>>({});
+  const [danceWear, setDanceWear] = useState<DanceWearPackage[]>([]);
+  const [selectedWearItems, setSelectedWearItems] = useState<Record<string, Record<string, boolean>>>({});
 
   // Consent / Signature / Notes
   const [autoPayConsent, setAutoPayConsent] = useState(false);
@@ -171,48 +172,73 @@ export default function RegistrationDetailsPage() {
 
   // ---------- Dance Wear (spreadsheet) ----------
   async function loadDanceWear() {
-    // Implement server-side reading of your spreadsheet here:
-    // /app/api/elite/dancewear/route.ts → returns [{ sku, label, price }]
-    try {
-      const r = await fetch("/api/elite/dancewear", { method: "GET", cache: "no-store" });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const list: DanceWearItem[] = await r.json();
-      setDanceWear(Array.isArray(list) ? list : []);
-      setSelectedWear({}); // default: none selected
-    } catch (e) {
-      console.warn("Dance Wear load failed:", e);
-      // Safe fallback (optional)
-      setDanceWear([
-        { sku: "dw-ballet-shoes-youth", label: "Ballet/Combo Shoes (Youth)", price: 28 },
-        { sku: "dw-jazz-shoes-teen", label: "Jazz/Hip-Hop Shoes (Teen)", price: 36 },
-        { sku: "dw-uniform-youth", label: "Elite Uniform (Youth)", price: 38 },
-        { sku: "dw-uniform-teen", label: "Elite Uniform (Teen)", price: 42 },
-      ]);
-    }
+  try {
+    const r = await fetch("/api/elite/dancewear", { method: "GET", cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const list: DanceWearPackage[] = await r.json();
+
+    setDanceWear(Array.isArray(list) ? list : []);
+
+    // Default all items selected
+    const defaults: Record<string, Record<string, boolean>> = {};
+    (list || []).forEach((pkg) => {
+      defaults[pkg.id] = {};
+      pkg.items.forEach((it) => { defaults[pkg.id][it.sku] = true; });
+    });
+    setSelectedWearItems(defaults);
+  } catch (e) {
+    console.warn("Dance Wear load failed:", e);
+    const fallback: DanceWearPackage[] = [
+      {
+        id: "starter-combo",
+        name: "Starter Combo",
+        items: [
+          { sku: "shoes-youth",  name: "Ballet Shoes (Youth)", price: 28 },
+          { sku: "tights-youth", name: "Tights (Youth)",       price: 12 },
+          { sku: "uniform-y",    name: "Uniform (Youth)",      price: 38 },
+          { sku: "bag",          name: "Drawstring Bag",       price: 10 },
+          { sku: "bow",          name: "Team Bow",             price: 6  },
+        ],
+      },
+    ];
+    setDanceWear(fallback);
+    const defaults: Record<string, Record<string, boolean>> = {};
+    fallback.forEach((pkg) => {
+      defaults[pkg.id] = {};
+      pkg.items.forEach((it) => { defaults[pkg.id][it.sku] = true; });
+    });
+    setSelectedWearItems(defaults);
   }
+}
 
-  const toggleWear = (sku: string, checked: boolean) =>
-    setSelectedWear((prev) => ({ ...prev, [sku]: checked }));
-
+  // ---------Toggle Helper---------
+function toggleWearItem(pkgId: string, sku: string, checked: boolean) {
+  setSelectedWearItems((prev) => ({
+    ...prev,
+    [pkgId]: { ...(prev[pkgId] || {}), [sku]: checked },
+  }));
+}
   // ---------- Totals ----------
+  const packageSubtotal = (pkg: DanceWearPackage) =>
+  (pkg.items || []).reduce((sum, it) => {
+    const on = selectedWearItems[pkg.id]?.[it.sku];
+    return sum + (on ? it.price : 0);
+  }, 0);
+
+const wearSubtotal = useMemo(() => {
+  return danceWear.reduce((acc, pkg) => acc + packageSubtotal(pkg), 0);
+}, [danceWear, selectedWearItems]);
   const totals = useMemo(() => {
-    if (!household) return { today: 0, monthly: 0 };
-    const { registrationFee, monthlyTuitionPerDancer } = household.pricing;
-    const dancerCount = household.dancers.length;
+  if (!household) return { today: 0, monthly: 0, wear: 0 };
+  const { registrationFee, monthlyTuitionPerDancer } = household.pricing;
+  const dancerCount = household.dancers.length;
 
-    const firstMonth = monthlyTuitionPerDancer * dancerCount;
+  const firstMonth = monthlyTuitionPerDancer * dancerCount;
+  const today = registrationFee + firstMonth + wearSubtotal;
+  const monthly = monthlyTuitionPerDancer * dancerCount;
 
-    const wearTotal = Object.entries(selectedWear).reduce((sum, [sku, on]) => {
-      if (!on) return sum;
-      const item = danceWear.find((i) => i.sku === sku);
-      return sum + (item?.price || 0);
-    }, 0);
-
-    const today = registrationFee + firstMonth + wearTotal;
-    const monthly = monthlyTuitionPerDancer * dancerCount; // billed on the 1st
-
-    return { today, monthly };
-  }, [household, selectedWear, danceWear]);
+  return { today, monthly, wear: wearSubtotal };
+}, [household, wearSubtotal]);
 
   // ---------- Signature helpers ----------
   function snapshotSignature(): string {
@@ -254,10 +280,15 @@ export default function RegistrationDetailsPage() {
       parent: household.parent,
       dancers: household.dancers,
       pricing: household.pricing,
-      selectedWear: Object.entries(selectedWear)
-        .filter(([, on]) => on)
-        .map(([sku]) => danceWear.find((i) => i.sku === sku)),
-      totals,
+      selectedWearPackages: danceWear.map((pkg) => ({
+    id: pkg.id,
+    name: pkg.name,
+    items: pkg.items
+      .filter((it) => selectedWearItems[pkg.id]?.[it.sku])
+      .map(({ sku, name, price }) => ({ sku, name, price })),
+    subtotal: packageSubtotal(pkg),
+  })),
+  totals, // contains .wear, .today, .monthly
       consent: {
         autoPay: true,
         signatureDataUrl,
@@ -392,35 +423,60 @@ export default function RegistrationDetailsPage() {
 
             {/* Dance Wear */}
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_BLUE }}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shirt className="h-5 w-5" style={{ color: DANCE_BLUE }} />
-                  Dance Wear
-                </CardTitle>
-                <CardDescription>Select any items to add to your first-day pickup.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {danceWear.length === 0 && (
-                  <div className="text-sm text-neutral-500">No items available right now.</div>
-                )}
-                {danceWear.map((item) => (
-                  <div key={item.sku} className="flex items-center justify-between rounded-xl border p-3">
-                    <div>
-                      <div className="font-medium">{item.label}</div>
-                      <div className="text-sm text-neutral-500">{currency(item.price)}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={item.sku} className="text-sm">Add</Label>
-                      <Checkbox
-                        id={item.sku}
-                        checked={!!selectedWear[item.sku]}
-                        onCheckedChange={(v) => toggleWear(item.sku, Boolean(v))}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2">
+      <Shirt className="h-5 w-5" style={{ color: DANCE_BLUE }} />
+      Dance Wear Packages
+    </CardTitle>
+    <CardDescription>
+      All items are preselected. Uncheck anything you don’t need—your price updates automatically.
+    </CardDescription>
+  </CardHeader>
+
+  <CardContent className="space-y-4">
+    {danceWear.length === 0 && (
+      <div className="text-sm text-neutral-500">No packages available right now.</div>
+    )}
+
+    {danceWear.map((pkg) => (
+      <div key={pkg.id} className="rounded-xl border p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-medium">{pkg.name}</div>
+            <div className="text-sm text-neutral-500">
+              Package subtotal: <span className="font-medium">{currency(packageSubtotal(pkg))}</span>
+            </div>
+          </div>
+        </div>
+
+        <ul className="mt-2 divide-y">
+          {pkg.items.map((it) => (
+            <li key={it.sku} className="py-2 flex items-center justify-between">
+              <div className="flex-1 pr-3">
+                <div className="text-sm">{it.name}</div>
+                <div className="text-xs text-neutral-500">{currency(it.price)}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor={`${pkg.id}-${it.sku}`} className="text-sm">Include</Label>
+                <Checkbox
+                  id={`${pkg.id}-${it.sku}`}
+                  checked={!!selectedWearItems[pkg.id]?.[it.sku]}
+                  onCheckedChange={(v) => toggleWearItem(pkg.id, it.sku, Boolean(v))}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+
+    {/* Dynamic subtotal footer for Dance Wear */}
+    <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
+      <div className="text-sm">Dance Wear Subtotal</div>
+      <div className="text-lg font-semibold" style={{ color: DANCE_BLUE }}>{currency(wearSubtotal)}</div>
+    </div>
+  </CardContent>
+</Card>
 
             {/* Review & Sign */}
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_PINK }}>
@@ -434,15 +490,19 @@ export default function RegistrationDetailsPage() {
               <CardContent className="space-y-5">
                 {/* Totals */}
                 <div className="rounded-2xl bg-neutral-50 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm">DUE TODAY</div>
-                    <div className="text-xl font-semibold" style={{ color: DANCE_PINK }}>{currency(totals.today)}</div>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between">
-                    <div className="text-sm">DUE MONTHLY (on the {household.pricing.billDay === 1 ? "1st" : household.pricing.billDay + "th"})</div>
-                    <div className="text-lg font-medium" style={{ color: DANCE_BLUE }}>{currency(totals.monthly)}</div>
-                  </div>
-                </div>
+  <div className="flex items-center justify-between">
+    <div className="text-sm">DUE TODAY</div>
+    <div className="text-xl font-semibold" style={{ color: DANCE_PINK }}>{currency(totals.today)}</div>
+  </div>
+  <div className="mt-1 flex items-center justify-between text-sm">
+    <div className="text-neutral-600">Includes Dance Wear</div>
+    <div className="font-medium">{currency(totals.wear)}</div>
+  </div>
+  <div className="mt-1 flex items-center justify-between">
+    <div className="text-sm">DUE MONTHLY (on the {household.pricing.billDay === 1 ? "1st" : `${household.pricing.billDay}th`})</div>
+    <div className="text-lg font-medium" style={{ color: DANCE_BLUE }}>{currency(totals.monthly)}</div>
+  </div>
+</div>
 
                 {/* Consent */}
                 <div className="flex items-start gap-2 rounded-xl border p-3">
