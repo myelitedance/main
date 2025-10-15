@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+
 
 // Signature pad must be client-only (same approach as /newstudent)
 const SignatureCanvas = dynamic(() => import("react-signature-canvas"), { ssr: false }) as any;
@@ -224,35 +226,46 @@ export default function RegistrationDetailsPage() {
     }
   }
 
-  // ---------- dance wear ----------
-  async function loadDanceWear() {
-    setWearError("");
-    setDanceWear([]);
-    setSelectedWearItems({});
-    try {
-      const r = await fetch("/api/elite/dancewear", { method: "GET", cache: "no-store" });
-      const text = await r.text();
-      if (!r.ok) {
-        let msg = "Unable to load Dance Wear from Google Sheets.";
-        try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch {}
-        setWearError(msg);
-        return;
-      }
-      const list: DanceWearPackage[] = JSON.parse(text);
-      setDanceWear(Array.isArray(list) ? list : []);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
 
-      // Default all items selected
+  // ---------- dance wear ----------
+async function loadDanceWear() {
+  setWearError("");
+  setDanceWear([]);
+  setSelectedWearItems({});
+  setWearLoaded(false);
+  try {
+    const r = await fetch("/api/elite/dancewear", { method: "GET", cache: "no-store" });
+    const text = await r.text();
+    if (!r.ok) {
+      let msg = "Unable to load Dance Wear from Google Sheets.";
+      try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch {}
+      setWearError(msg);
+      setWearLoaded(true);
+      return;
+    }
+    const list: DanceWearPackage[] = JSON.parse(text);
+    setDanceWear(Array.isArray(list) ? list : []);
+    setWearLoaded(true);
+
+    // Default: select the first package, and preselect its items
+    if (Array.isArray(list) && list.length > 0) {
+      const firstId = list[0].id;
+      setSelectedPackageId(firstId);
+
       const defaults: Record<string, Record<string, boolean>> = {};
-      (list || []).forEach((pkg) => {
+      list.forEach((pkg) => {
         defaults[pkg.id] = {};
         pkg.items.forEach((it) => { defaults[pkg.id][it.sku] = true; });
       });
       setSelectedWearItems(defaults);
-    } catch (e: any) {
-      console.error("Dance Wear load failed:", e);
-      setWearError(e?.message || "Dance Wear load failed.");
     }
+  } catch (e: any) {
+    console.error("Dance Wear load failed:", e);
+    setWearError(e?.message || "Dance Wear load failed.");
+    setWearLoaded(true);
   }
+}
 
   function toggleWearItem(pkgId: string, sku: string, checked: boolean) {
     setSelectedWearItems((prev) => ({
@@ -260,17 +273,34 @@ export default function RegistrationDetailsPage() {
       [pkgId]: { ...(prev[pkgId] || {}), [sku]: checked },
     }));
   }
+function getSelectedPackage(): DanceWearPackage | null {
+  if (!selectedPackageId) return null;
+  return danceWear.find((p) => p.id === selectedPackageId) || null;
+}
 
-  const packageSubtotal = (pkg: DanceWearPackage) =>
-    (pkg.items || []).reduce((sum, it) => {
-      const on = selectedWearItems[pkg.id]?.[it.sku];
-      return sum + (on ? it.price : 0);
-    }, 0);
+function ensureDefaultsForPackage(pkgId: string) {
+  // if we don’t have selections for this pkg yet, default all items selected
+  const pkg = danceWear.find((p) => p.id === pkgId);
+  if (!pkg) return;
+  setSelectedWearItems((prev) => {
+    if (prev[pkgId]) return prev;
+    const next = { ...prev, [pkgId]: {} as Record<string, boolean> };
+    pkg.items.forEach((it) => { next[pkgId][it.sku] = true; });
+    return next;
+  });
+}
+ const selectedPkg = getSelectedPackage();
 
-  const wearSubtotal = useMemo(
-    () => danceWear.reduce((acc, pkg) => acc + packageSubtotal(pkg), 0),
-    [danceWear, selectedWearItems]
-  );
+const packageSubtotal = (pkg: DanceWearPackage) =>
+  (pkg.items || []).reduce((sum, it) => {
+    const on = selectedWearItems[pkg.id]?.[it.sku];
+    return sum + (on ? it.price : 0);
+  }, 0);
+
+const wearSubtotal = useMemo(() => {
+  if (!selectedPkg) return 0;
+  return packageSubtotal(selectedPkg);
+}, [selectedPkg, selectedWearItems]);
 
   // ---------- totals with proration ----------
   const breakdown = useMemo(() => {
@@ -303,12 +333,12 @@ export default function RegistrationDetailsPage() {
       parent: household.parent,
       dancers: household.dancers,
       pricing: household.pricing,
-      selectedWearPackages: danceWear.map((pkg) => ({
-        id: pkg.id,
-        name: pkg.name,
-        items: pkg.items.filter((it) => selectedWearItems[pkg.id]?.[it.sku]),
-        subtotal: packageSubtotal(pkg),
-      })),
+      selectedWearPackages: selectedPkg ? [{
+  id: selectedPkg.id,
+  name: selectedPkg.name,
+  items: selectedPkg.items.filter((it) => selectedWearItems[selectedPkg.id]?.[it.sku]),
+  subtotal: packageSubtotal(selectedPkg),
+}] : [],
       totals: breakdown, // includes reg, prorated, wear, today, monthly
       consent: { autoPay: true, signatureDataUrl, termsAcceptedAt: new Date().toISOString() },
       notes,
@@ -422,63 +452,89 @@ export default function RegistrationDetailsPage() {
                 <CardDescription>All items are preselected. Uncheck anything you don’t need—your price updates automatically.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {wearError && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 mt-0.5" />
-                    <div>
-                      <div className="font-medium">Dance Wear unavailable</div>
-                      <div>{wearError}</div>
-                      <div className="mt-2">
-                        <Button size="sm" variant="outline" onClick={loadDanceWear}>Retry</Button>
-                        <Button size="sm" variant="link" className="ml-2 p-0" onClick={() => window.open("/api/elite/dancewear?debug=1", "_blank")}>View API error</Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+  {wearError && (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-start gap-2">
+      <AlertTriangle className="h-4 w-4 mt-0.5" />
+      <div>
+        <div className="font-medium">Dance Wear unavailable</div>
+        <div>{wearError}</div>
+        <div className="mt-2">
+          <Button size="sm" variant="outline" onClick={loadDanceWear}>Retry</Button>
+          <Button size="sm" variant="link" className="ml-2 p-0" onClick={() => window.open("/api/elite/dancewear?debug=1", "_blank")}>View API error</Button>
+        </div>
+      </div>
+    </div>
+  )}
 
-                {!wearError && danceWear.length === 0 && (
-                  <div className="text-sm text-neutral-500">Loading packages…</div>
-                )}
+  {!wearError && !wearLoaded && (
+    <div className="text-sm text-neutral-500">Loading packages…</div>
+  )}
 
-                {!wearError && danceWear.map((pkg) => (
-                  <div key={pkg.id} className="rounded-xl border p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{pkg.name}</div>
-                        <div className="text-sm text-neutral-500">
-                          Package subtotal: <span className="font-medium">{currency(packageSubtotal(pkg))}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <ul className="mt-2 divide-y">
-                      {pkg.items.map((it) => (
-                        <li key={it.sku} className="py-2 flex items-center justify-between">
-                          <div className="flex-1 pr-3">
-                            <div className="text-sm">{it.name}</div>
-                            <div className="text-xs text-neutral-500">{currency(it.price)}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`${pkg.id}-${it.sku}`} className="text-sm">Include</Label>
-                            <Checkbox
-                              id={`${pkg.id}-${it.sku}`}
-                              checked={!!selectedWearItems[pkg.id]?.[it.sku]}
-                              onCheckedChange={(v) => toggleWearItem(pkg.id, it.sku, Boolean(v))}
-                            />
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+  {!wearError && wearLoaded && danceWear.length === 0 && (
+    <div className="text-sm text-neutral-500">No packages available right now.</div>
+  )}
 
-                {/* Dynamic subtotal footer for Dance Wear */}
-                {!wearError && (
-                  <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
-                    <div className="text-sm">Dance Wear Subtotal</div>
-                    <div className="text-lg font-semibold" style={{ color: DANCE_BLUE }}>{currency(wearSubtotal)}</div>
-                  </div>
-                )}
-              </CardContent>
+  {/* Package selector */}
+  {!wearError && danceWear.length > 0 && (
+    <div className="space-y-2">
+      <Label htmlFor="dw-package">Select the right package for your dancer</Label>
+      <Select
+        value={selectedPackageId}
+        onValueChange={(v) => { setSelectedPackageId(v); ensureDefaultsForPackage(v); }}
+      >
+        <SelectTrigger id="dw-package" className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6]">
+          <SelectValue placeholder="Choose a package" />
+        </SelectTrigger>
+        <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
+          {danceWear.map((pkg) => (
+            <SelectItem key={pkg.id} value={pkg.id}>{pkg.name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )}
+
+  {/* Selected package details */}
+  {selectedPkg && (
+    <div className="rounded-xl border p-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-medium">{selectedPkg.name}</div>
+          <div className="text-sm text-neutral-500">
+            Package subtotal: <span className="font-medium">{currency(packageSubtotal(selectedPkg))}</span>
+          </div>
+        </div>
+      </div>
+
+      <ul className="mt-2 divide-y">
+        {selectedPkg.items.map((it) => (
+          <li key={it.sku} className="py-2 flex items-center justify-between">
+            <div className="flex-1 pr-3">
+              <div className="text-sm">{it.name}</div>
+              <div className="text-xs text-neutral-500">{currency(it.price)}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor={`${selectedPkg.id}-${it.sku}`} className="text-sm">Include</Label>
+              <Checkbox
+                id={`${selectedPkg.id}-${it.sku}`}
+                checked={!!selectedWearItems[selectedPkg.id]?.[it.sku]}
+                onCheckedChange={(v) => toggleWearItem(selectedPkg.id, it.sku, Boolean(v))}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+
+  {/* Dynamic subtotal footer for Dance Wear */}
+  {!wearError && (
+    <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
+      <div className="text-sm">Dance Wear Subtotal</div>
+      <div className="text-lg font-semibold" style={{ color: DANCE_BLUE }}>{currency(wearSubtotal)}</div>
+    </div>
+  )}
+</CardContent>
             </Card>
 
             {/* Review & Sign — full math breakdown */}
