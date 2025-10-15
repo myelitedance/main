@@ -49,7 +49,15 @@ type StudioClass = {
 
 type DWItem = { sku: string; name: string; price: number };
 type DanceWearPackage = { id: string; name: string; items: DWItem[] };
+type TuitionRow = { duration: number; price: number };
+const [tuitionRows, setTuitionRows] = useState<TuitionRow[]>([]);
+const [tuitionError, setTuitionError] = useState<string>("");
 
+function priceFromDurationExact(mins: number, rows: TuitionRow[]): number {
+  if (!Number.isFinite(mins) || mins <= 0) return 0;
+  const hit = rows.find(r => r.duration === mins);
+  return hit ? hit.price : 0;
+}
 // ---------- utils ----------
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 const currency = (n: number) => `$${(n || 0).toFixed(2)}`;
@@ -219,6 +227,7 @@ export default function RegistrationDetailsPage() {
       // Load dependent data
       await loadDanceWear();
       await loadClassesForPrimaryAge(dancers[0]?.age);
+      await loadTuition();
     } catch (e: any) {
       console.error("[details/lookup] fetch threw", e);
       setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
@@ -235,7 +244,25 @@ export default function RegistrationDetailsPage() {
       handleLookup();
     }
   }
-
+async function loadTuition() {
+  setTuitionError("");
+  setTuitionRows([]);
+  try {
+    const r = await fetch("/api/elite/tuition", { cache: "no-store" });
+    const text = await r.text();
+    if (!r.ok) {
+      let msg = `Unable to load Tuition (${r.status}).`;
+      try { const j = JSON.parse(text); if (j?.error) msg = j.error; } catch {}
+      setTuitionError(msg);
+      return;
+    }
+    const j = JSON.parse(text);
+    setTuitionRows(Array.isArray(j?.rows) ? j.rows : []);
+  } catch (e: any) {
+    console.error("tuition load failed:", e);
+    setTuitionError(e?.message || "Tuition load failed.");
+  }
+}
   // ---------- Classes (Akada) ----------
   async function loadClassesForPrimaryAge(age?: number | string) {
     setClassesLoading(true);
@@ -293,6 +320,9 @@ export default function RegistrationDetailsPage() {
     () => selectedClasses.reduce((sum, c) => sum + (c.lengthMinutes || 0), 0),
     [selectedClasses]
   );
+const monthlyTuitionExact = useMemo(() => {
+  return priceFromDurationExact(selectedWeeklyMinutes, tuitionRows);
+}, [selectedWeeklyMinutes, tuitionRows]);
 
   // ---------- Dance Wear ----------
   async function loadDanceWear() {
@@ -369,22 +399,24 @@ export default function RegistrationDetailsPage() {
   }, [selectedPkg, selectedWearItems]);
 
   // ---------- totals with proration ----------
-  const breakdown = useMemo(() => {
-    if (!household) return { reg: 0, prorated: 0, wear: 0, today: 0, monthly: 0 };
-    const { registrationFee, monthlyTuitionPerDancer, billDay } = household.pricing;
-    const dancerCount = household.dancers.length;
+ const breakdown = useMemo(() => {
+  if (!household) return { reg: 0, prorated: 0, wear: 0, today: 0, monthly: 0 };
+  const { registrationFee, monthlyTuitionPerDancer, billDay } = household.pricing;
 
-    const today = new Date();
-    const factor = prorate(today, billDay); // 0..1
-    const prorated = monthlyTuitionPerDancer * dancerCount * factor;
+  // Prefer exact-match sheet price; fallback to legacy per-dancer calc if not found.
+  const computedMonthly = monthlyTuitionExact || (monthlyTuitionPerDancer * household.dancers.length);
 
-    const reg = registrationFee;
-    const wear = wearSubtotal;
-    const dueToday = reg + prorated + wear;
-    const dueMonthly = monthlyTuitionPerDancer * dancerCount;
+  const today = new Date();
+  const factor = prorate(today, billDay); // fraction of monthly for proration
+  const prorated = computedMonthly * factor;
 
-    return { reg, prorated, wear, today: dueToday, monthly: dueMonthly };
-  }, [household, wearSubtotal]);
+  const reg = registrationFee;
+  const wear = wearSubtotal;
+  const dueToday = reg + prorated + wear;
+  const dueMonthly = computedMonthly;
+
+  return { reg, prorated, wear, today: dueToday, monthly: dueMonthly };
+}, [household, wearSubtotal, monthlyTuitionExact]);
 
   const canSubmit = !!household && autoPayConsent && !!signatureDataUrl;
 
@@ -419,6 +451,11 @@ export default function RegistrationDetailsPage() {
       totals: breakdown, // includes reg, prorated, wear, today, monthly
       consent: { autoPay: true, signatureDataUrl, termsAcceptedAt: new Date().toISOString() },
       notes,
+      tuition: {
+  weeklyMinutes: selectedWeeklyMinutes,
+  monthlyFromSheet: monthlyTuitionExact,
+  source: "Tuition tab (duration→price exact match)",
+},
     };
 
     try {
@@ -713,7 +750,12 @@ export default function RegistrationDetailsPage() {
                   </div>
                   <div className="mt-1 flex items-center justify-between">
                     <div className="text-sm">DUE MONTHLY</div>
-                    <div className="text-lg font-medium" style={{ color: DANCE_BLUE }}>{currency(breakdown.monthly)}</div>
+                    <div className="text-xs text-neutral-500">
+  {selectedWeeklyMinutes} minutes → {currency(monthlyTuitionExact)}
+</div>
+{tuitionError && (
+  <div className="mt-2 text-xs text-red-600">{tuitionError}</div>
+)}
                   </div>
                 </div>
 
