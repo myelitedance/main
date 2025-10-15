@@ -151,46 +151,47 @@ export default function RegistrationDetailsPage() {
         return;
       }
 
-      // ----- AGE FIX: build dancers from GHL -----
-      const f = (data.formDraft || {}) as Record<string, any>;
-      const parentFull = f.parent1 || f.name || "";
-      const [pf, ...plRest] = parentFull.split(" ").filter(Boolean);
-      const parent = { firstName: pf || parentFull || "", lastName: plRest.join(" ") || "", full: parentFull || "" };
+     // ----- AGE FIX: build dancers from GHL (use keys from your lookup route) -----
+const f = (data.formDraft || {}) as Record<string, any>;
 
-      const dancers: Dancer[] = [];
-      // primary student
-      const primaryAge =
-        (typeof f.dancer_age === "number" ? f.dancer_age : Number(f.dancer_age)) ||
-        calcAgeFromDOB(f.student_birthdate) || "";
-      if (f.studentFirstName || f.studentLastName || primaryAge !== "") {
-        dancers.push({
-          id: "primary",
-          firstName: f.studentFirstName || "",
-          lastName: f.studentLastName || "",
-          age: primaryAge,
-        });
-      }
-      // additional students
-      try {
-        const arr = f.additional_students_json ? JSON.parse(f.additional_students_json) : [];
-        if (Array.isArray(arr)) {
-          arr.forEach((s: any, i: number) => {
-            const age =
-              (typeof s.age === "number" ? s.age : Number(s.age)) ||
-              calcAgeFromDOB(s.birthdate) || "";
-            dancers.push({
-              id: s.id || `extra_${i}`,
-              firstName: s.firstName || s.studentFirstName || "",
-              lastName: s.lastName || s.studentLastName || "",
-              age,
-            });
-          });
-        }
-      } catch { /* ignore */ }
+const parentFull = f.parent1 || f.name || "";
+const [pf, ...plRest] = parentFull.split(" ").filter(Boolean);
+const parent = { firstName: pf || parentFull || "", lastName: plRest.join(" ") || "", full: parentFull || "" };
 
-      if (dancers.length === 0) {
-        dancers.push({ id: "primary", firstName: "Student", lastName: "", age: "" });
-      }
+const dancers: Dancer[] = [];
+
+// Primary student
+const primaryAge =
+  (Number.isFinite(Number(f.age)) ? Number(f.age) : "") ||
+  calcAgeFromDOB(f.birthdate) || "";
+if (f.studentFirstName || f.studentLastName || primaryAge !== "") {
+  dancers.push({
+    id: "primary",
+    firstName: f.studentFirstName || "",
+    lastName: f.studentLastName || "",
+    age: primaryAge,
+  });
+}
+
+// Additional students (already parsed array in formDraft.additionalStudents)
+try {
+  const arr = Array.isArray(f.additionalStudents) ? f.additionalStudents : [];
+  arr.forEach((s: any, i: number) => {
+    const sAge =
+      (Number.isFinite(Number(s.age)) ? Number(s.age) : "") ||
+      calcAgeFromDOB(s.birthdate) || "";
+    dancers.push({
+      id: s.id || `extra_${i}`,
+      firstName: s.firstName || s.studentFirstName || "",
+      lastName: s.lastName || s.studentLastName || "",
+      age: sAge,
+    });
+  });
+} catch { /* ignore */ }
+
+if (dancers.length === 0) {
+  dancers.push({ id: "primary", firstName: "Student", lastName: "", age: "" });
+}
 
       // pricing – source from server if available; fallback defaults
       const pricing = {
