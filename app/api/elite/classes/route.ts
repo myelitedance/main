@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
 
     filtered = filtered
       .filter((c) => c.sunday !== true)                                  // drop Sundays
-      .filter((c) => (c.level || "").trim().toUpperCase() !== "N/A")     // drop N/A
+      //.filter((c) => (c.level || "").trim().toUpperCase() !== "N/A")     // drop N/A
       .filter((c) => c.day || c.time.trim() !== "-");                     // ensure has schedule
 
     // Cache it
