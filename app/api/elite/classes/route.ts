@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
         sunday: !!c.sunday,
         currentEnrollment: c.currentEnrollment,
         maxEnrollment: c.maxEnrollment,
+        lengthMinutes: Number(c.lengthMinutes ?? 0)
       };
     });
 
