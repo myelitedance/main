@@ -168,14 +168,35 @@ export default function NewStudentEntry() {
       }
       const data = JSON.parse(raw);
       if (data.found) {
-        setFoundContactId(data.contactId || null);
-        setForm(prev => ({ ...prev, ...(data.formDraft || {}), email: lookupEmail }));
-        setLookupMsg("We found your info and pre-filled the form. Please review and update if needed.");
-      } else {
-        setFoundContactId(null);
-        setField("email", lookupEmail);
-        setLookupMsg("No existing record found. You can continue filling out the form.");
-      }
+  // Strip out any student fields we do NOT want to prefill
+  const {
+    studentFirstName,
+    studentLastName,
+    birthdate,
+    age,
+    additionalStudents,
+    // keep adding here if you later add more student-only fields
+    ...restDraft
+  } = data.formDraft || {};
+
+  setFoundContactId(data.contactId || null);
+  setForm(prev => ({
+    ...prev,
+    ...restDraft,       // only parent/contact/addr/etc
+    email: lookupEmail, // always set email from the lookup entry
+    // make sure student fields stay blank
+    studentFirstName: "",
+    studentLastName: "",
+    birthdate: "",
+    age: "",
+    additionalStudents: [],
+  }));
+  setLookupMsg("We found your info and pre-filled contact details. Please enter the student info.");
+} else {
+  setFoundContactId(null);
+  setField("email", lookupEmail);
+  setLookupMsg("No existing record found. You can continue filling out the form.");
+}
     } catch (e: any) {
       console.error("[lookup] fetch threw", e);
       setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
