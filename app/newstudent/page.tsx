@@ -195,7 +195,7 @@ function validateStep1(form: NewStudentForm) {
   const requiredPairs: Array<[string, string | undefined]> = [
     ["studentFirstName", form.studentFirstName],
     ["studentLastName",  form.studentLastName],
-    ["age",        form.age],
+    ["age",        derivedAge || form.age],
     ["parent1",          form.parent1],
     ["primaryPhone",     form.primaryPhone],
     ["email",            form.email],
