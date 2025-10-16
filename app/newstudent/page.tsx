@@ -96,6 +96,8 @@ export default function NewStudentEntry() {
   // load policies when entering step 2
   useEffect(() => {
     if (step !== 2) return;
+    if (!form.state) setField("state", "TN");
+    if (!form.waiverDate) setField("waiverDate", new Date().toISOString().slice(0, 10));
     let cancelled = false;
     fetch("/api/policies")
       .then(r => (r.ok ? r.text() : Promise.reject(new Error("Policies not found"))))

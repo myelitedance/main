@@ -1,3 +1,4 @@
+// app/api/ghl/new-student/route.ts
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -17,30 +18,68 @@ function headers(readOnly = false) {
   return h;
 }
 
-// === CF ids from your list ===
+// === GHL Custom Field IDs (from your list) ===
 const CF = {
   DANCER_FIRST: "scpp296TInQvCwknlSXt",
   DANCER_LAST:  "O6sOZkoTVHW1qjcwQlDm",
   DANCER_AGE:   "HtGv4RUuffIl4UJeXmjT",
   DANCER_DOB:   "DSx2NYeSCY2jCNo6iS0H",
+
   PARENT2:      "ucC4gId1ZMJm56cB0H3M",
   ALT_PHONE:    "1PB1OcQFUoBfS2inTunM",
-  PRI_CELL:     "pkRiCpzFKLnuouOVbRc6", // CHECKBOX → boolean
-  ALT_CELL:     "uQUw8mMjEpcfeqqNlPiB", // CHECKBOX → boolean
-  SMS_ANY:      "uXnKTIHx6gsdKMDW68ON", // CHECKBOX → boolean
-  HEAR_ABOUT:   "AqxaofUPA7KRJDo91MoR", // SINGLE_OPTIONS → one of: Referral, Show/demonstration, ...
+
+  PRI_CELL:     "pkRiCpzFKLnuouOVbRc6", // CHECKBOX
+  ALT_CELL:     "uQUw8mMjEpcfeqqNlPiB", // CHECKBOX
+  SMS_ANY:      "uXnKTIHx6gsdKMDW68ON", // CHECKBOX
+
+  HEAR_ABOUT:   "AqxaofUPA7KRJDo91MoR", // PICKLIST
   HEAR_DETAILS: "8D6kUnb4E5PtxjCVrsvq",
-  SIG_DATAURL:  "Hjh3aLnraO504UGzLORT", // SIGNATURE (accepts data URL)
-  WAIVER_ACK:   "YWHGT6sjAq6SOnelzF8c", // CHECKBOX → boolean
-  WAIVER_DATE:  "dndYtdzpmBCQSRzEBvUa", // DATE → YYYY-MM-DD
+
+  SIG_DATAURL:  "Hjh3aLnraO504UGzLORT", // SIGNATURE (data URL)
+  WAIVER_ACK:   "YWHGT6sjAq6SOnelzF8c", // CHECKBOX
+  WAIVER_DATE:  "dndYtdzpmBCQSRzEBvUa", // DATE (YYYY-MM-DD)
+
   ADDL_JSON:    "iTzywEXgDcih4lodiDSr",
-  AREA_6_12:    "rpFpiILLYhLsFmOoHyWY", // RADIO → "Yes" | "No" | ""
+  AREA_6_12:    "rpFpiILLYhLsFmOoHyWY", // RADIO
+
   FORM_SOURCE:  "9tbYGdE00y20t00GUMcR",
 };
 
+type ClientCustomFields = {
+  // exactly what your client sends (snake_case)
+  student_first_name?: string;
+  student_last_name?: string;
+  student_birthdate?: string;  // YYYY-MM-DD
+  student_age?: string;
+
+  parent2_name?: string;
+  alt_phone?: string;
+
+  primary_phone_is_cell?: boolean;
+  alt_phone_is_cell?: boolean;
+  sms_opt_in_any?: boolean;
+
+  hear_about?: string;
+  hear_details?: string;
+
+  benefits_other?: string;     // not mapped (no CF in list) – left here in case you add one later
+
+  area6to12mo?: "Yes" | "No" | "";
+
+  waiver_acknowledged?: boolean;
+  waiver_date?: string;        // YYYY-MM-DD
+
+  signature_data_url?: string; // data:image/png;base64,...
+
+  additional_students_json?: string; // JSON string
+
+  form_source?: string;
+};
+
 type NewStudentPayload = {
-  source?: string;
+  source?: string; // "newstudent"
   contact: {
+    // Parent account / household fields
     name?: string;
     firstName?: string;
     lastName?: string;
@@ -50,28 +89,14 @@ type NewStudentPayload = {
     city?: string;
     state?: string;
     postalCode?: string;
-    smsOptIn?: boolean;               // IGNORE – don’t send to top-level (GHL rejects)
-    customFields?: {
-      student_name?: string;
-      student_birthdate?: string;     // YYYY-MM-DD
-      parent2_name?: string;
-      alt_phone?: string;
-      primary_phone_is_cell?: boolean;
-      alt_phone_is_cell?: boolean;
-      hear_about?: string;            // must match one of the picklist options
-      hear_details?: string;
-      benefits?: string;              // you’re storing as CSV; we won’t send (no CF for it)
-      benefits_other?: string;        // (same)
-      area6to12mo?: "Yes" | "No" | "";
-      waiverAcknowledged?: boolean;
-      waiverSignedAt?: string;        // YYYY-MM-DD
-      signatureDataUrl?: string;      // data:image/png;base64,...
-      additionalStudentsJson?: string;// JSON string
-    };
+
+    // What the client sends to map into CFs
+    customFields?: ClientCustomFields;
   };
-  meta?: { contactId?: string }       // <— pass this from the client
+  meta?: { contactId?: string }; // from lookup
 };
 
+// ---------- helpers ----------
 async function findByEmail(email: string) {
   const u = new URL(API + "/contacts/");
   u.searchParams.set("locationId", LOCATION_ID);
@@ -84,49 +109,63 @@ async function findByEmail(email: string) {
   return list.find((c: any) => lower(c.email) === lower(email)) || null;
 }
 
+function pushIf<T>(arr: Array<{id: string; value: T}>, id: string, value: T | undefined | null) {
+  if (value === undefined || value === null) return;
+  if (typeof value === "string" && value.trim() === "") return;
+  arr.push({ id, value: value as T });
+}
+
+// ---------- route ----------
 export async function POST(req: Request) {
   try {
     const body = await req.json() as NewStudentPayload;
+
+    // basic guard
     if (!body?.contact?.email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
-    const c = body.contact;
 
-    // ---- map to GHL contact ----
+    const c = body.contact;
+    const cf = (c.customFields || {}) as ClientCustomFields;
+
+    // Build CFs exactly from the snake_case keys your client sends
     const cfPairs: Array<{ id: string; value: any }> = [];
 
-    const cf = c.customFields || {};
-    // optional fields → push only if defined/non-empty
-    if (cf.student_birthdate) cfPairs.push({ id: CF.DANCER_DOB, value: cf.student_birthdate });
-    if (cf.parent2_name)      cfPairs.push({ id: CF.PARENT2,    value: cf.parent2_name });
-    if (cf.alt_phone)         cfPairs.push({ id: CF.ALT_PHONE,  value: cf.alt_phone });
+    // Student (Dancer) name / age / dob
+    pushIf(cfPairs, CF.DANCER_FIRST, cf.student_first_name);
+    pushIf(cfPairs, CF.DANCER_LAST,  cf.student_last_name);
+    pushIf(cfPairs, CF.DANCER_AGE,   cf.student_age);
+    pushIf(cfPairs, CF.DANCER_DOB,   cf.student_birthdate);
 
-    // booleans for CHECKBOX custom fields
-    if (typeof cf.primary_phone_is_cell === "boolean")
-      cfPairs.push({ id: CF.PRI_CELL, value: cf.primary_phone_is_cell });
-    if (typeof cf.alt_phone_is_cell === "boolean")
-      cfPairs.push({ id: CF.ALT_CELL, value: cf.alt_phone_is_cell });
-    if (typeof cf.waiverAcknowledged === "boolean")
-      cfPairs.push({ id: CF.WAIVER_ACK, value: cf.waiverAcknowledged });
+    // Parent 2 / alt phone
+    pushIf(cfPairs, CF.PARENT2,   cf.parent2_name);
+    pushIf(cfPairs, CF.ALT_PHONE, cf.alt_phone);
 
-    // picklists / radios
-    if (cf.hear_about)        cfPairs.push({ id: CF.HEAR_ABOUT, value: cf.hear_about });
-    if (cf.hear_details)      cfPairs.push({ id: CF.HEAR_DETAILS, value: cf.hear_details });
-    if (cf.area6to12mo)       cfPairs.push({ id: CF.AREA_6_12, value: cf.area6to12mo });
+    // Checkboxes
+    if (typeof cf.primary_phone_is_cell === "boolean") pushIf(cfPairs, CF.PRI_CELL, cf.primary_phone_is_cell);
+    if (typeof cf.alt_phone_is_cell === "boolean")     pushIf(cfPairs, CF.ALT_CELL, cf.alt_phone_is_cell);
+    if (typeof cf.sms_opt_in_any === "boolean")        pushIf(cfPairs, CF.SMS_ANY,  cf.sms_opt_in_any);
+    if (typeof cf.waiver_acknowledged === "boolean")   pushIf(cfPairs, CF.WAIVER_ACK, cf.waiver_acknowledged);
 
-    // dates
-    if (cf.waiverSignedAt)    cfPairs.push({ id: CF.WAIVER_DATE, value: cf.waiverSignedAt });
+    // Picklists / radios
+    pushIf(cfPairs, CF.HEAR_ABOUT,   cf.hear_about);
+    pushIf(cfPairs, CF.HEAR_DETAILS, cf.hear_details);
+    pushIf(cfPairs, CF.AREA_6_12,    cf.area6to12mo);
 
-    // signature
-    if (cf.signatureDataUrl)  cfPairs.push({ id: CF.SIG_DATAURL, value: cf.signatureDataUrl });
+    // Dates
+    pushIf(cfPairs, CF.WAIVER_DATE, cf.waiver_date); // YYYY-MM-DD
 
-    // additional students JSON
-    if (cf.additionalStudentsJson) cfPairs.push({ id: CF.ADDL_JSON, value: cf.additionalStudentsJson });
+    // Signature
+    pushIf(cfPairs, CF.SIG_DATAURL, cf.signature_data_url);
 
-    // optional provenance
-    if (body.source) cfPairs.push({ id: CF.FORM_SOURCE, value: body.source });
+    // Additional students JSON
+    pushIf(cfPairs, CF.ADDL_JSON, cf.additional_students_json);
 
-    // base (valid for both create & update)
+    // Provenance
+    const formSource = body.source ?? cf.form_source;
+    pushIf(cfPairs, CF.FORM_SOURCE, formSource);
+
+    // Base contact (parent/household) fields – keep these as-is
     const baseContact: any = {
       firstName: (c.firstName || "").trim(),
       lastName:  (c.lastName  || "").trim(),
@@ -140,17 +179,15 @@ export async function POST(req: Request) {
       ...(cfPairs.length ? { customFields: cfPairs } : {}),
     };
 
-    // decide target: prefer explicit ID from client, else match by email
+    // Create vs Update
     const targetId = body.meta?.contactId || (await findByEmail(c.email))?.id || null;
-
     const endpoint = targetId
-      ? `${API}/contacts/${targetId}`   // UPDATE
-      : `${API}/contacts/`;             // CREATE
-
+      ? `${API}/contacts/${targetId}`    // UPDATE
+      : `${API}/contacts/`;              // CREATE
     const method = targetId ? "PUT" : "POST";
     const payload = targetId
-      ? baseContact                         // UPDATE: NO locationId
-      : { ...baseContact, locationId: LOCATION_ID }; // CREATE: MUST include locationId
+      ? baseContact
+      : { ...baseContact, locationId: LOCATION_ID }; // required for create
 
     const upstream = await fetch(endpoint, {
       method,
