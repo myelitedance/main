@@ -977,7 +977,7 @@ export default function RegistrationDetailsPage() {
 
                     {/* Subtotal footer */}
                     <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
-                      <div className="text-sm">Dance Wear Subtotal (this dancer)</div>
+                      <div className="text-sm">Dance Wear Subtotal (for {activeReg?.firstName || "this dancer"})</div>
                       <div className="text-lg font-semibold" style={{ color: DANCE_BLUE }}>{currency(wearSubtotalActive)}</div>
                     </div>
                   </div>
@@ -1008,7 +1008,7 @@ export default function RegistrationDetailsPage() {
                     <div>{currency(breakdown.prorated)}</div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <div>Dance Wear</div>
+                    <div>Dance Wear (Sales Tax NOT included)</div>
                     <div>{currency(breakdown.wear)}</div>
                   </div>
 
