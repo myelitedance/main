@@ -1,8 +1,23 @@
 'use client';
 
+/**
+ * Elite — Registration Details (per-dancer classes + per-dancer dance wear)
+ * ------------------------------------------------------------------------
+ * Big picture:
+ * - We read a parent account via GHL lookup
+ * - We seed one or more "registrations" (one per dancer)
+ * - For each dancer:
+ *     • Load age-filtered classes from Akada
+ *     • Let user select classes (weekly minutes → monthly tuition via Google Sheet)
+ *     • Let user choose a Dance Wear package and toggle items (subtotal per dancer)
+ * - Totals shown for the ACTIVE dancer only (reg fee tier + prorated + wear)
+ * - Clear signature button + Remove Dancer button (for additional dancers)
+ */
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, Users, Pencil, Shirt, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Loader2, Users, Pencil, Shirt, CheckCircle2, AlertTriangle, X } from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,22 +29,25 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 // Signature pad must be client-only (same approach as /newstudent)
 const SignatureCanvas = dynamic(() => import("react-signature-canvas"), { ssr: false }) as any;
 
-// --- theme ---
+// --- theme (kept from your existing palette) ---
 const DANCE_PURPLE = "#8B5CF6";
 const DANCE_PINK   = "#EC4899";
 const DANCE_BLUE   = "#3B82F6";
 
-// ---------- Types ----------
+/* =========================================================================
+   Types
+   ========================================================================= */
 type Dancer = { id: string; firstName: string; lastName: string; age: number | string };
+
 type Household = {
   contactId: string | null;
   email: string;
   parent: { firstName: string; lastName: string; full?: string };
   dancers: Dancer[];
   pricing: {
-    registrationFee: number;
-    monthlyTuitionPerDancer: number;
-    billDay: number; // 1 => first of month
+    registrationFee: number;           // legacy fallback (unused in new per-dancer calc)
+    monthlyTuitionPerDancer: number;   // legacy fallback (unused if sheet match is found)
+    billDay: number;                   // next monthly bill day (1 => first of month)
   };
 };
 
@@ -38,22 +56,34 @@ type StudioClass = {
   name: string;
   level: string;
   type: string;
-  day: string;      // "Mon"
-  time: string;     // "4:30 PM - 5:15 PM"
+  day: string;               // "Mon"
+  time: string;              // "4:30 PM - 5:15 PM"
   ageMin: number;
   ageMax: number;
   currentEnrollment: number;
   maxEnrollment: number;
-  lengthMinutes: number; // from API (exact number)
+  lengthMinutes: number;     // exact numeric minutes from API
 };
 
+/**
+ * Registration = one dancer's working state:
+ *  - editable name/age
+ *  - their class list + selections
+ *  - their dance wear package + selections
+ */
 type Registration = {
   id: string;
   firstName: string;
   lastName: string;
   age: number | string;
+
+  // classes (per-dancer)
   classesList: StudioClass[];
   selectedClassIds: Record<string, boolean>;
+
+  // dance wear (per-dancer)
+  wearSelectedPackageId: string;
+  wearSelections: Record<string, Record<string, boolean>>;  // { [pkgId]: { [sku]: boolean } }
 };
 
 type DWItem = { sku: string; name: string; price: number };
@@ -61,10 +91,16 @@ type DanceWearPackage = { id: string; name: string; items: DWItem[] };
 
 type TuitionRow = { duration: number; price: number };
 
-// ---------- utils ----------
+/* =========================================================================
+   Utilities
+   ========================================================================= */
+
+/** very light email pattern just for UX */
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+/** currency formatter */
 const currency = (n: number) => `$${(n || 0).toFixed(2)}`;
 
+/** Try to compute age from a YYYY-MM-DD birthday string (if needed) */
 function calcAgeFromDOB(dob?: string): number | "" {
   if (!dob) return "";
   const d = new Date(dob);
@@ -76,27 +112,36 @@ function calcAgeFromDOB(dob?: string): number | "" {
   return age < 0 ? "" : age;
 }
 
-// Bill proration from TODAY until next bill day (simple daily basis on current month length)
+/**
+ * Proration factor from TODAY until the next bill day.
+ * Roughly: days-left-in-period ÷ days-in-period
+ */
 function prorate(today: Date, billDay: number): number {
   const y = today.getFullYear();
   const m = today.getMonth();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
+
   if (billDay <= today.getDate()) {
-    const daysLeftThisMonth = daysInMonth - today.getDate() + 1; // include today
+    // next bill is next month → charge fraction for the remainder of THIS month (including today)
+    const daysLeftThisMonth = daysInMonth - today.getDate() + 1;
     return Math.min(1, daysLeftThisMonth / daysInMonth);
   } else {
+    // bill day later this month → charge fraction for the days until that bill day
     const days = billDay - today.getDate();
     return Math.min(1, days / daysInMonth);
   }
 }
 
+/** Grab a trimmed PNG of the signature pad with a white background (for storage) */
 function snapshotSignature(ref?: any): string {
   const pad = (ref as any)?.current;
   if (!pad || typeof pad.isEmpty !== "function" || pad.isEmpty()) return "";
+
   let src: HTMLCanvasElement | null = null;
   try { src = typeof pad.getTrimmedCanvas === "function" ? pad.getTrimmedCanvas() : null; } catch {}
   if (!src) try { src = typeof pad.getCanvas === "function" ? pad.getCanvas() : null; } catch {}
   if (!src) return "";
+
   const w = src.width || 740;
   const h = src.height || 180;
   const off = document.createElement("canvas");
@@ -111,19 +156,21 @@ function snapshotSignature(ref?: any): string {
   return off.toDataURL("image/png");
 }
 
-// Tuition price lookup (exact duration match)
+/** Tuition lookup: EXACT duration match from sheet rows (duration → price) */
 function priceFromDurationExact(mins: number, rows: TuitionRow[]): number {
   if (!Number.isFinite(mins) || mins <= 0) return 0;
   const hit = rows.find(r => r.duration === mins);
   return hit ? hit.price : 0;
 }
 
-// Registration helpers
+/** Registration fee tiers based on dancer index (0=first, 1=second, 2+=free) */
 function regFeeForIndex(i: number) {
   if (i === 0) return 75;
   if (i === 1) return 30;
   return 0;
 }
+
+/** Create a reg record from a GHL dancer */
 function makeRegFromGHL(d?: Dancer): Registration {
   return {
     id: d?.id || `reg_${Date.now()}`,
@@ -132,48 +179,93 @@ function makeRegFromGHL(d?: Dancer): Registration {
     age: d?.age ?? "",
     classesList: [],
     selectedClassIds: {},
+
+    wearSelectedPackageId: "",
+    wearSelections: {},      // defaults filled when package is chosen
   };
 }
 
-// ---------- component ----------
+/* =========================================================================
+   Per-dancer Dance Wear helpers
+   ========================================================================= */
+
+/** Return the selected package object for a reg (or null) */
+function getSelectedPackageForReg(r: Registration | undefined, all: DanceWearPackage[]) {
+  if (!r?.wearSelectedPackageId) return null;
+  return all.find(p => p.id === r.wearSelectedPackageId) || null;
+}
+
+/** Ensure that when a package is chosen for a reg, all items default to "selected" once */
+function ensureWearDefaultsForRegPackage(r: Registration, pkg: DanceWearPackage): Registration {
+  const current = r.wearSelections[pkg.id];
+  if (current) return r; // already set
+  const allOn: Record<string, boolean> = {};
+  (pkg.items || []).forEach(it => { allOn[it.sku] = true; });
+  return { ...r, wearSelections: { ...r.wearSelections, [pkg.id]: allOn } };
+}
+
+/** Toggle a single wear item for a given reg */
+function toggleWearItemForReg(r: Registration, pkgId: string, sku: string, on: boolean): Registration {
+  return {
+    ...r,
+    wearSelections: {
+      ...r.wearSelections,
+      [pkgId]: { ...(r.wearSelections[pkgId] || {}), [sku]: on },
+    },
+  };
+}
+
+/** Subtotal for a reg's package (sum of selected item prices) */
+function packageSubtotalForReg(r: Registration, pkg: DanceWearPackage): number {
+  const sel = r.wearSelections[pkg.id] || {};
+  return (pkg.items || []).reduce((sum, it) => sum + ((sel[it.sku] ? it.price : 0) || 0), 0);
+}
+
+/* =========================================================================
+   Component
+   ========================================================================= */
 export default function RegistrationDetailsPage() {
-  // Lookup
+  /* -----------------------------
+     Top-level UI / workflow state
+     ----------------------------- */
   const [lookupEmail, setLookupEmail] = useState("");
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupMsg, setLookupMsg] = useState("");
 
-  // Tuition
+  const [household, setHousehold] = useState<Household | null>(null);
+
+  // Tuition sheet (duration → monthly price)
   const [tuitionRows, setTuitionRows] = useState<TuitionRow[]>([]);
   const [tuitionError, setTuitionError] = useState<string>("");
 
-  // Data
-  const [household, setHousehold] = useState<Household | null>(null);
-
-  // Classes (per-dancer)
+  // Classes per dancer (Akada)
   const [classesLoading, setClassesLoading] = useState(false);
   const [classesError, setClassesError] = useState<string>("");
+
+  // All dancer registrations
   const [regs, setRegs] = useState<Registration[]>([]);
   const [activeRegIdx, setActiveRegIdx] = useState(0);
 
-  // Dance Wear (global)
+  // Dance wear package catalog (same sheet as before; we just render per dancer now)
   const [danceWear, setDanceWear] = useState<DanceWearPackage[]>([]);
-  const [selectedWearItems, setSelectedWearItems] = useState<Record<string, Record<string, boolean>>>({});
   const [wearError, setWearError] = useState<string>("");
   const [wearLoaded, setWearLoaded] = useState(false);
-  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
 
-  // Consent / signature / notes
+  // Sign + submit
   const [autoPayConsent, setAutoPayConsent] = useState(false);
   const sigRef = useRef<any>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string>("");
   const [notes, setNotes] = useState("");
-
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  useEffect(() => { document.documentElement.style.fontSize = "16px"; }, []);
+  useEffect(() => {
+    document.documentElement.style.fontSize = "16px";
+  }, []);
 
-  // ---------- lookup ----------
+  /* -----------------------------
+     Lookup flow (GHL → seed regs)
+     ----------------------------- */
   async function handleLookup() {
     setLookupMsg("");
     if (!isValidEmail(lookupEmail)) {
@@ -202,30 +294,21 @@ export default function RegistrationDetailsPage() {
         return;
       }
 
-      // ----- Build dancers from GHL (keys from your route) -----
+      // Build dancers from your /api/ghl/lookup route
       const f = (data.formDraft || {}) as Record<string, any>;
       const parentFull = f.parent1 || f.name || "";
       const [pf, ...plRest] = parentFull.split(" ").filter(Boolean);
       const parent = { firstName: pf || parentFull || "", lastName: plRest.join(" ") || "", full: parentFull || "" };
 
       const dancers: Dancer[] = [];
-      const primaryAge =
-        (Number.isFinite(Number(f.age)) ? Number(f.age) : "") ||
-        calcAgeFromDOB(f.birthdate) || "";
+      const primaryAge = (Number.isFinite(Number(f.age)) ? Number(f.age) : "") || calcAgeFromDOB(f.birthdate) || "";
       if (f.studentFirstName || f.studentLastName || primaryAge !== "") {
-        dancers.push({
-          id: "primary",
-          firstName: f.studentFirstName || "",
-          lastName: f.studentLastName || "",
-          age: primaryAge,
-        });
+        dancers.push({ id: "primary", firstName: f.studentFirstName || "", lastName: f.studentLastName || "", age: primaryAge });
       }
       try {
         const arr = Array.isArray(f.additionalStudents) ? f.additionalStudents : [];
         arr.forEach((s: any, i: number) => {
-          const sAge =
-            (Number.isFinite(Number(s.age)) ? Number(s.age) : "") ||
-            calcAgeFromDOB(s.birthdate) || "";
+          const sAge = (Number.isFinite(Number(s.age)) ? Number(s.age) : "") || calcAgeFromDOB(s.birthdate) || "";
           dancers.push({
             id: s.id || `extra_${i}`,
             firstName: s.firstName || s.studentFirstName || "",
@@ -235,9 +318,7 @@ export default function RegistrationDetailsPage() {
         });
       } catch {}
 
-      if (dancers.length === 0) {
-        dancers.push({ id: "primary", firstName: "Student", lastName: "", age: "" });
-      }
+      if (dancers.length === 0) dancers.push({ id: "primary", firstName: "Student", lastName: "", age: "" });
 
       const pricing = {
         registrationFee: Number(data.registrationFee ?? 25),
@@ -256,13 +337,13 @@ export default function RegistrationDetailsPage() {
       setLookupMsg("Found your account. Review below.");
 
       // Seed registrations with the primary dancer & load dependents
-      const seed = makeRegFromGHL(dancers[0]);
-      setRegs([seed]);
+      const initialRegs = [makeRegFromGHL(dancers[0])];
+      setRegs(initialRegs);
       setActiveRegIdx(0);
 
-      await loadDanceWear();
-      await loadClassesForAge(seed.age, 0);
-      await loadTuition();
+      await loadDanceWear();                       // catalog (shared)
+      await loadClassesForAge(initialRegs[0].age, 0);
+      await loadTuition();                         // duration → monthly price table
     } catch (e: any) {
       console.error("[details/lookup] fetch threw", e);
       setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
@@ -280,7 +361,9 @@ export default function RegistrationDetailsPage() {
     }
   }
 
-  // ---------- Tuition ----------
+  /* -----------------------------
+     Tuition (Google Sheet)
+     ----------------------------- */
   async function loadTuition() {
     setTuitionError("");
     setTuitionRows([]);
@@ -301,7 +384,9 @@ export default function RegistrationDetailsPage() {
     }
   }
 
-  // ---------- Classes (Akada) ----------
+  /* -----------------------------
+     Classes (Akada) per-dancer
+     ----------------------------- */
   async function loadClassesForAge(age?: number | string, regIndex: number = activeRegIdx) {
     setClassesLoading(true);
     setClassesError("");
@@ -334,15 +419,11 @@ export default function RegistrationDetailsPage() {
         lengthMinutes: Number(c.lengthMinutes ?? 0),
       }));
 
-      // write into that registration slot
+      // Write into that registration slot
       setRegs((prev) => {
         const next = [...prev];
         if (!next[regIndex]) return prev;
-        next[regIndex] = {
-          ...next[regIndex],
-          classesList: norm,
-          selectedClassIds: {}, // reset selections for the new list
-        };
+        next[regIndex] = { ...next[regIndex], classesList: norm, selectedClassIds: {} }; // reset selections
         return next;
       });
     } catch (e: any) {
@@ -358,35 +439,17 @@ export default function RegistrationDetailsPage() {
       const next = [...prev];
       const cur = next[activeRegIdx];
       if (!cur) return prev;
-      next[activeRegIdx] = {
-        ...cur,
-        selectedClassIds: { ...cur.selectedClassIds, [id]: on },
-      };
+      next[activeRegIdx] = { ...cur, selectedClassIds: { ...cur.selectedClassIds, [id]: on } };
       return next;
     });
   }
 
-  const activeReg = regs[activeRegIdx];
-
-  const selectedClasses = useMemo(
-    () => (activeReg?.classesList || []).filter(c => !!activeReg?.selectedClassIds?.[c.id]),
-    [activeReg?.classesList, activeReg?.selectedClassIds]
-  );
-
-  const selectedWeeklyMinutes = useMemo(
-    () => selectedClasses.reduce((sum, c) => sum + (c.lengthMinutes || 0), 0),
-    [selectedClasses]
-  );
-
-  const monthlyTuitionExact = useMemo(() => {
-    return priceFromDurationExact(selectedWeeklyMinutes, tuitionRows);
-  }, [selectedWeeklyMinutes, tuitionRows]);
-
-  // ---------- Dance Wear ----------
+  /* -----------------------------
+     Dance Wear (catalog + per-dancer selections)
+     ----------------------------- */
   async function loadDanceWear() {
     setWearError("");
     setDanceWear([]);
-    setSelectedWearItems({});
     setWearLoaded(false);
     try {
       const r = await fetch("/api/elite/dancewear", { method: "GET", cache: "no-store" });
@@ -401,18 +464,6 @@ export default function RegistrationDetailsPage() {
       const list: DanceWearPackage[] = JSON.parse(text);
       setDanceWear(Array.isArray(list) ? list : []);
       setWearLoaded(true);
-
-      if (Array.isArray(list) && list.length > 0) {
-        const firstId = list[0].id;
-        setSelectedPackageId(firstId);
-
-        const defaults: Record<string, Record<string, boolean>> = {};
-        list.forEach((pkg) => {
-          defaults[pkg.id] = {};
-          pkg.items.forEach((it) => { defaults[pkg.id][it.sku] = true; });
-        });
-        setSelectedWearItems(defaults);
-      }
     } catch (e: any) {
       console.error("Dance Wear load failed:", e);
       setWearError(e?.message || "Dance Wear load failed.");
@@ -420,92 +471,127 @@ export default function RegistrationDetailsPage() {
     }
   }
 
-  function toggleWearItem(pkgId: string, sku: string, checked: boolean) {
-    setSelectedWearItems((prev) => ({
-      ...prev,
-      [pkgId]: { ...(prev[pkgId] || {}), [sku]: checked },
-    }));
-  }
+  /* -----------------------------
+     Derived values for ACTIVE dancer
+     ----------------------------- */
+  const activeReg = regs[activeRegIdx];
 
-  function getSelectedPackage(): DanceWearPackage | null {
-    if (!selectedPackageId) return null;
-    return danceWear.find((p) => p.id === selectedPackageId) || null;
-  }
+  const selectedClasses = useMemo(
+    () => (activeReg?.classesList || []).filter(c => !!activeReg?.selectedClassIds?.[c.id]),
+    [activeReg?.classesList, activeReg?.selectedClassIds]
+  );
 
-  function ensureDefaultsForPackage(pkgId: string) {
-    const pkg = danceWear.find((p) => p.id === pkgId);
-    if (!pkg) return;
-    setSelectedWearItems((prev) => {
-      if (prev[pkgId]) return prev;
-      const next = { ...prev, [pkgId]: {} as Record<string, boolean> };
-      pkg.items.forEach((it) => { next[pkgId][it.sku] = true; });
-      return next;
-    });
-  }
+  const selectedWeeklyMinutes = useMemo(
+    () => selectedClasses.reduce((sum, c) => sum + (c.lengthMinutes || 0), 0),
+    [selectedClasses]
+  );
 
-  const selectedPkg = getSelectedPackage();
+  const monthlyTuitionExact = useMemo(
+    () => priceFromDurationExact(selectedWeeklyMinutes, tuitionRows),
+    [selectedWeeklyMinutes, tuitionRows]
+  );
 
-  const packageSubtotal = (pkg: DanceWearPackage) =>
-    (pkg.items || []).reduce((sum, it) => {
-      const on = selectedWearItems[pkg.id]?.[it.sku];
-      return sum + (on ? it.price : 0);
-    }, 0);
+  const selectedWearPkg = getSelectedPackageForReg(activeReg, danceWear);
+  const wearSubtotalActive = useMemo(
+    () => (activeReg && selectedWearPkg) ? packageSubtotalForReg(activeReg, selectedWearPkg) : 0,
+    [activeReg, selectedWearPkg]
+  );
 
-  const wearSubtotal = useMemo(() => {
-    if (!selectedPkg) return 0;
-    return packageSubtotal(selectedPkg);
-  }, [selectedPkg, selectedWearItems]);
-
-  // ---------- totals with proration (active dancer) ----------
+  /* -----------------------------
+     Totals (ACTIVE dancer only)
+     ----------------------------- */
   const breakdown = useMemo(() => {
     if (!household) return { reg: 0, prorated: 0, wear: 0, today: 0, monthly: 0 };
 
-    // First/Second/Additional tier by the active registration slot
-    const reg = regFeeForIndex(activeRegIdx);
+    const reg = regFeeForIndex(activeRegIdx);               // tier by dancer index
+    const computedMonthly = monthlyTuitionExact || 0;       // from sheet exact match
 
-    // Monthly from Tuition sheet (exact match)
-    const computedMonthly = monthlyTuitionExact || 0;
-
-    const today = new Date();
-    const factor = prorate(today, household.pricing.billDay); // fraction of monthly for proration
+    const factor = prorate(new Date(), household.pricing.billDay);
     const prorated = computedMonthly * factor;
 
-    const wear = wearSubtotal; // global for now
+    const wear = wearSubtotalActive;
     const dueToday = reg + prorated + wear;
     const dueMonthly = computedMonthly;
 
     return { reg, prorated, wear, today: dueToday, monthly: dueMonthly };
-  }, [household, wearSubtotal, monthlyTuitionExact, activeRegIdx]);
+  }, [household, activeRegIdx, monthlyTuitionExact, wearSubtotalActive]);
+
+  /* -----------------------------
+     Signature helpers
+     ----------------------------- */
+  function clearSignature() {
+    try {
+      sigRef.current?.clear?.();
+    } catch {}
+    setSignatureDataUrl("");
+  }
 
   const canSubmit = !!household && autoPayConsent && !!signatureDataUrl;
 
-  // ---------- submit ----------
+  /* -----------------------------
+     Remove dancer (additional only)
+     ----------------------------- */
+  function removeActiveDancer() {
+    if (activeRegIdx === 0) return; // keep first dancer (you can relax this if desired)
+    setRegs((prev) => {
+      const next = prev.filter((_, i) => i !== activeRegIdx);
+      const newIdx = Math.max(0, activeRegIdx - 1);
+      setActiveRegIdx(newIdx);
+      return next;
+    });
+  }
+
+  /* -----------------------------
+     Submit payload
+     ----------------------------- */
   async function handleSubmit() {
     if (!canSubmit || !household) return;
     setSubmitting(true);
+
+    // Per-active-dancer classes snapshot
+    const activeClassesPayload = selectedClasses.map(c => ({
+      id: c.id, name: c.name, level: c.level, type: c.type, day: c.day, time: c.time, lengthMinutes: c.lengthMinutes,
+    }));
+
+    // Per-dancer dance wear snapshot (include all regs so backoffice can see)
+    const regsWear = regs.map(r => {
+      const pkg = getSelectedPackageForReg(r, danceWear);
+      const selMap = r.wearSelections || {};
+      const items = pkg ? pkg.items.filter(it => !!selMap[pkg.id]?.[it.sku]) : [];
+      const subtotal = pkg ? items.reduce((s, it) => s + (it.price || 0), 0) : 0;
+      return {
+        dancerId: r.id,
+        dancerName: `${r.firstName} ${r.lastName}`.trim(),
+        packageId: pkg?.id || "",
+        packageName: pkg?.name || "",
+        items,
+        subtotal,
+      };
+    });
 
     const payload = {
       source: "registration-details",
       contactId: household.contactId,
       email: household.email,
       parent: household.parent,
-      dancers: household.dancers, // original GHL read (for reference)
       pricing: household.pricing,
 
-      // Per-active-dancer selections
-      selectedClasses: selectedClasses.map(c => ({
-        id: c.id,
-        name: c.name,
-        level: c.level,
-        type: c.type,
-        day: c.day,
-        time: c.time,
-        lengthMinutes: c.lengthMinutes,
-      })),
-      selectedWeeklyMinutes,
+      // Original dancers from GHL (reference only)
+      dancers: household.dancers,
 
-      // All registrations snapshot (so backend can see multi-dancer context)
+      // Active dancer selections
       activeDancerIndex: activeRegIdx,
+      activeDancer: {
+        id: activeReg?.id,
+        firstName: activeReg?.firstName,
+        lastName: activeReg?.lastName,
+        age: activeReg?.age,
+        selectedClasses: activeClassesPayload,
+        selectedWeeklyMinutes,
+        monthlyFromSheet: monthlyTuitionExact,
+      },
+
+      // All registrations snapshot (classes + minutes)
       registrations: regs.map(r => ({
         id: r.id,
         firstName: r.firstName,
@@ -519,31 +605,19 @@ export default function RegistrationDetailsPage() {
         }, 0),
       })),
 
-      // Dance wear
-      selectedWearPackages: selectedPkg ? [{
-        id: selectedPkg.id,
-        name: selectedPkg.name,
-        items: selectedPkg.items.filter((it) => selectedWearItems[selectedPkg.id]?.[it.sku]),
-        subtotal: packageSubtotal(selectedPkg),
-      }] : [],
+      // Per-dancer wear summary
+      wearByDancer: regsWear,
 
-      totals: breakdown, // includes reg, prorated, wear, today, monthly
+      // Totals for the ACTIVE dancer
+      totals: breakdown, // { reg, prorated, wear, today, monthly }
 
       consent: { autoPay: true, signatureDataUrl, termsAcceptedAt: new Date().toISOString() },
       notes,
-
-      tuition: {
-        weeklyMinutes: selectedWeeklyMinutes,
-        monthlyFromSheet: monthlyTuitionExact,
-        source: "Tuition tab (duration→price exact match)",
-      },
     };
 
     try {
       const resp = await fetch("/api/elite/register-details", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
       const j = await resp.json().catch(() => null);
       if (!resp.ok || !j?.ok) {
@@ -560,9 +634,12 @@ export default function RegistrationDetailsPage() {
     }
   }
 
-  // ---------- render ----------
+  /* =========================================================================
+     UI
+     ========================================================================= */
   return (
     <div className="min-h-screen bg-white text-neutral-900">
+      {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60" style={{ borderColor: DANCE_PURPLE }}>
         <div className="mx-auto max-w-screen-sm px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-semibold tracking-tight" style={{ color: DANCE_PURPLE }}>
@@ -573,7 +650,7 @@ export default function RegistrationDetailsPage() {
       </header>
 
       <main className="mx-auto max-w-screen-sm px-4 pb-28 pt-4">
-        {/* Lookup */}
+        {/* ---------------- Lookup Card ---------------- */}
         <Card className="shadow-lg rounded-2xl border mb-6" style={{ borderColor: DANCE_BLUE }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Find Your Account</CardTitle>
@@ -603,7 +680,7 @@ export default function RegistrationDetailsPage() {
 
         {household && (
           <div className="space-y-6">
-            {/* Account & Dancers */}
+            {/* ---------------- Account & Dancers ---------------- */}
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_PURPLE }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -613,9 +690,10 @@ export default function RegistrationDetailsPage() {
                 <CardDescription>Pulled from your signup and GHL custom fields.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Switcher */}
+
+                {/* Dancer switcher + actions */}
                 {regs.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {regs.map((r, i) => (
                       <button
                         key={r.id}
@@ -631,6 +709,7 @@ export default function RegistrationDetailsPage() {
                         {r.firstName || "Dancer"} {r.lastName || ""} {i === activeRegIdx ? "• active" : ""}
                       </button>
                     ))}
+
                     <Button
                       type="button"
                       variant="outline"
@@ -646,10 +725,22 @@ export default function RegistrationDetailsPage() {
                     >
                       Register another
                     </Button>
+
+                    {activeRegIdx > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={removeActiveDancer}
+                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 inline-flex items-center gap-1"
+                        title="Remove this dancer from the registration"
+                      >
+                        <X className="h-3.5 w-3.5" /> Remove dancer
+                      </Button>
+                    )}
                   </div>
                 )}
 
-                {/* Account name (from parent) */}
+                {/* Account name */}
                 <div className="rounded-xl border p-3">
                   <div className="text-sm text-neutral-500">Account Name</div>
                   <div className="text-lg font-medium">
@@ -714,28 +805,22 @@ export default function RegistrationDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Select Classes (per active dancer) */}
+            {/* ---------------- Select Classes (per active dancer) ---------------- */}
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_BLUE }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shirt className="h-5 w-5" style={{ color: DANCE_BLUE }} />
                   Select your dance classes
                 </CardTitle>
-                <CardDescription>
-                  Choose one or more classes that fit your schedule. Length is used to calculate tuition.
-                </CardDescription>
+                <CardDescription>Choose one or more classes that fit your schedule. Length is used to calculate tuition.</CardDescription>
               </CardHeader>
 
               <CardContent className="space-y-4">
                 {classesError && (
                   <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                     {classesError}{" "}
-                    <Button
-                      size="sm"
-                      variant="link"
-                      className="p-0 ml-1"
-                      onClick={() => loadClassesForAge(activeReg?.age, activeRegIdx)}
-                    >
+                    <Button size="sm" variant="link" className="p-0 ml-1"
+                      onClick={() => loadClassesForAge(activeReg?.age, activeRegIdx)}>
                       Retry
                     </Button>
                   </div>
@@ -769,11 +854,7 @@ export default function RegistrationDetailsPage() {
                           </div>
                           <div className="flex items-center gap-2 pl-3 shrink-0">
                             <Label htmlFor={`cls-${c.id}`} className="text-sm">Select</Label>
-                            <Checkbox
-                              id={`cls-${c.id}`}
-                              checked={selected}
-                              onCheckedChange={(v) => toggleClass(c.id, Boolean(v))}
-                            />
+                            <Checkbox id={`cls-${c.id}`} checked={selected} onCheckedChange={(v) => toggleClass(c.id, Boolean(v))} />
                           </div>
                         </label>
                       );
@@ -793,14 +874,14 @@ export default function RegistrationDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Dance Wear — dropdown + items */}
+            {/* ---------------- Dance Wear — per active dancer ---------------- */}
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_BLUE }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shirt className="h-5 w-5" style={{ color: DANCE_BLUE }} />
-                  Dance Wear Packages
+                  Dance Wear (for {activeReg?.firstName || "this dancer"})
                 </CardTitle>
-                <CardDescription>All items are preselected. Uncheck anything you don’t need—your price updates automatically.</CardDescription>
+                <CardDescription>All items are preselected. Uncheck anything you don’t need—your price updates for this dancer.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {wearError && (
@@ -811,27 +892,34 @@ export default function RegistrationDetailsPage() {
                       <div>{wearError}</div>
                       <div className="mt-2">
                         <Button size="sm" variant="outline" onClick={loadDanceWear}>Retry</Button>
-                        <Button size="sm" variant="link" className="ml-2 p-0" onClick={() => window.open("/api/elite/dancewear?debug=1", "_blank")}>View API error</Button>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {!wearError && !wearLoaded && (
-                  <div className="text-sm text-neutral-500">Loading packages…</div>
-                )}
-
+                {!wearError && !wearLoaded && <div className="text-sm text-neutral-500">Loading packages…</div>}
                 {!wearError && wearLoaded && danceWear.length === 0 && (
                   <div className="text-sm text-neutral-500">No packages available right now.</div>
                 )}
 
-                {/* Package selector */}
-                {!wearError && danceWear.length > 0 && (
+                {/* Package selector (per dancer) */}
+                {!wearError && danceWear.length > 0 && activeReg && (
                   <div className="space-y-2">
-                    <Label htmlFor="dw-package">Select the right package for your dancer</Label>
+                    <Label htmlFor="dw-package">Select the right package for this dancer</Label>
                     <Select
-                      value={selectedPackageId}
-                      onValueChange={(v) => { setSelectedPackageId(v); ensureDefaultsForPackage(v); }}
+                      value={activeReg.wearSelectedPackageId}
+                      onValueChange={(pkgId) => {
+                        const pkg = danceWear.find(p => p.id === pkgId);
+                        if (!pkg) return;
+                        setRegs(prev => {
+                          const next = [...prev];
+                          const cur = next[activeRegIdx];
+                          if (!cur) return prev;
+                          const withDefaults = ensureWearDefaultsForRegPackage(cur, pkg);
+                          next[activeRegIdx] = { ...withDefaults, wearSelectedPackageId: pkgId };
+                          return next;
+                        });
+                      }}
                     >
                       <SelectTrigger id="dw-package" className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6]">
                         <SelectValue placeholder="Choose a package" />
@@ -845,50 +933,59 @@ export default function RegistrationDetailsPage() {
                   </div>
                 )}
 
-                {/* Selected package details */}
-                {selectedPkg && (
+                {/* Selected package details (per dancer) */}
+                {activeReg && selectedWearPkg && (
                   <div className="rounded-xl border p-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="font-medium">{selectedPkg.name}</div>
+                        <div className="font-medium">{selectedWearPkg.name}</div>
                         <div className="text-sm text-neutral-500">
-                          Package subtotal: <span className="font-medium">{currency(packageSubtotal(selectedPkg))}</span>
+                          Package subtotal: <span className="font-medium">{currency(wearSubtotalActive)}</span>
                         </div>
                       </div>
                     </div>
 
                     <ul className="mt-2 divide-y">
-                      {selectedPkg.items.map((it) => (
-                        <li key={it.sku} className="py-2 flex items-center justify-between">
-                          <div className="flex-1 pr-3">
-                            <div className="text-sm">{it.name}</div>
-                            <div className="text-xs text-neutral-500">{currency(it.price)}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`${selectedPkg.id}-${it.sku}`} className="text-sm">Include</Label>
-                            <Checkbox
-                              id={`${selectedPkg.id}-${it.sku}`}
-                              checked={!!selectedWearItems[selectedPkg.id]?.[it.sku]}
-                              onCheckedChange={(v) => toggleWearItem(selectedPkg.id, it.sku, Boolean(v))}
-                            />
-                          </div>
-                        </li>
-                      ))}
+                      {selectedWearPkg.items.map((it) => {
+                        const checked = !!activeReg.wearSelections[selectedWearPkg.id]?.[it.sku];
+                        return (
+                          <li key={it.sku} className="py-2 flex items-center justify-between">
+                            <div className="flex-1 pr-3">
+                              <div className="text-sm">{it.name}</div>
+                              <div className="text-xs text-neutral-500">{currency(it.price)}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor={`${selectedWearPkg.id}-${it.sku}`} className="text-sm">Include</Label>
+                              <Checkbox
+                                id={`${selectedWearPkg.id}-${it.sku}`}
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  setRegs(prev => {
+                                    const next = [...prev];
+                                    const cur = next[activeRegIdx];
+                                    if (!cur) return prev;
+                                    next[activeRegIdx] = toggleWearItemForReg(cur, selectedWearPkg.id, it.sku, Boolean(v));
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
-                  </div>
-                )}
 
-                {/* Dynamic subtotal footer for Dance Wear */}
-                {!wearError && (
-                  <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
-                    <div className="text-sm">Dance Wear Subtotal</div>
-                    <div className="text-lg font-semibold" style={{ color: DANCE_BLUE }}>{currency(wearSubtotal)}</div>
+                    {/* Subtotal footer */}
+                    <div className="mt-2 rounded-xl border p-3 bg-neutral-50 flex items-center justify-between">
+                      <div className="text-sm">Dance Wear Subtotal (this dancer)</div>
+                      <div className="text-lg font-semibold" style={{ color: DANCE_BLUE }}>{currency(wearSubtotalActive)}</div>
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Review & Sign — full math breakdown */}
+            {/* ---------------- Review & Sign ---------------- */}
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_PINK }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -900,6 +997,7 @@ export default function RegistrationDetailsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
+                {/* Totals block */}
                 <div className="rounded-2xl bg-neutral-50 p-3 space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <div>Registration Fee</div>
@@ -913,7 +1011,9 @@ export default function RegistrationDetailsPage() {
                     <div>Dance Wear</div>
                     <div>{currency(breakdown.wear)}</div>
                   </div>
+
                   <div className="my-1 border-t" />
+
                   <div className="flex items-center justify-between">
                     <div className="text-sm">DUE TODAY</div>
                     <div className="text-xl font-semibold" style={{ color: DANCE_PINK }}>{currency(breakdown.today)}</div>
@@ -923,19 +1023,14 @@ export default function RegistrationDetailsPage() {
                   <div className="mt-1 flex items-center justify-between">
                     <div className="text-sm">DUE MONTHLY</div>
                     <div className="text-right">
-                      <div className="text-xs text-neutral-500">
-                        {selectedWeeklyMinutes} minutes
-                      </div>
-                      <div className="text-xl font-semibold" style={{ color: DANCE_BLUE }}>
-                        {currency(monthlyTuitionExact)}
-                      </div>
-                      {tuitionError && (
-                        <div className="mt-1 text-[11px] text-red-600">{tuitionError}</div>
-                      )}
+                      <div className="text-xs text-neutral-500">{selectedWeeklyMinutes} minutes</div>
+                      <div className="text-xl font-semibold" style={{ color: DANCE_BLUE }}>{currency(monthlyTuitionExact)}</div>
+                      {tuitionError && <div className="mt-1 text-[11px] text-red-600">{tuitionError}</div>}
                     </div>
                   </div>
                 </div>
 
+                {/* Consent */}
                 <div className="flex items-start gap-2 rounded-xl border p-3">
                   <Checkbox id="autopay" checked={autoPayConsent} onCheckedChange={(v) => setAutoPayConsent(Boolean(v))} />
                   <Label htmlFor="autopay" className="text-sm">
@@ -943,8 +1038,14 @@ export default function RegistrationDetailsPage() {
                   </Label>
                 </div>
 
+                {/* Signature + Clear */}
                 <div className="space-y-2">
-                  <Label>Signature (parent/guardian) *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Signature (parent/guardian) *</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={clearSignature}>
+                      Clear signature
+                    </Button>
+                  </div>
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: DANCE_PURPLE }}>
                     <SignatureCanvas
                       ref={sigRef}
@@ -957,11 +1058,13 @@ export default function RegistrationDetailsPage() {
                   </div>
                 </div>
 
+                {/* Notes */}
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notes for the Studio (optional)</Label>
                   <Textarea id="notes" placeholder="Sizing notes, preferences, etc." value={notes} onChange={(e) => setNotes(e.target.value)} />
                 </div>
 
+                {/* Submit */}
                 <div className="flex items-center justify-end gap-3">
                   <Button onClick={handleSubmit} disabled={!canSubmit || submitting} className="px-5 text-white" style={{ backgroundColor: DANCE_PURPLE }}>
                     {submitting ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Saving…</span> : "Confirm & Sign"}
@@ -970,6 +1073,7 @@ export default function RegistrationDetailsPage() {
               </CardContent>
             </Card>
 
+            {/* Saved notice */}
             {submitted && (
               <div className="mt-6 rounded-xl border p-4 text-green-700 flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" />
