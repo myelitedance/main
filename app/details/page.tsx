@@ -16,7 +16,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, Users, Pencil, Shirt, CheckCircle2, AlertTriangle, X } from "lucide-react";
+import { Loader2, Users, Pencil, Music2, Shirt, CheckCircle2, AlertTriangle, X } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -846,7 +846,7 @@ export default function RegistrationDetailsPage() {
             <Card className="rounded-2xl border" style={{ borderColor: DANCE_BLUE }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shirt className="h-5 w-5" style={{ color: DANCE_BLUE }} />
+                  <Music2 className="h-5 w-5" style={{ color: DANCE_BLUE }} />
                   Select your dance classes
                 </CardTitle>
                 <CardDescription>Choose one or more classes that fit your schedule. Length is used to calculate tuition.</CardDescription>
