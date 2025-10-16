@@ -251,6 +251,9 @@ export default function RegistrationDetailsPage() {
   const [wearError, setWearError] = useState<string>("");
   const [wearLoaded, setWearLoaded] = useState(false);
 
+  // Sales tax: loaded from /api/elite/settings or env fallback
+  const [salesTaxRate, setSalesTaxRate] = useState<number>(0);
+
   // Sign + submit
   const [autoPayConsent, setAutoPayConsent] = useState(false);
   const sigRef = useRef<any>(null);
@@ -262,6 +265,26 @@ export default function RegistrationDetailsPage() {
   useEffect(() => {
     document.documentElement.style.fontSize = "16px";
   }, []);
+
+/* - ----------------------------
+        Load Settings (sales tax rate)   
+    ----------------------------- */  
+  async function loadSettings() {
+        try {
+            const r = await fetch("/api/elite/settings", { cache: "no-store" });
+            const j = await r.json();
+        if (j?.ok && typeof j.salesTaxRate === "number") {
+            setSalesTaxRate(j.salesTaxRate);
+        } else {
+        // fallback to env if any, otherwise 0
+            const envRate = Number(process.env.NEXT_PUBLIC_SALES_TAX_RATE ?? 0) || 0;
+            setSalesTaxRate(envRate);
+        }
+        } catch {
+        const envRate = Number(process.env.NEXT_PUBLIC_SALES_TAX_RATE ?? 0) || 0;
+        setSalesTaxRate(envRate);
+        }
+    }
 
   /* -----------------------------
      Lookup flow (GHL → seed regs)
@@ -344,6 +367,7 @@ export default function RegistrationDetailsPage() {
       await loadDanceWear();                       // catalog (shared)
       await loadClassesForAge(initialRegs[0].age, 0);
       await loadTuition();                         // duration → monthly price table
+      await loadSettings();                        // sales tax rate
     } catch (e: any) {
       console.error("[details/lookup] fetch threw", e);
       setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
@@ -496,12 +520,16 @@ export default function RegistrationDetailsPage() {
     () => (activeReg && selectedWearPkg) ? packageSubtotalForReg(activeReg, selectedWearPkg) : 0,
     [activeReg, selectedWearPkg]
   );
+  const wearSalesTaxActive = useMemo(
+  () => (wearSubtotalActive > 0 ? wearSubtotalActive * (salesTaxRate || 0) : 0),
+  [wearSubtotalActive, salesTaxRate]
+);
 
   /* -----------------------------
      Totals (ACTIVE dancer only)
      ----------------------------- */
   const breakdown = useMemo(() => {
-    if (!household) return { reg: 0, prorated: 0, wear: 0, today: 0, monthly: 0 };
+    if (!household) return { reg: 0, prorated: 0, wear: 0, tax: 0, today: 0, monthly: 0 };
 
     const reg = regFeeForIndex(activeRegIdx);               // tier by dancer index
     const computedMonthly = monthlyTuitionExact || 0;       // from sheet exact match
@@ -510,11 +538,12 @@ export default function RegistrationDetailsPage() {
     const prorated = computedMonthly * factor;
 
     const wear = wearSubtotalActive;
-    const dueToday = reg + prorated + wear;
+    const tax = wearSalesTaxActive;
+    const dueToday = reg + prorated + wear + tax;
     const dueMonthly = computedMonthly;
 
-    return { reg, prorated, wear, today: dueToday, monthly: dueMonthly };
-  }, [household, activeRegIdx, monthlyTuitionExact, wearSubtotalActive]);
+    return { reg, prorated, wear, tax, today: dueToday, monthly: dueMonthly };
+  }, [household, activeRegIdx, monthlyTuitionExact, wearSubtotalActive, wearSalesTaxActive]);
 
   /* -----------------------------
      Signature helpers
@@ -610,6 +639,14 @@ export default function RegistrationDetailsPage() {
 
       // Totals for the ACTIVE dancer
       totals: breakdown, // { reg, prorated, wear, today, monthly }
+
+      // Also include the rate you used (optional but helpful)
+      salesTax: {
+        rate: salesTaxRate, // e.g., 0.0975
+        appliesTo: "dance_wear_only",
+        activeDancerWearSubtotal: wearSubtotalActive,
+        activeDancerWearTax: wearSalesTaxActive,
+      },
 
       consent: { autoPay: true, signatureDataUrl, termsAcceptedAt: new Date().toISOString() },
       notes,
@@ -1008,8 +1045,12 @@ export default function RegistrationDetailsPage() {
                     <div>{currency(breakdown.prorated)}</div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <div>Dance Wear (Sales Tax NOT included)</div>
+                    <div>Dance Wear</div>
                     <div>{currency(breakdown.wear)}</div>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div>Sales Tax (wear only){typeof salesTaxRate === "number" ? ` • ${(salesTaxRate * 100).toFixed(2)}%` : ""}</div>
+                    <div>{currency(breakdown.tax)}</div>
                   </div>
 
                   <div className="my-1 border-t" />
