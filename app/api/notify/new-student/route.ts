@@ -35,7 +35,34 @@ function decodeDataUrl(dataUrl?: string) {
   const b64 = m[2];
   return { mime, b64, buf: Buffer.from(b64, "base64") };
 }
+function formatDateMDY(input?: any): string {
+  const s = String(input ?? "").trim();
+  if (!s) return "";
+  // Accept "YYYY-MM-DD" or anything Date can parse; prefer the ISO path so it’s stable.
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  let d: Date | null = null;
+  if (iso.test(s)) {
+    const [y, m, day] = s.split("-").map(Number);
+    d = new Date(y, m - 1, day);
+  } else {
+    const t = Date.parse(s);
+    if (!Number.isNaN(t)) d = new Date(t);
+  }
+  if (!d || Number.isNaN(d.valueOf())) return s; // fallback: show as-is
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+}
 
+function formatPhone10(input?: any): string {
+  const digits = String(input ?? "").replace(/\D+/g, "");
+  if (digits.length !== 10) return String(input ?? ""); // leave non-10-digit as-is
+  const area = digits.slice(0, 3);
+  const exch = digits.slice(3, 6);
+  const line = digits.slice(6);
+  return `${area}-${exch}-${line}`; // xxx-xxx-xxxx
+}
 function renderHtml(form: any) {
   const studentName =
     `${form.studentFirstName || ""} ${form.studentLastName || ""}`.trim() || "(unknown)";
@@ -62,7 +89,7 @@ function renderHtml(form: any) {
                   <td style="padding:6px 10px;border:1px solid #eee;">${i + 2}</td>
                   <td style="padding:6px 10px;border:1px solid #eee;">${htmlEscape(s.firstName)}</td>
                   <td style="padding:6px 10px;border:1px solid #eee;">${htmlEscape(s.lastName)}</td>
-                  <td style="padding:6px 10px;border:1px solid #eee;">${htmlEscape(s.birthdate)}</td>
+                  <td style="padding:6px 10px;border:1px solid #eee;">${htmlEscape(formatDateMDY(s.birthdate))}</td>
                   <td style="padding:6px 10px;border:1px solid #eee;">${htmlEscape(s.age)}</td>
                 </tr>`
               )
@@ -71,8 +98,12 @@ function renderHtml(form: any) {
         </table>`;
 
   const benefitsList = Array.isArray(form.benefits) ? form.benefits.join(", ") : form.benefits || "";
+  const primaryPhoneFmt = formatPhone10(form.primaryPhone);
+  const altPhoneFmt = formatPhone10(form.altPhone);
+  const birthdateFmt = formatDateMDY(form.birthdate);
+  const waiverDateFmt = formatDateMDY(form.waiverDate);
 
-  return `
+ return `
   <div style="font:14px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111827;">
     <h2 style="margin:0 0 12px;">NEW STUDENT Form — ${htmlEscape(studentName)}</h2>
 
@@ -80,7 +111,7 @@ function renderHtml(form: any) {
     <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;">
       ${kv("First Name", form.studentFirstName)}
       ${kv("Last Name", form.studentLastName)}
-      ${kv("Birthdate", form.birthdate)}
+      ${kv("Birthdate", birthdateFmt)}
       ${kv("Age", form.age)}
     </table>
 
@@ -95,10 +126,10 @@ function renderHtml(form: any) {
 
     <h3 style="margin:18px 0 8px;">Contact</h3>
     <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;">
-      ${kv("Primary Phone", form.primaryPhone)}
+      ${kv("Primary Phone", primaryPhoneFmt)}
       ${kv("Primary Phone Is Cell", form.primaryPhoneIsCell ? "Yes" : "No")}
       ${kv("Primary Phone SMS Opt-In", form.primaryPhoneSmsOptIn ? "Yes" : "No")}
-      ${kv("Alternate Phone", form.altPhone)}
+      ${kv("Alternate Phone", altPhoneFmt)}
       ${kv("Alt Phone Is Cell", form.altPhoneIsCell ? "Yes" : "No")}
       ${kv("Alt Phone SMS Opt-In", form.altPhoneSmsOptIn ? "Yes" : "No")}
       ${kv("Email", form.email)}
@@ -121,7 +152,7 @@ function renderHtml(form: any) {
     <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;">
       ${kv("Acknowledged", form.waiverAcknowledged ? "Yes" : "No")}
       ${kv("Signed", form.waiverSigned ? "Yes" : "No")}
-      ${kv("Signed Date", form.waiverDate)}
+      ${kv("Signed Date", waiverDateFmt)}
     </table>
 
     ${

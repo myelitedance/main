@@ -109,7 +109,20 @@ function buildHtml(p: Payload) {
       <tbody>
         <tr><td style="padding:4px 0;color:#666;width:160px;">Parent</td><td>${esc(parentName)}</td></tr>
         <tr><td style="padding:4px 0;color:#666;">Email</td><td>${esc(p.email)}</td></tr>
-        <tr><td style="padding:4px 0;color:#666;">GHL Contact</td><td><a "https://app.gohighlevel.com/v2/location/3i9Ku39oDuJfmFIrPlxa/contacts/detail/"${esc(p.contactId || "—")}">${esc(p.contactId || "—")}</a></td></tr>
+        <tr>
+  <td style="padding:4px 0;color:#666;">GHL Contact</td>
+  <td>
+    ${
+      p.contactId
+        ? `<a href="https://app.gohighlevel.com/v2/location/3i9Ku39oDuJfmFIrPlxa/contacts/detail/${encodeURIComponent(
+            p.contactId
+          )}" style="color:#3B82F6;text-decoration:none;" target="_blank" rel="noopener noreferrer">${esc(
+            p.contactId
+          )}</a>`
+        : "—"
+    }
+  </td>
+</tr>
         <tr><td style="padding:4px 0;color:#666;">Bill Day</td><td>${p.pricing.billDay === 1 ? "1st" : `${p.pricing.billDay}th`}</td></tr>
       </tbody>
     </table>
