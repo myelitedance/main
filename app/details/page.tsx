@@ -195,13 +195,12 @@ function getSelectedPackageForReg(r: Registration | undefined, all: DanceWearPac
   return all.find(p => p.id === r.wearSelectedPackageId) || null;
 }
 
-/** Ensure that when a package is chosen for a reg, all items default to "selected" once */
+/** Ensure that when a package is chosen for a reg, all items default to "un-selected" once */
 function ensureWearDefaultsForRegPackage(r: Registration, pkg: DanceWearPackage): Registration {
-  const current = r.wearSelections[pkg.id];
-  if (current) return r; // already set
-  const allOn: Record<string, boolean> = {};
-  (pkg.items || []).forEach(it => { allOn[it.sku] = true; });
-  return { ...r, wearSelections: { ...r.wearSelections, [pkg.id]: allOn } };
+  if (r.wearSelections[pkg.id]) return r;
+  const allOff: Record<string, boolean> = {};
+  (pkg.items || []).forEach(it => { allOff[it.sku] = false; });
+  return { ...r, wearSelections: { ...r.wearSelections, [pkg.id]: allOff } };
 }
 
 /** Toggle a single wear item for a given reg */

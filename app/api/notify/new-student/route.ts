@@ -11,7 +11,7 @@ const need = (k: string) => {
 
 const RESEND_API_KEY = need("RESEND_API_KEY");
 const NOTIFY_FROM = need("EMAIL_FROM");
-const NOTIFY_TO = "jason@myelitedance.com"
+const NOTIFY_TO = "frontdesk@myelitedance.com"
 
 const resend = new Resend(RESEND_API_KEY);
 
