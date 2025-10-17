@@ -129,12 +129,12 @@ function prorate(today: Date, billDay: number): number {
   }
 }
 
-// Count how many of the same weekday remain in this month (including startDate)
-function remainingWeekdayOccurrences(startDate: Date): number {
-  const wd = startDate.getDay();           // 0=Sun..6=Sat
+// Count raw remaining same-weekday occurrences in the month (including startDate)
+function remainingWeekdayOccurrencesRaw(startDate: Date): number {
+  const wd = startDate.getDay(); // 0..6
   const y = startDate.getFullYear();
   const m = startDate.getMonth();
-  const last = new Date(y, m + 1, 0);      // last day of month
+  const last = new Date(y, m + 1, 0);
 
   let cnt = 0;
   for (let d = new Date(startDate); d <= last; d.setDate(d.getDate() + 1)) {
@@ -143,15 +143,19 @@ function remainingWeekdayOccurrences(startDate: Date): number {
   return cnt;
 }
 
-// Map remaining classes to the 4-class baseline fraction (¼/½/¾/full)
+// Cap the proration numerator at 4 (5th is a bonus, not counted)
+function remainingWeekdayOccurrencesCapped(startDate: Date): number {
+  return Math.min(remainingWeekdayOccurrencesRaw(startDate), 4);
+}
+
+// Map remaining (capped) to ¼ / ½ / ¾ / full of monthly
 function prorateFractionFromStartDate(startDate: Date): number {
-  const remaining = remainingWeekdayOccurrences(startDate);
-  // remaining: 1→0.25, 2→0.5, 3→0.75, 4+→1.0  (5th is a bonus; still 1.0)
-  if (remaining >= 4) return 1;
+  const remaining = remainingWeekdayOccurrencesCapped(startDate); // 1..4
+  if (remaining === 4) return 1;
   if (remaining === 3) return 0.75;
   if (remaining === 2) return 0.5;
   if (remaining === 1) return 0.25;
-  return 0.25; // super edge case (shouldn't happen), charge minimum quarter
+  return 0.25; // safety net
 }
 
 /** Grab a trimmed PNG of the signature pad with a white background (for storage) */
@@ -907,15 +911,18 @@ const activeWear = (() => {
     }}
   />
   {activeReg.firstClassDate && (
-    <div className="text-[11px] text-neutral-500 mt-1">
-      {(() => {
-        const d = new Date(activeReg.firstClassDate as string);
-        const left = remainingWeekdayOccurrences(d);
-        const frac = prorateFractionFromStartDate(d);
-        return `Classes remaining this month: ${left} • First-month tuition: ${(frac * 100).toFixed(0)}%`;
-      })()}
-    </div>
-  )}
+  <div className="text-[11px] text-neutral-500 mt-1">
+    {(() => {
+      const d = new Date(activeReg.firstClassDate as string);
+      const raw = remainingWeekdayOccurrencesRaw(d);          // can be 5
+      const capped = remainingWeekdayOccurrencesCapped(d);    // max 4
+      const frac = prorateFractionFromStartDate(d);
+      return raw > 4
+        ? `Classes remaining this month (counted for proration): ${capped} of 4 (5th is a bonus) • First-month tuition: ${(frac * 100).toFixed(0)}%`
+        : `Classes remaining this month: ${capped} • First-month tuition: ${(frac * 100).toFixed(0)}%`;
+    })()}
+  </div>
+)}
 </div>
                   </div>
                 )}
