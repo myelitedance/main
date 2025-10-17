@@ -206,7 +206,7 @@ const need = (k: string) => {
 
 const RESEND_API_KEY = need("RESEND_API_KEY");
 const NOTIFY_FROM = need("EMAIL_FROM");
-const NOTIFY_TO = "jason@myelitedance.com"
+const NOTIFY_TO = "frontdesk@myelitedance.com"
 
 async function sendEmail({ subject, html, text, signatureAttachment }:{
   subject: string; html: string; text: string;
