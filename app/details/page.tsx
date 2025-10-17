@@ -588,21 +588,22 @@ async function handleSubmit() {
     lengthMinutes: c.lengthMinutes,
   }));
 
-  // Per-dancer wear snapshot (include all regs so ops can see)
-  const regsWear = regs.map(r => {
-    const pkg = getSelectedPackageForReg(r, danceWear);
-    const selMap = r.wearSelections || {};
-    const items = pkg ? pkg.items.filter(it => !!selMap[pkg.id]?.[it.sku]) : [];
-    const subtotal = pkg ? items.reduce((s, it) => s + (it.price || 0), 0) : 0;
-    return {
-      dancerId: r.id,
-      dancerName: `${r.firstName} ${r.lastName}`.trim(),
-      packageId: pkg?.id || "",
-      packageName: pkg?.name || "",
-      items,
-      subtotal,
-    };
-  });
+  // --- ONLY active dancer wear snapshot ---
+const activeWear = (() => {
+  if (!activeReg) return null;
+  const pkg = selectedWearPkg; // already derived for the active reg
+  const selMap = activeReg.wearSelections || {};
+  const items = pkg ? pkg.items.filter(it => !!selMap[pkg.id]?.[it.sku]) : [];
+  const subtotal = items.reduce((s, it) => s + (it.price || 0), 0);
+  return {
+    dancerId: activeReg.id,
+    dancerName: `${activeReg.firstName} ${activeReg.lastName}`.trim(),
+    packageId: pkg?.id || "",
+    packageName: pkg?.name || "",
+    items,
+    subtotal,
+  };
+})();
 
   // Payload expected by /api/notify/details
   const payload = {
@@ -638,7 +639,7 @@ async function handleSubmit() {
       }, 0),
     })),
 
-    wearByDancer: regsWear,
+    wearByDancer: activeWear ? [activeWear] : [], // only active dancer wear included
 
     totals: breakdown, // { reg, prorated, wear, tax, today, monthly }
 
