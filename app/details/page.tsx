@@ -573,116 +573,119 @@ export default function RegistrationDetailsPage() {
   /* -----------------------------
      Submit payload
      ----------------------------- */
-  async function handleSubmit() {
-    if (!canSubmit || !household) return;
-    setSubmitting(true);
+async function handleSubmit() {
+  if (!canSubmit || !household) return;
+  setSubmitting(true);
 
-    // Per-active-dancer classes snapshot
-    const activeClassesPayload = selectedClasses.map(c => ({
-      id: c.id, name: c.name, level: c.level, type: c.type, day: c.day, time: c.time, lengthMinutes: c.lengthMinutes,
-    }));
+  // Snapshot classes for the active dancer
+  const activeClassesPayload = selectedClasses.map(c => ({
+    id: c.id,
+    name: c.name,
+    level: c.level,
+    type: c.type,
+    day: c.day,
+    time: c.time,
+    lengthMinutes: c.lengthMinutes,
+  }));
 
-    // Per-dancer dance wear snapshot (include all regs so backoffice can see)
-    const regsWear = regs.map(r => {
-      const pkg = getSelectedPackageForReg(r, danceWear);
-      const selMap = r.wearSelections || {};
-      const items = pkg ? pkg.items.filter(it => !!selMap[pkg.id]?.[it.sku]) : [];
-      const subtotal = pkg ? items.reduce((s, it) => s + (it.price || 0), 0) : 0;
-      return {
-        dancerId: r.id,
-        dancerName: `${r.firstName} ${r.lastName}`.trim(),
-        packageId: pkg?.id || "",
-        packageName: pkg?.name || "",
-        items,
-        subtotal,
-      };
+  // Per-dancer wear snapshot (include all regs so ops can see)
+  const regsWear = regs.map(r => {
+    const pkg = getSelectedPackageForReg(r, danceWear);
+    const selMap = r.wearSelections || {};
+    const items = pkg ? pkg.items.filter(it => !!selMap[pkg.id]?.[it.sku]) : [];
+    const subtotal = pkg ? items.reduce((s, it) => s + (it.price || 0), 0) : 0;
+    return {
+      dancerId: r.id,
+      dancerName: `${r.firstName} ${r.lastName}`.trim(),
+      packageId: pkg?.id || "",
+      packageName: pkg?.name || "",
+      items,
+      subtotal,
+    };
+  });
+
+  // Payload expected by /api/notify/details
+  const payload = {
+    source: "registration-details",
+    contactId: household.contactId,
+    email: household.email,
+    parent: household.parent,
+    pricing: household.pricing,
+
+    dancers: household.dancers, // reference
+
+    activeDancerIndex: activeRegIdx,
+    activeDancer: {
+      id: activeReg?.id,
+      firstName: activeReg?.firstName,
+      lastName: activeReg?.lastName,
+      age: activeReg?.age,
+      selectedClasses: activeClassesPayload,
+      selectedWeeklyMinutes,
+      monthlyFromSheet: monthlyTuitionExact,
+    },
+
+    registrations: regs.map(r => ({
+      id: r.id,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      age: r.age,
+      selectedClassIds: r.selectedClassIds,
+      selectedWeeklyMinutes: Object.entries(r.selectedClassIds || {}).reduce((mins, [id, on]) => {
+        if (!on) return mins;
+        const cls = r.classesList.find(cc => cc.id === id);
+        return mins + (cls?.lengthMinutes || 0);
+      }, 0),
+    })),
+
+    wearByDancer: regsWear,
+
+    totals: breakdown, // { reg, prorated, wear, tax, today, monthly }
+
+    salesTax: {
+      rate: salesTaxRate,
+      appliesTo: "dance_wear_only" as const,
+      activeDancerWearSubtotal: wearSubtotalActive,
+      activeDancerWearTax: wearSalesTaxActive,
+    },
+
+    consent: {
+      autoPay: true,
+      signatureDataUrl,
+      termsAcceptedAt: new Date().toISOString(),
+    },
+
+    notes,
+  };
+
+  try {
+    const resp = await fetch("/api/notify/details", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
-    const payload = {
-      source: "registration-details",
-      contactId: household.contactId,
-      email: household.email,
-      parent: household.parent,
-      pricing: household.pricing,
+    // Read text first so we can surface good error info if JSON parsing fails
+    const text = await resp.text();
+    let json: any = null;
+    try { json = JSON.parse(text); } catch {}
 
-      // Original dancers from GHL (reference only)
-      dancers: household.dancers,
+    if (!resp.ok || !json?.ok) {
+      console.error("[notify/details] send failed", { status: resp.status, body: text });
+      alert(`Email send failed (HTTP ${resp.status}). ${text || resp.statusText}`);
+      setSubmitting(false);
+      return;
+    }
 
-      // Active dancer selections
-      activeDancerIndex: activeRegIdx,
-      activeDancer: {
-        id: activeReg?.id,
-        firstName: activeReg?.firstName,
-        lastName: activeReg?.lastName,
-        age: activeReg?.age,
-        selectedClasses: activeClassesPayload,
-        selectedWeeklyMinutes,
-        monthlyFromSheet: monthlyTuitionExact,
-      },
-
-      // All registrations snapshot (classes + minutes)
-      registrations: regs.map(r => ({
-        id: r.id,
-        firstName: r.firstName,
-        lastName: r.lastName,
-        age: r.age,
-        selectedClassIds: r.selectedClassIds,
-        selectedWeeklyMinutes: Object.entries(r.selectedClassIds || {}).reduce((mins, [id, on]) => {
-          if (!on) return mins;
-          const cls = r.classesList.find(cc => cc.id === id);
-          return mins + (cls?.lengthMinutes || 0);
-        }, 0),
-      })),
-
-      // Per-dancer wear summary
-      wearByDancer: regsWear,
-
-      // Totals for the ACTIVE dancer
-      totals: breakdown, // { reg, prorated, wear, today, monthly }
-
-      // Also include the rate you used (optional but helpful)
-      salesTax: {
-        rate: salesTaxRate, // e.g., 0.0975
-        appliesTo: "dance_wear_only",
-        activeDancerWearSubtotal: wearSubtotalActive,
-        activeDancerWearTax: wearSalesTaxActive,
-      },
-
-      consent: { autoPay: true, signatureDataUrl, termsAcceptedAt: new Date().toISOString() },
-      notes,
-    };
-
-try {
-  const resp = await fetch("/api/elite/register-details", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const j = await resp.json().catch(() => null);
-  if (!resp.ok || !j?.ok) {
-    console.error("submit failed", j);
-    alert(`Error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
-    return;
+    // 🎉 success
+    setSubmitted(true);
+  } catch (e: any) {
+    console.error("[notify/details] network error", e);
+    alert("We couldn't submit right now. Please try again.");
+  } finally {
+    setSubmitting(false);
   }
-
-  // ✅ mark as successful
-  setSubmitted(true);
-
-  // ✅ NEW: send internal email notification (non-blocking)
-  fetch("/api/notify/details", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    keepalive: true, // ensures the request completes even if the page closes
-  }).catch((err) => console.error("[notify/details] failed:", err));
-
-} catch (e) {
-  console.error(e);
-  alert("Something went wrong while saving. Please try again.");
-} finally {
-  setSubmitting(false);
 }
-  }
 
   /* =========================================================================
      UI
