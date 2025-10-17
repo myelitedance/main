@@ -152,7 +152,7 @@ function remainingBillableOfFour(startDateInput: Date): number {
   return 0;
 }
 
-export function prorateFractionFromStartDate(startDate: Date): number {
+function prorateFractionFromStartDate(startDate: Date): number {
   const n = Math.max(0, Math.min(4, remainingBillableOfFour(startDate))); // 0..4
   return n / 4; // 0, .25, .5, .75, 1
 }
