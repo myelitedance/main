@@ -113,49 +113,48 @@ function calcAgeFromDOB(dob?: string): number | "" {
  * Proration factor from TODAY until the next bill day.
  * Roughly: days-left-in-period ÷ days-in-period
  */
-function prorate(today: Date, billDay: number): number {
-  const y = today.getFullYear();
-  const m = today.getMonth();
-  const daysInMonth = new Date(y, m + 1, 0).getDate();
+// All dates for the same weekday within the month of `anyDate`
+function weekdayDatesInMonth(anyDate: Date): Date[] {
+  const y = anyDate.getFullYear();
+  const m = anyDate.getMonth();
+  const wd = anyDate.getDay(); // 0..6 (same weekday as start)
+  const firstOfMonth = new Date(y, m, 1);
+  const lastOfMonth  = new Date(y, m + 1, 0);
 
-  if (billDay <= today.getDate()) {
-    // next bill is next month → charge fraction for the remainder of THIS month (including today)
-    const daysLeftThisMonth = daysInMonth - today.getDate() + 1;
-    return Math.min(1, daysLeftThisMonth / daysInMonth);
-  } else {
-    // bill day later this month → charge fraction for the days until that bill day
-    const days = billDay - today.getDate();
-    return Math.min(1, days / daysInMonth);
+  // find first occurrence of that weekday in this month
+  const offset = (wd - firstOfMonth.getDay() + 7) % 7;
+  const firstHit = new Date(y, m, 1 + offset);
+
+  const out: Date[] = [];
+  for (let d = new Date(firstHit); d <= lastOfMonth; d.setDate(d.getDate() + 7)) {
+    out.push(new Date(d));
   }
+  return out;
 }
 
-// Count raw remaining same-weekday occurrences in the month (including startDate)
-function remainingWeekdayOccurrencesRaw(startDate: Date): number {
-  const wd = startDate.getDay(); // 0..6
-  const y = startDate.getFullYear();
-  const m = startDate.getMonth();
-  const last = new Date(y, m + 1, 0);
+// Count "billable" occurrences remaining under the 5th-is-bonus rule.
+// - Denominator is always 4
+// - Numerator counts only the first 4 weekday occurrences that are >= startDate
+// - If none of those remain but the 5th occurrence is >= startDate, count it as 1 (¼)
+function remainingBillableOfFour(startDateInput: Date): number {
+  // normalize to date-only (midnight) so time zones don't shift comparisons
+  const startDate = new Date(startDateInput.getFullYear(), startDateInput.getMonth(), startDateInput.getDate());
 
-  let cnt = 0;
-  for (let d = new Date(startDate); d <= last; d.setDate(d.getDate() + 1)) {
-    if (d.getDay() === wd) cnt++;
-  }
-  return cnt;
+  const all = weekdayDatesInMonth(startDate);       // e.g., [2,9,16,23,30]
+  const firstFour = all.slice(0, 4);                // billable set
+  const numInFirstFour = firstFour.filter(d => d >= startDate).length;
+
+  if (numInFirstFour > 0) return numInFirstFour;
+
+  // none left in first four, but if the 5th (bonus) is still upcoming, treat as 1/4
+  if (all[4] && all[4] >= startDate) return 1;
+
+  return 0;
 }
 
-// Cap the proration numerator at 4 (5th is a bonus, not counted)
-function remainingWeekdayOccurrencesCapped(startDate: Date): number {
-  return Math.min(remainingWeekdayOccurrencesRaw(startDate), 4);
-}
-
-// Map remaining (capped) to ¼ / ½ / ¾ / full of monthly
-function prorateFractionFromStartDate(startDate: Date): number {
-  const remaining = remainingWeekdayOccurrencesCapped(startDate); // 1..4
-  if (remaining === 4) return 1;
-  if (remaining === 3) return 0.75;
-  if (remaining === 2) return 0.5;
-  if (remaining === 1) return 0.25;
-  return 0.25; // safety net
+export function prorateFractionFromStartDate(startDate: Date): number {
+  const n = Math.max(0, Math.min(4, remainingBillableOfFour(startDate))); // 0..4
+  return n / 4; // 0, .25, .5, .75, 1
 }
 
 /** Grab a trimmed PNG of the signature pad with a white background (for storage) */
@@ -561,7 +560,7 @@ export default function RegistrationDetailsPage() {
 
   const reg = regFeeForIndex(activeRegIdx);
   const monthly = monthlyTuitionExact || 0;
-
+  
   // NEW: prorate by active dancer's firstClassDate
   let prorated = 0;
   const iso = activeReg?.firstClassDate;
@@ -914,12 +913,20 @@ const activeWear = (() => {
   <div className="text-[11px] text-neutral-500 mt-1">
     {(() => {
       const d = new Date(activeReg.firstClassDate as string);
-      const raw = remainingWeekdayOccurrencesRaw(d);          // can be 5
-      const capped = remainingWeekdayOccurrencesCapped(d);    // max 4
-      const frac = prorateFractionFromStartDate(d);
-      return raw > 4
-        ? `Classes remaining this month (counted for proration): ${capped} of 4 (5th is a bonus) • First-month tuition: ${(frac * 100).toFixed(0)}%`
-        : `Classes remaining this month: ${capped} • First-month tuition: ${(frac * 100).toFixed(0)}%`;
+      const all = weekdayDatesInMonth(d);        // includes the 5th if present
+      const firstFour = all.slice(0, 4);
+      const remainingInFirstFour = firstFour.filter(x => x >= new Date(d.getFullYear(), d.getMonth(), d.getDate())).length;
+      const fifthUpcoming = all[4] && all[4] >= new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const numerator = remainingInFirstFour > 0 ? remainingInFirstFour : (fifthUpcoming ? 1 : 0);
+      const fractionPct = (numerator / 4) * 100;
+
+      // If there are 5 in the month and we’re starting before/at the 5th,
+      // clarify that the 5th is a bonus (not in the denominator).
+      const hasFive = all.length >= 5;
+
+      return hasFive
+        ? `Proration: ${numerator} of 4 (5th is a bonus) • First-month tuition: ${fractionPct.toFixed(0)}%`
+        : `Proration: ${numerator} of 4 • First-month tuition: ${fractionPct.toFixed(0)}%`;
     })()}
   </div>
 )}
