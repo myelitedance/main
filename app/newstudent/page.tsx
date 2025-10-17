@@ -168,35 +168,35 @@ export default function NewStudentEntry() {
       }
       const data = JSON.parse(raw);
       if (data.found) {
-        // Strip out any student fields we do NOT want to prefill
-        const {
-          studentFirstName,
-          studentLastName,
-          birthdate,
-          age,
-          additionalStudents,
-          // keep adding here if you later add more student-only fields
-          ...restDraft
-        } = data.formDraft || {};
+  // Strip out any student fields we do NOT want to prefill
+  const {
+    studentFirstName,
+    studentLastName,
+    birthdate,
+    age,
+    additionalStudents,
+    // keep adding here if you later add more student-only fields
+    ...restDraft
+  } = data.formDraft || {};
 
-        setFoundContactId(data.contactId || null);
-        setForm(prev => ({
-          ...prev,
-          ...restDraft,       // only parent/contact/addr/etc
-          email: lookupEmail, // always set email from the lookup entry
-          // make sure student fields stay blank
-          studentFirstName: "",
-          studentLastName: "",
-          birthdate: "",
-          age: "",
-          additionalStudents: [],
-        }));
-        setLookupMsg("We found your info and pre-filled contact details. Please enter the student info.");
-      } else {
-        setFoundContactId(null);
-        setField("email", lookupEmail);
-        setLookupMsg("No existing record found. You can continue filling out the form.");
-      }
+  setFoundContactId(data.contactId || null);
+  setForm(prev => ({
+    ...prev,
+    ...restDraft,       // only parent/contact/addr/etc
+    email: lookupEmail, // always set email from the lookup entry
+    // make sure student fields stay blank
+    studentFirstName: "",
+    studentLastName: "",
+    birthdate: "",
+    age: "",
+    additionalStudents: [],
+  }));
+  setLookupMsg("We found your info and pre-filled contact details. Please enter the student info.");
+} else {
+  setFoundContactId(null);
+  setField("email", lookupEmail);
+  setLookupMsg("No existing record found. You can continue filling out the form.");
+}
     } catch (e: any) {
       console.error("[lookup] fetch threw", e);
       setLookupMsg(e?.name === "AbortError" ? "Lookup timed out. Please try again." : `We couldn’t check right now. ${e?.message || ""}`);
@@ -213,52 +213,60 @@ export default function NewStudentEntry() {
     }
   }
 
-  function validateStep1(form: NewStudentForm) {
-    // List of required fields (ids must match your input ids)
-    const requiredPairs: Array<[string, string | undefined]> = [
-      ["studentFirstName", form.studentFirstName],
-      ["studentLastName",  form.studentLastName],
-      ["age",        derivedAge || form.age],
-      ["parent1",          form.parent1],
-      ["primaryPhone",     form.primaryPhone],
-      ["email",            form.email],
-      ["street",           form.street],
-      ["city",             form.city],
-      // state handled separately (shadcn Select)
-      ["zip",              form.zip],
-    ];
+function validateStep1(form: NewStudentForm) {
+  // List of required fields (ids must match your input ids)
+  const requiredPairs: Array<[string, string | undefined]> = [
+    ["studentFirstName", form.studentFirstName],
+    ["studentLastName",  form.studentLastName],
+    ["age",        derivedAge || form.age],
+    ["parent1",          form.parent1],
+    ["primaryPhone",     form.primaryPhone],
+    ["email",            form.email],
+    ["street",           form.street],
+    ["city",             form.city],
+    // state handled separately (shadcn Select)
+    ["zip",              form.zip],
+  ];
 
-    for (const [id, val] of requiredPairs) {
-      if (!String(val || "").trim()) {
-        const el = document.getElementById(id) as HTMLElement | null;
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-        el?.focus?.();
-        alert("Please complete all required fields (*) before continuing.");
-        return false;
-      }
+  for (const [id, val] of requiredPairs) {
+    if (!String(val || "").trim()) {
+      const el = document.getElementById(id) as HTMLElement | null;
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.focus?.();
+      alert("Please complete all required fields (*) before continuing.");
+      return false;
     }
-
-    // Waiver acknowledgement is already enforced below, but leave it here if you want
-    return true;
   }
 
+  // Validate state (Select)
+ /* if (!String(form.state || "").trim()) {
+    const el = document.getElementById("state") as HTMLElement | null;
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.focus?.();
+    alert("Please select a State (*).");
+    return false;
+  }
+*/
+  // Waiver acknowledgement is already enforced below, but leave it here if you want
+  return true;
+}
   // === Submit ===
   async function handleSubmit(e: React.FormEvent<HTMLButtonElement | HTMLFormElement>) {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (step === 1) {
-      // Run required-field validation for Step 1
-      if (!validateStep1(form)) return;
+  if (step === 1) {
+    // Run required-field validation for Step 1
+    if (!validateStep1(form)) return;
 
-      // Also enforce the waiver checkbox (not starred, but required by policy)
-      if (!form.waiverAcknowledged) {
-        alert("Please acknowledge the Waiver / Release to continue.");
-        return;
-      }
-
-      setStep(2);
+    // Also enforce the waiver checkbox (not starred, but required by policy)
+    if (!form.waiverAcknowledged) {
+      alert("Please acknowledge the Waiver / Release to continue.");
       return;
     }
+
+    setStep(2);
+    return;
+  }
 
     // step 2
     setSubmitting(true);
@@ -308,50 +316,49 @@ export default function NewStudentEntry() {
       meta: { contactId: foundContactId || undefined },
     } as const;
 
-    try {
-      const resp = await fetch("/api/ghl/new-student", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ghlPayload),
-      });
+try {
+  const resp = await fetch("/api/ghl/new-student", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(ghlPayload),
+  });
 
-      const j = await resp.json().catch(() => null);
+  const j = await resp.json().catch(() => null);
 
-      if (!resp.ok || !j?.ok) {
-        console.error("GHL submit failed", j);
-        alert(`GHL error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
-        return;
-      }
-
-      // Success UI first
-      setSubmitted(true);
-
-      // Fire-and-forget email; failure shouldn't affect UX
-      (async () => {
-        try {
-          await fetch("/api/notify/new-student", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            keepalive: true,
-            body: JSON.stringify({
-              form: { ...form, signatureDataUrl },     // full form for the email
-              meta: { contactId: foundContactId || null },
-            }),
-          });
-        } catch (e) {
-          console.warn("Notify email failed:", e);
-          // optional: toast/log only—no alert
-        }
-      })();
-
-    } catch (err) {
-      console.error(err);
-      alert("Something went wrong while submitting. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+  if (!resp.ok || !j?.ok) {
+    console.error("GHL submit failed", j);
+    alert(`GHL error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
+    return;
   }
 
+  // Success UI first
+  setSubmitted(true);
+
+  // Fire-and-forget email; failure shouldn't affect UX
+  (async () => {
+    try {
+      await fetch("/api/notify/new-student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          form: { ...form, signatureDataUrl },     // full form for the email
+          meta: { contactId: foundContactId || null },
+        }),
+      });
+    } catch (e) {
+      console.warn("Notify email failed:", e);
+      // optional: toast/log only—no alert
+    }
+  })();
+
+} catch (err) {
+  console.error(err);
+  alert("Something went wrong while submitting. Please try again.");
+} finally {
+  setSubmitting(false);
+}
+}
   // ---------- Options ----------
   const benefitsOptions = [
     "improve confidence",
@@ -412,8 +419,8 @@ export default function NewStudentEntry() {
             {step === 1 && (
               <>
                 {/* Email lookup */}
-                <section className="space-y-2 rounded-xl border p-3 bg-white" style={{ borderColor: "#3B82F6" }}>
-                  <h2 className="text-base font-semibold" style={{ color: "#8B5CF6" }}>Find Your Account</h2>
+                <section className="space-y-2 rounded-xl border p-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#8B5CF6" }}>Find your info</h2>
                   <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                     <div>
                       <Label htmlFor="lookupEmail">Parent email</Label>
@@ -425,7 +432,6 @@ export default function NewStudentEntry() {
                         value={lookupEmail}
                         onChange={(e) => setLookupEmail(e.target.value)}
                         onKeyDown={onLookupKeyDown}
-                        className="focus:ring-2 focus:ring-[#8B5CF6]"
                       />
                       {lookupMsg && <p className="text-xs mt-1 text-neutral-600">{lookupMsg}</p>}
                     </div>
@@ -433,7 +439,7 @@ export default function NewStudentEntry() {
                       type="button"
                       onClick={handleLookup}
                       disabled={lookupBusy}
-                      className="h-10 text-white"
+                      className="h-10"
                       style={{ backgroundColor: "#8B5CF6" }}
                     >
                       {lookupBusy ? (
@@ -446,15 +452,13 @@ export default function NewStudentEntry() {
                     </Button>
                   </div>
                   <p className="text-[12px] text-neutral-500">
-                    We’ll pre-fill if we already have your info. You can still edit before submitting.
+                    We’ll pre-fill the form if we already have your info in our system. You can still edit anything before submitting.
                   </p>
                 </section>
 
                 {/* Student */}
-                <section className="space-y-3 rounded-xl border p-3" style={{ borderColor: "#EC4899" }}>
-                  <h2 className="text-base font-semibold flex items-center gap-2" style={{ color: "#EC4899" }}>
-                    Student
-                  </h2>
+                <section className="space-y-3">
+                  <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Student</h2>
                   <div className="grid grid-cols-1 gap-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -465,7 +469,6 @@ export default function NewStudentEntry() {
                           inputMode="text"
                           value={form.studentFirstName || ""}
                           onChange={(e) => setField("studentFirstName", e.target.value)}
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                       </div>
                       <div>
@@ -476,7 +479,6 @@ export default function NewStudentEntry() {
                           inputMode="text"
                           value={form.studentLastName || ""}
                           onChange={(e) => setField("studentLastName", e.target.value)}
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                       </div>
                     </div>
@@ -488,7 +490,6 @@ export default function NewStudentEntry() {
                           type="date"
                           value={form.birthdate || ""}
                           onChange={(e) => setField("birthdate", e.target.value)}
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                       </div>
                       <div>
@@ -498,7 +499,6 @@ export default function NewStudentEntry() {
                           value={derivedAge || form.age || ""}
                           onChange={(e) => setField("age", e.target.value)}
                           inputMode="numeric"
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                       </div>
                     </div>
@@ -509,9 +509,9 @@ export default function NewStudentEntry() {
                 <section className="space-y-3">
                   <div className="grid grid-cols-1 gap-4">
                     {(form.additionalStudents || []).map((s, idx) => (
-                      <div key={idx} className="rounded-xl border p-3 bg-white" style={{ borderColor: "#BFDBFE" }}>
+                      <div key={idx} className="rounded-xl border p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="text-sm font-medium text-neutral-700">Additional Child {idx + 1}</div>
+                          <div className="text-sm font-medium text-neutral-700">Child {idx + 2}</div>
                           <button
                             type="button"
                             onClick={() => removeChild(idx)}
@@ -535,7 +535,6 @@ export default function NewStudentEntry() {
                                 arr[idx] = { ...arr[idx], firstName: e.target.value };
                                 setField("additionalStudents", arr);
                               }}
-                              className="focus:ring-2 focus:ring-[#8B5CF6]"
                             />
                           </div>
                           <div>
@@ -549,7 +548,6 @@ export default function NewStudentEntry() {
                                 arr[idx] = { ...arr[idx], lastName: e.target.value };
                                 setField("additionalStudents", arr);
                               }}
-                              className="focus:ring-2 focus:ring-[#8B5CF6]"
                             />
                           </div>
                         </div>
@@ -566,7 +564,6 @@ export default function NewStudentEntry() {
                                 arr[idx] = { ...arr[idx], birthdate: e.target.value };
                                 setField("additionalStudents", arr);
                               }}
-                              className="focus:ring-2 focus:ring-[#8B5CF6]"
                             />
                           </div>
                           <div>
@@ -580,7 +577,6 @@ export default function NewStudentEntry() {
                                 arr[idx] = { ...arr[idx], age: e.target.value };
                                 setField("additionalStudents", arr);
                               }}
-                              className="focus:ring-2 focus:ring-[#8B5CF6]"
                             />
                           </div>
                         </div>
@@ -603,7 +599,7 @@ export default function NewStudentEntry() {
                 </section>
 
                 {/* Parents */}
-                <section className="space-y-3 rounded-xl border p-3" style={{ borderColor: "#EC4899" }}>
+                <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Parent / Guardian</h2>
                   <div className="grid grid-cols-1 gap-3">
                     <div>
@@ -613,7 +609,6 @@ export default function NewStudentEntry() {
                         autoComplete="name"
                         value={form.parent1 || ""}
                         onChange={(e) => setField("parent1", e.target.value)}
-                        className="focus:ring-2 focus:ring-[#8B5CF6]"
                       />
                     </div>
                     <div>
@@ -623,14 +618,13 @@ export default function NewStudentEntry() {
                         autoComplete="name"
                         value={form.parent2 || ""}
                         onChange={(e) => setField("parent2", e.target.value)}
-                        className="focus:ring-2 focus:ring-[#8B5CF6]"
                       />
                     </div>
                   </div>
                 </section>
 
                 {/* Contact */}
-                <section className="space-y-3 rounded-xl border p-3" style={{ borderColor: "#3B82F6" }}>
+                <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Contact</h2>
 
                   <div className="grid grid-cols-1 gap-3">
@@ -645,7 +639,6 @@ export default function NewStudentEntry() {
                           autoComplete="tel"
                           value={form.primaryPhone || ""}
                           onChange={(e) => setField("primaryPhone", e.target.value)}
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                         <div className="flex items-center gap-2">
                           <Checkbox
@@ -684,7 +677,6 @@ export default function NewStudentEntry() {
                           autoComplete="tel"
                           value={form.altPhone || ""}
                           onChange={(e) => setField("altPhone", e.target.value)}
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                         <div className="flex items-center gap-2">
                           <Checkbox
@@ -705,7 +697,7 @@ export default function NewStudentEntry() {
                       </div>
                       {form.altPhoneSmsOptIn && (
                         <p className="text-xs mt-1 text-neutral-600">
-                          By checking SMS opt-in, you agree to receive recurring automated and transactional
+                          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
                           text messages from Elite Dance & Music at the number provided. Consent is not a condition of
                           purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
                         </p>
@@ -722,7 +714,6 @@ export default function NewStudentEntry() {
                         inputMode="email"
                         value={form.email || ""}
                         onChange={(e) => setField("email", e.target.value)}
-                        className="focus:ring-2 focus:ring-[#8B5CF6]"
                       />
                     </div>
 
@@ -734,7 +725,6 @@ export default function NewStudentEntry() {
                         autoComplete="address-line1"
                         value={form.street || ""}
                         onChange={(e) => setField("street", e.target.value)}
-                        className="focus:ring-2 focus:ring-[#8B5CF6]"
                       />
                     </div>
 
@@ -747,18 +737,17 @@ export default function NewStudentEntry() {
                           autoComplete="address-level2"
                           value={form.city || ""}
                           onChange={(e) => setField("city", e.target.value)}
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                       </div>
                       <div>
                         <Label htmlFor="state">State *</Label>
                         <Select value={form.state || "TN"} onValueChange={(v) => setField("state", v)}>
-                          <SelectTrigger id="state" aria-label="State" className="bg-white border border-neutral-300 focus:ring-2 focus:ring-[#8B5CF6]">
+                          <SelectTrigger id="state" aria-label="State">
                             <SelectValue placeholder="Select state" />
                           </SelectTrigger>
                           <SelectContent className="bg-white border border-neutral-200 shadow-lg z-50">
                             {usStates.map((s) => (
-                              <SelectItem key={s} value={s} className="focus:bg-[#EEF2FF]">{s}</SelectItem>
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -771,7 +760,6 @@ export default function NewStudentEntry() {
                           autoComplete="postal-code"
                           value={form.zip || ""}
                           onChange={(e) => setField("zip", e.target.value)}
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                       </div>
                     </div>
@@ -779,7 +767,7 @@ export default function NewStudentEntry() {
                 </section>
 
                 {/* How did you hear about us? */}
-                <section className="space-y-3 rounded-xl border p-3" style={{ borderColor: "#3B82F6" }}>
+                <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>How did you hear about us?</h2>
                   <div className="space-y-2">
                     <Label htmlFor="hear-select">Select one</Label>
@@ -813,7 +801,7 @@ export default function NewStudentEntry() {
                           placeholder={hearDetailMeta[form.hearAbout]?.placeholder || "Add a note"}
                           value={form.hearAboutDetails || ""}
                           onChange={(e) => setField("hearAboutDetails", e.target.value)}
-                          className="bg-white focus:ring-2 focus:ring-[#8B5CF6]"
+                          className="bg-white"
                         />
                         {hearDetailMeta[form.hearAbout]?.hint && (
                           <p className="text-xs text-neutral-500 mt-1">{hearDetailMeta[form.hearAbout]?.hint}</p>
@@ -824,7 +812,7 @@ export default function NewStudentEntry() {
                 </section>
 
                 {/* Benefits */}
-                <section className="space-y-3 rounded-xl border p-3" style={{ borderColor: "#3B82F6" }}>
+                <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>
                     What benefits were you hoping for <span className="font-normal">(check all that apply)</span>?
                   </h2>
@@ -832,7 +820,7 @@ export default function NewStudentEntry() {
                     {benefitsOptions.map((label) => {
                       const checked = (form.benefits || []).includes(label);
                       return (
-                        <label key={label} className={`flex items-center gap-3 rounded-lg px-2 py-1 ${checked ? "bg-[#F8FAFF] border border-[#BFDBFE]" : ""}`}>
+                        <label key={label} className="flex items-center gap-3">
                           <Checkbox
                             checked={checked}
                             onCheckedChange={(v) => {
@@ -852,18 +840,17 @@ export default function NewStudentEntry() {
                         id="benefitsOther"
                         value={form.benefitsOther || ""}
                         onChange={(e) => setField("benefitsOther", e.target.value)}
-                        className="focus:ring-2 focus:ring-[#8B5CF6]"
                       />
                     </div>
                   </div>
                 </section>
 
                 {/* Waiver acknowledgment */}
-                <section className="space-y-3 rounded-xl border p-3" style={{ borderColor: "#EC4899" }}>
+                <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Waiver / Release of Liability</h2>
                   <Textarea
                     readOnly
-                    className="h-40 text-[13px] leading-snug focus-visible:ring-0"
+                    className="h-40 text-[13px] leading-snug"
                     value={`The practice of dance involves the risk of physical injury (with bruises being the most likely injury and broken bones or other more serious physical injuries also being possible.) Understanding this I declare:
 
 That I am willing to accept responsibility for such an eventuality, and;
@@ -876,7 +863,7 @@ Further, I understand the physical demand of this activity and the practice requ
 PHOTOGRAPHY/VIDEO RELEASE:
 I, the undersigned parent or legal guardian of the student, hereby grant permission to Elite Dance LLC d/b/a Elite Dance & Music (“Elite Dance”) to photograph and/or video record my child during classes, rehearsals, and performances. I authorize Elite Dance to use such photos or videos for any lawful purpose, including but not limited to internal client files, company website, printed materials, social media, advertising, and promotional content. I understand that all such photos and videos are the property of Elite Dance and that I will not receive any compensation for their use. This consent is ongoing and may only be revoked by providing written notice to Elite Dance.`}
                   />
-                  <label className="flex items-center gap-3 rounded-xl border p-3 bg-neutral-50">
+                  <label className="flex items-center gap-3">
                     <Checkbox
                       checked={!!form.waiverAcknowledged}
                       onCheckedChange={(v) => setField("waiverAcknowledged", Boolean(v))}
@@ -896,13 +883,13 @@ I, the undersigned parent or legal guardian of the student, hereby grant permiss
             {step === 2 && (
               <>
                 {/* Policies */}
-                <section className="space-y-3 rounded-xl border p-3" style={{ borderColor: "#EC4899" }}>
+                <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Studio Policies</h2>
-                  <Textarea readOnly className="h-72 text-[13px] leading-snug focus-visible:ring-0" value={policies} />
+                  <Textarea readOnly className="h-72 text-[13px] leading-snug" value={policies} />
                 </section>
 
                 {/* Signature */}
-                <section className="space-y-3 rounded-xl border p-3" style={{ borderColor: "#3B82F6" }}>
+                <section className="space-y-3">
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Signature</h2>
                   <div className="space-y-2">
                     <Label>Signature (Student or Parent/Guardian) *</Label>
@@ -928,7 +915,6 @@ I, the undersigned parent or legal guardian of the student, hereby grant permiss
                           type="date"
                           value={form.waiverDate || new Date().toISOString().slice(0, 10)}
                           onChange={(e) => setField("waiverDate", e.target.value)}
-                          className="focus:ring-2 focus:ring-[#8B5CF6]"
                         />
                       </div>
                       <div className="flex items-end justify-end gap-2">
@@ -940,7 +926,6 @@ I, the undersigned parent or legal guardian of the student, hereby grant permiss
                             setSignatureDataUrl("");
                             setField("waiverSigned", false);
                           }}
-                          className="border border-neutral-300"
                         >
                           Clear
                         </Button>
@@ -969,11 +954,11 @@ I, the undersigned parent or legal guardian of the student, hereby grant permiss
                 )}
               </div>
               {step === 1 ? (
-                <Button onClick={handleSubmit} className="px-5 text-white" style={{ backgroundColor: "#8B5CF6" }} disabled={submitting}>
+                <Button onClick={handleSubmit} className="px-5" style={{ backgroundColor: "#8B5CF6" }} disabled={submitting}>
                   Continue
                 </Button>
               ) : (
-                <Button onClick={handleSubmit} className="px-5 text-white" style={{ backgroundColor: "#8B5CF6" }} disabled={submitting}>
+                <Button onClick={handleSubmit} className="px-5" style={{ backgroundColor: "#8B5CF6" }} disabled={submitting}>
                   {submitting ? (
                     <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</span>
                   ) : (
@@ -982,7 +967,7 @@ I, the undersigned parent or legal guardian of the student, hereby grant permiss
                 </Button>
               )}
               {step === 2 && (
-                <Button variant="outline" onClick={() => setStep(1)} className="border-neutral-300">Back</Button>
+                <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
               )}
             </>
           ) : (
@@ -1002,7 +987,6 @@ I, the undersigned parent or legal guardian of the student, hereby grant permiss
                   // clear canvas if present
                   sigRef.current?.clear?.();
                 }}
-                className="border-neutral-300"
               >
                 Start another child
               </Button>
