@@ -132,6 +132,28 @@ function prorate(today: Date, billDay: number): number {
   }
 }
 
+// Count how many of a given weekday remain in this month (including startDate)
+function remainingWeekdayOccurrences(startDate: Date): number {
+  const weekday = startDate.getDay(); // 0=Sun..6=Sat
+  const y = startDate.getFullYear();
+  const m = startDate.getMonth();
+  const lastDay = new Date(y, m + 1, 0); // end of month
+
+  let count = 0;
+  for (let d = new Date(startDate); d <= lastDay; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() === weekday) count++;
+  }
+  return count;
+}
+
+// Compute prorate fraction (¼, ½, ¾, or 1)
+function prorateFractionFromStartDate(startDate: Date): number {
+  const remaining = remainingWeekdayOccurrences(startDate);
+  const fraction = remaining / 4;
+  // Cap between 0.25 and 1.0 (1,2,3,4 classes)
+  return Math.min(1, Math.max(0.25, Math.round(fraction * 4) / 4));
+}
+
 /** Grab a trimmed PNG of the signature pad with a white background (for storage) */
 function snapshotSignature(ref?: any): string {
   const pad = (ref as any)?.current;
@@ -249,6 +271,9 @@ export default function RegistrationDetailsPage() {
   const [danceWear, setDanceWear] = useState<DanceWearPackage[]>([]);
   const [wearError, setWearError] = useState<string>("");
   const [wearLoaded, setWearLoaded] = useState(false);
+
+  // First class date (for prorating)
+  const [firstClassDate, setFirstClassDate] = useState<Date | null>(null);
 
   // Sales tax: loaded from /api/elite/settings or env fallback
   const [salesTaxRate, setSalesTaxRate] = useState<number>(0);
@@ -528,21 +553,31 @@ export default function RegistrationDetailsPage() {
      Totals (ACTIVE dancer only)
      ----------------------------- */
   const breakdown = useMemo(() => {
-    if (!household) return { reg: 0, prorated: 0, wear: 0, tax: 0, today: 0, monthly: 0 };
+  if (!household) return { reg: 0, prorated: 0, wear: 0, tax: 0, today: 0, monthly: 0 };
 
-    const reg = regFeeForIndex(activeRegIdx);               // tier by dancer index
-    const computedMonthly = monthlyTuitionExact || 0;       // from sheet exact match
+  const reg = regFeeForIndex(activeRegIdx);
+  const monthly = monthlyTuitionExact || 0;
 
-    const factor = prorate(new Date(), household.pricing.billDay);
-    const prorated = computedMonthly * factor;
+  // compute prorate fraction based on first class date
+  let prorated = 0;
+  if (monthly > 0 && firstClassDate) {
+    const frac = prorateFractionFromStartDate(firstClassDate);
+    prorated = monthly * frac;
+  }
 
-    const wear = wearSubtotalActive;
-    const tax = wearSalesTaxActive;
-    const dueToday = reg + prorated + wear + tax;
-    const dueMonthly = computedMonthly;
+  const wear = wearSubtotalActive;
+  const tax = wearSalesTaxActive;
+  const todayDue = reg + prorated + wear + tax;
 
-    return { reg, prorated, wear, tax, today: dueToday, monthly: dueMonthly };
-  }, [household, activeRegIdx, monthlyTuitionExact, wearSubtotalActive, wearSalesTaxActive]);
+  return { reg, prorated, wear, tax, today: todayDue, monthly };
+}, [
+  household,
+  activeRegIdx,
+  monthlyTuitionExact,
+  firstClassDate,
+  wearSubtotalActive,
+  wearSalesTaxActive,
+]);
 
   /* -----------------------------
      Signature helpers
@@ -1050,6 +1085,19 @@ const activeWear = (() => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
+
+                <div className="space-y-1">
+                  <Label>Select first day of class</Label>
+                  <input
+                  type="date"
+                  className="border rounded-md p-2"
+                  value={firstClassDate ? firstClassDate.toISOString().split("T")[0] : ""}
+                  onChange={(e) => {
+                  const val = e.target.value;
+                  setFirstClassDate(val ? new Date(val) : null);
+                  }}
+                  />
+                </div>
                 {/* Totals block */}
                 <div className="rounded-2xl bg-neutral-50 p-3 space-y-1">
                   <div className="flex items-center justify-between text-sm">
