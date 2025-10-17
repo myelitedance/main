@@ -652,23 +652,36 @@ export default function RegistrationDetailsPage() {
       notes,
     };
 
-    try {
-      const resp = await fetch("/api/elite/register-details", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
-      });
-      const j = await resp.json().catch(() => null);
-      if (!resp.ok || !j?.ok) {
-        console.error("submit failed", j);
-        alert(`Error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
-        return;
-      }
-      setSubmitted(true);
-    } catch (e) {
-      console.error(e);
-      alert("Something went wrong while saving. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+try {
+  const resp = await fetch("/api/elite/register-details", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const j = await resp.json().catch(() => null);
+  if (!resp.ok || !j?.ok) {
+    console.error("submit failed", j);
+    alert(`Error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
+    return;
+  }
+
+  // ✅ mark as successful
+  setSubmitted(true);
+
+  // ✅ NEW: send internal email notification (non-blocking)
+  fetch("/api/notify/details", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    keepalive: true, // ensures the request completes even if the page closes
+  }).catch((err) => console.error("[notify/details] failed:", err));
+
+} catch (e) {
+  console.error(e);
+  alert("Something went wrong while saving. Please try again.");
+} finally {
+  setSubmitting(false);
+}
   }
 
   /* =========================================================================
