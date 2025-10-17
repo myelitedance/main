@@ -76,14 +76,11 @@ type Registration = {
   firstName: string;
   lastName: string;
   age: number | string;
-
-  // classes (per-dancer)
   classesList: StudioClass[];
   selectedClassIds: Record<string, boolean>;
-
-  // dance wear (per-dancer)
   wearSelectedPackageId: string;
-  wearSelections: Record<string, Record<string, boolean>>;  // { [pkgId]: { [sku]: boolean } }
+  wearSelections: Record<string, Record<string, boolean>>;
+  firstClassDate?: string; // <-- NEW: "YYYY-MM-DD"
 };
 
 type DWItem = { sku: string; name: string; price: number };
@@ -132,26 +129,29 @@ function prorate(today: Date, billDay: number): number {
   }
 }
 
-// Count how many of a given weekday remain in this month (including startDate)
+// Count how many of the same weekday remain in this month (including startDate)
 function remainingWeekdayOccurrences(startDate: Date): number {
-  const weekday = startDate.getDay(); // 0=Sun..6=Sat
+  const wd = startDate.getDay();           // 0=Sun..6=Sat
   const y = startDate.getFullYear();
   const m = startDate.getMonth();
-  const lastDay = new Date(y, m + 1, 0); // end of month
+  const last = new Date(y, m + 1, 0);      // last day of month
 
-  let count = 0;
-  for (let d = new Date(startDate); d <= lastDay; d.setDate(d.getDate() + 1)) {
-    if (d.getDay() === weekday) count++;
+  let cnt = 0;
+  for (let d = new Date(startDate); d <= last; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() === wd) cnt++;
   }
-  return count;
+  return cnt;
 }
 
-// Compute prorate fraction (¼, ½, ¾, or 1)
+// Map remaining classes to the 4-class baseline fraction (¼/½/¾/full)
 function prorateFractionFromStartDate(startDate: Date): number {
   const remaining = remainingWeekdayOccurrences(startDate);
-  const fraction = remaining / 4;
-  // Cap between 0.25 and 1.0 (1,2,3,4 classes)
-  return Math.min(1, Math.max(0.25, Math.round(fraction * 4) / 4));
+  // remaining: 1→0.25, 2→0.5, 3→0.75, 4+→1.0  (5th is a bonus; still 1.0)
+  if (remaining >= 4) return 1;
+  if (remaining === 3) return 0.75;
+  if (remaining === 2) return 0.5;
+  if (remaining === 1) return 0.25;
+  return 0.25; // super edge case (shouldn't happen), charge minimum quarter
 }
 
 /** Grab a trimmed PNG of the signature pad with a white background (for storage) */
@@ -201,9 +201,9 @@ function makeRegFromGHL(d?: Dancer): Registration {
     age: d?.age ?? "",
     classesList: [],
     selectedClassIds: {},
-
     wearSelectedPackageId: "",
-    wearSelections: {},      // defaults filled when package is chosen
+    wearSelections: {},
+    firstClassDate: "", // <-- NEW
   };
 }
 
@@ -558,10 +558,12 @@ export default function RegistrationDetailsPage() {
   const reg = regFeeForIndex(activeRegIdx);
   const monthly = monthlyTuitionExact || 0;
 
-  // compute prorate fraction based on first class date
+  // NEW: prorate by active dancer's firstClassDate
   let prorated = 0;
-  if (monthly > 0 && firstClassDate) {
-    const frac = prorateFractionFromStartDate(firstClassDate);
+  const iso = activeReg?.firstClassDate;
+  if (monthly > 0 && iso) {
+    const start = new Date(iso);
+    const frac = prorateFractionFromStartDate(start);
     prorated = monthly * frac;
   }
 
@@ -574,11 +576,10 @@ export default function RegistrationDetailsPage() {
   household,
   activeRegIdx,
   monthlyTuitionExact,
-  firstClassDate,
+  activeReg?.firstClassDate,  // <-- make it reactive
   wearSubtotalActive,
   wearSalesTaxActive,
 ]);
-
   /* -----------------------------
      Signature helpers
      ----------------------------- */
@@ -651,14 +652,15 @@ const activeWear = (() => {
 
     activeDancerIndex: activeRegIdx,
     activeDancer: {
-      id: activeReg?.id,
-      firstName: activeReg?.firstName,
-      lastName: activeReg?.lastName,
-      age: activeReg?.age,
-      selectedClasses: activeClassesPayload,
-      selectedWeeklyMinutes,
-      monthlyFromSheet: monthlyTuitionExact,
-    },
+  id: activeReg?.id,
+  firstName: activeReg?.firstName,
+  lastName: activeReg?.lastName,
+  age: activeReg?.age,
+  selectedClasses: activeClassesPayload,
+  selectedWeeklyMinutes,
+  monthlyFromSheet: monthlyTuitionExact,
+  firstClassDate: activeReg?.firstClassDate || "", // <-- NEW
+},
 
     registrations: regs.map(r => ({
       id: r.id,
@@ -888,6 +890,33 @@ const activeWear = (() => {
                         Changing age will refresh class options for this dancer.
                       </div>
                     </div>
+                    <div>
+  <Label htmlFor="d-firstclass">First class date</Label>
+  <Input
+    id="d-firstclass"
+    type="date"
+    value={String(activeReg.firstClassDate || "")}
+    onChange={(e) => {
+      const val = e.target.value; // "YYYY-MM-DD"
+      setRegs((prev) => {
+        const next = [...prev];
+        if (!next[activeRegIdx]) return prev;
+        next[activeRegIdx] = { ...next[activeRegIdx], firstClassDate: val };
+        return next;
+      });
+    }}
+  />
+  {activeReg.firstClassDate && (
+    <div className="text-[11px] text-neutral-500 mt-1">
+      {(() => {
+        const d = new Date(activeReg.firstClassDate as string);
+        const left = remainingWeekdayOccurrences(d);
+        const frac = prorateFractionFromStartDate(d);
+        return `Classes remaining this month: ${left} • First-month tuition: ${(frac * 100).toFixed(0)}%`;
+      })()}
+    </div>
+  )}
+</div>
                   </div>
                 )}
               </CardContent>
@@ -1085,19 +1114,6 @@ const activeWear = (() => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-
-                <div className="space-y-1">
-                  <Label>Select first day of class</Label>
-                  <input
-                  type="date"
-                  className="border rounded-md p-2"
-                  value={firstClassDate ? firstClassDate.toISOString().split("T")[0] : ""}
-                  onChange={(e) => {
-                  const val = e.target.value;
-                  setFirstClassDate(val ? new Date(val) : null);
-                  }}
-                  />
-                </div>
                 {/* Totals block */}
                 <div className="rounded-2xl bg-neutral-50 p-3 space-y-1">
                   <div className="flex items-center justify-between text-sm">
