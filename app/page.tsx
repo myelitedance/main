@@ -48,10 +48,10 @@ export default function HomePage() {
     aria-hidden="true"
   >
     {/* Serve smaller video to small screens; higher to large screens */}
-    <source src="/videos/hero-480p.webm" type="video/webm" media="(max-width: 767px)" />
     <source src="/videos/hero-480p.mp4" type="video/mp4" media="(max-width: 767px)" />
-    <source src="/videos/hero-720p.webm" type="video/webm" media="(min-width: 768px)" />
+    <source src="/videos/hero-480p.webm" type="video/webm" media="(max-width: 767px)" />
     <source src="/videos/hero-720p.mp4" type="video/mp4" media="(min-width: 768px)" />
+    <source src="/videos/hero-720p.webm" type="video/webm" media="(min-width: 768px)" />
   </video>
 
   {/* Dark veil for contrast (keep this) */}
