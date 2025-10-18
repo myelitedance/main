@@ -137,7 +137,21 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
   };
 
   return (
-    <div className="bg-white text-black px-6 py-5">
+  <div
+    className="
+      bg-white text-black px-6 py-5
+      max-h-[calc(100dvh-3rem)] sm:max-h-[80vh]
+      overflow-y-auto overscroll-contain
+      pb-[max(1rem,env(safe-area-inset-bottom))]
+      rounded-2xl
+    "
+    style={{
+      WebkitOverflowScrolling: "touch", // iOS momentum scrolling
+      touchAction: "pan-y",             // allow vertical touch scroll
+    }}
+    role="dialog"
+    aria-label="Book Trial Form"
+  >
       {/* Progress */}
       <div className="flex gap-2 mb-5">
         {[0, 1].map((i) => (
