@@ -289,7 +289,6 @@ await ghl(`/opportunities/`, {
         <p><strong>Dancer:</strong> ${body.dancerFirst || ""} ${body.dancerLast || ""}</p>
         <p><strong>Age:</strong> ${body.age || ""}</p>
         <p><strong>Experience:</strong> ${body.experienceYears || body.experience || ""}</p>
-        <p><strong>Selected Class:</strong></p><ul>${classesHtml}</ul>
         <p><strong>Wants Recs:</strong> ${body.wantsRecs ? "Yes" : "No"}</p>
         <p><strong>Dance Team:</strong> ${body.wantsTeam ? "Yes" : "No"}</p>
         <p><strong>Notes:</strong><br>${(body.notes || "").replace(/\n/g,"<br>")}</p>

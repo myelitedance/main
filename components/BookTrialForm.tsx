@@ -41,7 +41,7 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const AUTO_CLOSE_MS = 1800;
+  const AUTO_CLOSE_MS = 3000;
 
   // contactId not used here but preserved for payload compatibility
   const [contactId] = useState<string | undefined>(undefined);
