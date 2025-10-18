@@ -1,6 +1,6 @@
 // /components/BookTrialForm.tsx
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
 // Types
 type ClassItem = {
@@ -50,8 +50,6 @@ const styles = {
 };
 
 export default function BookTrialForm({ onClose }: BookTrialFormProps) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -117,44 +115,7 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
       setClasses([]);
       return;
     }
-// 👇 2) When moving to Step 1, scroll the whole form into view
-useEffect(() => {
-  if (step !== 1) return;
-  // wait a tick so the DOM is painted
-  const id = requestAnimationFrame(() => {
-    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-  return () => cancelAnimationFrame(id);
-}, [step]);
 
-// 👇 3) When classes finish loading on Step 1, scroll to (and focus) the list
-useEffect(() => {
-  if (step !== 1) return;
-  if (!listRef.current) return;
-  if (!classes || classes.length === 0) return;
-
-  // bring the list to the top of the viewport
-  listRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  // set keyboard/screen-reader focus to the list (no visual jump)
-  listRef.current.focus({ preventScroll: true });
-
-  // ensure the list starts scrolled to the top internally
-  listRef.current.scrollTop = 0;
-}, [step, classes]);
-
-// 👇 4) Optional: if a modal left <body> locked, unlock it on mount
-useEffect(() => {
-  const body = document.body;
-  const prev = body.style.overflow;
-  // if a modal (from a previous page) left overflow hidden, clear it
-  if (getComputedStyle(body).overflow === "hidden") {
-    body.style.overflow = "";
-  }
-  body.classList.remove("no-scroll", "modal-open");
-  // do not force anything on unmount
-  return () => {};
-}, []);
     // default experience for 7+ if blank
     const exp = s1.experience || (a < 7 ? "" : "1-2");
     const q = new URLSearchParams();
@@ -283,7 +244,7 @@ setTimeout(() => {
 };
 
   return (
-    <div ref={rootRef} className="bg-white text-black px-6 py-4">
+    <div className="bg-gray text-black px-6 py-4">
       <h2 className="text-2xl font-bold mb-1">Find the Perfect Class</h2>
       <p className="text-gray-600 mb-6">
         A few quick questions so we can match your dancer for their best first experience.
@@ -392,7 +353,6 @@ setTimeout(() => {
 
           <div className="flex justify-end">
             <button
-              type="button"
               disabled={busy}
               onClick={handleNext}
               className={styles.btn}
@@ -426,13 +386,7 @@ setTimeout(() => {
 </p>
 
 {/* 👇 Make only the list scrollable */}
-<div 
-  ref={listRef} 
-  className="max-h-80 md:max-h-96 overflow-y-auto pr-2" 
-  tabIndex={-1} 
-  style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }} 
-  aria-label="Suggested classes"
-  >
+<div className="max-h-80 md:max-h-96 overflow-y-auto pr-2">
   <div className="space-y-2">
     {classes.map((c) => {
       const label = formatClassLabel(c);
