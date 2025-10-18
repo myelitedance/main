@@ -80,7 +80,21 @@ export default function HomePage() {
     </div>
   </div>
 </section>
-
+{/* NEW: below HERO, above ABOUT */}
+<section className="bg-white">
+  <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+    {[
+      {src:"/assets/mini-movers.jpg", alt:"Mini Movers having fun in class"},
+      {src:"/assets/ballet-barre.jpg", alt:"Ballet barre technique training"},
+      {src:"/assets/jazz-class.jpg", alt:"Jazz class across-the-floor combos"},
+      {src:"/assets/hiphop-kids.jpg", alt:"Hip hop kids practicing grooves"},
+    ].map((img) => (
+      <img key={img.src} src={img.src} alt={img.alt}
+        loading="lazy" decoding="async"
+        className="rounded-xl object-cover aspect-[4/3] shadow-sm" />
+    ))}
+  </div>
+</section>
       {/* ABOUT */}
       <section id="about" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
