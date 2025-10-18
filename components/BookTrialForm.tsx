@@ -211,7 +211,17 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
               )}
             </div>
           </div>
-
+{/* SMS opt-in (unchecked by default) */}
+          <label className="flex items-start gap-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={s1.smsConsent}
+              onChange={(e) => setS1({ ...s1, smsConsent: e.target.checked })}
+            />
+            <span>
+              I agree to receive SMS from Elite Dance &amp; Music. Msg/data rates may apply. Reply STOP to opt out.
+            </span>
+          </label>
           {/* Dancer */}
           <div className="grid md:grid-cols-2 gap-4">
             <div>
@@ -269,22 +279,11 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
             </label>
           )}
 
-          {/* SMS opt-in (unchecked by default) */}
-          <label className="flex items-start gap-3 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={s1.smsConsent}
-              onChange={(e) => setS1({ ...s1, smsConsent: e.target.checked })}
-            />
-            <span>
-              I agree to receive SMS from Elite Dance &amp; Music. Msg/data rates may apply. Reply STOP to opt out.
-            </span>
-          </label>
 
           {/* Notes */}
           <textarea
             className="border rounded-xl p-3 w-full"
-            placeholder="Anything we should know?"
+            placeholder="Are there any days that don't work for your trial?"
             value={s1.notes}
             onChange={(e) => setS1({ ...s1, notes: e.target.value })}
           />
