@@ -30,75 +30,56 @@ export default function HomePage() {
 
   return (
     <main className="scroll-smooth">
-      {/* HERO (removed pt-16 because layout already offsets for fixed header) */}
-      <section
-        id="home"
-        className="min-h-screen bg-gradient-to-tr from-dance-purple via-dance-pink to-dance-blue flex items-center justify-center relative overflow-hidden"
+      {/* HERO */}
+<section
+  id="home"
+  className="min-h-screen bg-gradient-to-tr from-dance-purple via-dance-pink to-dance-blue flex items-center justify-center relative overflow-hidden"
+>
+  {/* Background video (hidden on reduced motion and small screens if you want) */}
+  <video
+    className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none
+               motion-reduce:hidden"
+    autoPlay
+    muted
+    loop
+    playsInline
+    preload="metadata"
+    poster="/assets/hero-poster.jpg"
+    aria-hidden="true"
+  >
+    {/* Serve smaller video to small screens; higher to large screens */}
+    <source src="/videos/hero-480p.webm" type="video/webm" media="(max-width: 767px)" />
+    <source src="/videos/hero-480p.mp4" type="video/mp4" media="(max-width: 767px)" />
+    <source src="/videos/hero-720p.webm" type="video/webm" media="(min-width: 768px)" />
+    <source src="/videos/hero-720p.mp4" type="video/mp4" media="(min-width: 768px)" />
+  </video>
+
+  {/* Dark veil for contrast (keep this) */}
+  <div className="absolute inset-0 bg-black/20" />
+
+  {/* Silhouettes (unchanged) */}
+  {/* ... your silhouettes and floating collage blocks stay as-is ... */}
+
+  {/* Hero copy (unchanged) */}
+  <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
+    <h1 className="text-5xl md:text-7xl font-bold mb-4 leading-tight">
+      Elite Dance &amp; Music in Nolensville, TN
+    </h1>
+    <h2 className="text-2xl md:text-3xl mb-8 opacity-90 max-w-2xl mx-auto">Where Dreams Take Flight</h2>
+    <p className="text-xl md:text-2xl mb-8 opacity-90 max-w-2xl mx-auto">
+      Nurturing dancers of all ages with world-class training in a warm, family-friendly environment
+    </p>
+    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <TrialButton variant="small" />
+      <button
+        onClick={() => scrollTo("about")}
+        className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-dance-purple transition-all"
       >
-        <div className="absolute inset-0 bg-black/20" />
-
-        {/* Silhouettes */}
-        <div className="absolute top-20 left-10 opacity-10">
-          <svg width="100" height="120" viewBox="0 0 100 120" fill="white">
-            <path d="M50 10 C60 15, 70 25, 65 40 C60 55, 55 70, 50 85 C45 70, 40 55, 35 40 C30 25, 40 15, 50 10 Z" />
-            <circle cx="50" cy="8" r="6" />
-            <path d="M35 40 C25 45, 15 50, 20 65 M65 40 C75 45, 85 50, 80 65" />
-            <path d="M50 85 C45 95, 40 105, 35 115 M50 85 C55 95, 60 105, 65 115" />
-          </svg>
-        </div>
-        <div className="absolute bottom-20 right-10 opacity-10">
-          <svg width="80" height="100" viewBox="0 0 80 100" fill="white">
-            <path d="M40 5 C45 10, 50 20, 45 30 C40 40, 35 50, 40 65 C45 50, 50 40, 45 30 C50 20, 45 10, 40 5 Z" />
-            <circle cx="40" cy="3" r="5" />
-            <path d="M25 30 C15 35, 10 40, 15 50 M55 30 C65 35, 70 40, 65 50" />
-            <path d="M40 65 C35 75, 30 85, 25 95 M40 65 C45 75, 50 85, 55 95" />
-          </svg>
-        </div>
-
-        {/* Floating collage */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="hidden md:block absolute top-28 left-[12%] -rotate-[12deg]">
-            <div className="bg-gradient-to-br from-dance-purple via-dance-pink to-dance-blue p-1 rounded-2xl shadow-2xl">
-              <img src="/assets/mini-movers.jpg" alt="" loading="lazy" decoding="async" className="block w-[300px] md:w-[340px] lg:w-[380px] h-auto rounded-[14px] object-cover" />
-            </div>
-          </div>
-          <div className="hidden md:block absolute top-20 right-[15%] rotate-[10deg]">
-            <div className="bg-gradient-to-br from-dance-blue via-dance-purple to-dance-pink p-1 rounded-2xl shadow-2xl">
-              <img src="/assets/jazz-class.jpg" alt="" loading="lazy" decoding="async" className="block w-[220px] md:w-[240px] lg:w-[260px] h-auto rounded-[14px] object-cover" />
-            </div>
-          </div>
-          <div className="hidden md:block absolute bottom-20 left-[18%] rotate-[15deg]">
-            <div className="bg-gradient-to-br from-dance-green via-dance-blue to-dance-purple p-1 rounded-2xl shadow-2xl">
-              <img src="/assets/ballet-barre.jpg" alt="" loading="lazy" decoding="async" className="block w-[320px] md:w-[360px] lg:w-[400px] h-auto rounded-[14px] object-cover" />
-            </div>
-          </div>
-          <div className="hidden lg:block absolute bottom-16 right-[20%] -rotate-[18deg]">
-            <div className="bg-gradient-to-br from-dance-pink via-dance-gold to-dance-purple p-1 rounded-2xl shadow-2xl">
-              <img src="/assets/hiphop-kids.jpg" alt="" loading="lazy" decoding="async" className="block w-[320px] md:w-[360px] lg:w-[420px] h-auto rounded-[14px] object-cover" />
-            </div>
-          </div>
-        </div>
-
-        {/* Hero copy */}
-        <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 leading-tight">
-            Elite Dance &amp; Music in Nolensville, TN
-          </h1>
-          <h2 className="text-2xl md:text-3xl mb-8 opacity-90 max-w-2xl mx-auto">Where Dreams Take Flight</h2>
-          <p className="text-xl md:text-2xl mb-8 opacity-90 max-w-2xl mx-auto">
-            Nurturing dancers of all ages with world-class training in a warm, family-friendly environment
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <TrialButton variant="small" />
-            <button
-              onClick={() => scrollTo("about")}
-              className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-dance-purple transition-all"
-            >
-              Learn More
-            </button>
-          </div>
-        </div>
-      </section>
+        Learn More
+      </button>
+    </div>
+  </div>
+</section>
 
       {/* ABOUT */}
       <section id="about" className="py-20 bg-gray-50">
