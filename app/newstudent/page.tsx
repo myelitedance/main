@@ -10,8 +10,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import dynamic from "next/dynamic";
 import { Loader2, Send, CheckCircle2, Plus, Trash2 } from "lucide-react";
-import InputMaskWrapper from "@/components/InputMaskWrapper";
-
 
 // Signature pad must be client-only.
 const SignatureCanvas = dynamic(() => import("react-signature-canvas"), { ssr: false }) as any;
@@ -630,83 +628,81 @@ try {
                   <h2 className="text-base font-semibold" style={{ color: "#EC4899" }}>Contact</h2>
 
                   <div className="grid grid-cols-1 gap-3">
-  {/* Primary phone */}
-  <div className="grid grid-cols-1 gap-2">
-    <Label htmlFor="primaryPhone">Primary phone *</Label>
-    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-      <InputMaskWrapper
-        id="primaryPhone"
-        mask="000-000-0000"
-        placeholder="###-###-####"
-        inputMode="tel"
-        autoComplete="tel"
-        value={form.primaryPhone || ""}
-        onChange={(e) => setField("primaryPhone", e.target.value)}
-      />
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="primaryPhoneIsCell"
-          checked={!!form.primaryPhoneIsCell}
-          onCheckedChange={(v) => setField("primaryPhoneIsCell", Boolean(v))}
-        />
-        <Label htmlFor="primaryPhoneIsCell" className="text-xs">cell</Label>
-      </div>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="primaryPhoneSmsOptIn"
-          checked={!!form.primaryPhoneSmsOptIn}
-          onCheckedChange={(v) => setField("primaryPhoneSmsOptIn", Boolean(v))}
-        />
-        <Label htmlFor="primaryPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
-      </div>
-    </div>
-    {form.primaryPhoneSmsOptIn && (
-      <p className="text-xs mt-1 text-neutral-600">
-        By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
-        text messages from Elite Dance & Music at the number provided. Consent is not a condition of
-        purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
-      </p>
-    )}
-  </div>
+                    {/* Primary phone */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <Label htmlFor="primaryPhone">Primary phone *</Label>
+                      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                        <Input
+                          id="primaryPhone"
+                          placeholder="###-###-####"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={form.primaryPhone || ""}
+                          onChange={(e) => setField("primaryPhone", e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="primaryPhoneIsCell"
+                            checked={!!form.primaryPhoneIsCell}
+                            onCheckedChange={(v) => setField("primaryPhoneIsCell", Boolean(v))}
+                          />
+                          <Label htmlFor="primaryPhoneIsCell" className="text-xs">cell</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="primaryPhoneSmsOptIn"
+                            checked={!!form.primaryPhoneSmsOptIn}
+                            onCheckedChange={(v) => setField("primaryPhoneSmsOptIn", Boolean(v))}
+                          />
+                          <Label htmlFor="primaryPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+                        </div>
+                      </div>
+                      {form.primaryPhoneSmsOptIn && (
+                        <p className="text-xs mt-1 text-neutral-600">
+                          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
+                          text messages from Elite Dance & Music at the number provided. Consent is not a condition of
+                          purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
+                        </p>
+                      )}
+                    </div>
 
-  {/* Alternate phone */}
-  <div className="grid grid-cols-1 gap-2">
-    <Label htmlFor="altPhone">Alternate phone</Label>
-    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-      <InputMaskWrapper
-        id="altPhone"
-        mask="000-000-0000"
-        placeholder="###-###-####"
-        inputMode="tel"
-        autoComplete="tel"
-        value={form.altPhone || ""}
-        onChange={(e) => setField("altPhone", e.target.value)}
-      />
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="altPhoneIsCell"
-          checked={!!form.altPhoneIsCell}
-          onCheckedChange={(v) => setField("altPhoneIsCell", Boolean(v))}
-        />
-        <Label htmlFor="altPhoneIsCell" className="text-xs">cell</Label>
-      </div>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="altPhoneSmsOptIn"
-          checked={!!form.altPhoneSmsOptIn}
-          onCheckedChange={(v) => setField("altPhoneSmsOptIn", Boolean(v))}
-        />
-        <Label htmlFor="altPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
-      </div>
-    </div>
-    {form.altPhoneSmsOptIn && (
-      <p className="text-xs mt-1 text-neutral-600">
-        By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
-        text messages from Elite Dance & Music at the number provided. Consent is not a condition of
-        purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
-      </p>
-    )}
-  </div>
+                    {/* Alternate phone */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <Label htmlFor="altPhone">Alternate phone</Label>
+                      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                        <Input
+                          id="altPhone"
+                          placeholder="###-###-####"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={form.altPhone || ""}
+                          onChange={(e) => setField("altPhone", e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="altPhoneIsCell"
+                            checked={!!form.altPhoneIsCell}
+                            onCheckedChange={(v) => setField("altPhoneIsCell", Boolean(v))}
+                          />
+                          <Label htmlFor="altPhoneIsCell" className="text-xs">cell</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="altPhoneSmsOptIn"
+                            checked={!!form.altPhoneSmsOptIn}
+                            onCheckedChange={(v) => setField("altPhoneSmsOptIn", Boolean(v))}
+                          />
+                          <Label htmlFor="altPhoneSmsOptIn" className="text-xs">SMS opt-in</Label>
+                        </div>
+                      </div>
+                      {form.altPhoneSmsOptIn && (
+                        <p className="text-xs mt-1 text-neutral-600">
+                          By checking SMS opt-in, you agree to receive recurring automated promotional and transactional
+                          text messages from Elite Dance & Music at the number provided. Consent is not a condition of
+                          purchase. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
+                        </p>
+                      )}
+                    </div>
 
                     {/* Email */}
                     <div className="grid grid-cols-1 gap-2">
