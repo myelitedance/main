@@ -58,6 +58,25 @@ function ageFromDOB(dob?: string): string {
 }
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
+// Simple phone formatter: digits only, up to 10 digits, formatted as ###-###-####
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  const parts = [];
+  if (digits.length > 3) {
+    parts.push(digits.slice(0, 3));
+    if (digits.length > 6) {
+      parts.push(digits.slice(3, 6));
+      parts.push(digits.slice(6));
+    } else {
+      parts.push(digits.slice(3));
+    }
+  } else {
+    parts.push(digits);
+  }
+  return parts.join("-");
+}
+
+
 // ---------- Component ----------
 export default function NewStudentEntry() {
   // page state
@@ -638,7 +657,7 @@ try {
                           inputMode="tel"
                           autoComplete="tel"
                           value={form.primaryPhone || ""}
-                          onChange={(e) => setField("primaryPhone", e.target.value)}
+                          onChange={(e) => setField("primaryPhone", formatPhone(e.target.value))}
                         />
                         <div className="flex items-center gap-2">
                           <Checkbox
@@ -676,7 +695,7 @@ try {
                           inputMode="tel"
                           autoComplete="tel"
                           value={form.altPhone || ""}
-                          onChange={(e) => setField("altPhone", e.target.value)}
+                          onChange={(e) => setField("altPhone", formatPhone(e.target.value))}
                         />
                         <div className="flex items-center gap-2">
                           <Checkbox
