@@ -636,7 +636,7 @@ try {
     <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
       <InputMaskWrapper
         id="primaryPhone"
-        mask="999-999-9999"
+        mask="000-000-0000"
         placeholder="###-###-####"
         inputMode="tel"
         autoComplete="tel"
@@ -675,7 +675,7 @@ try {
     <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
       <InputMaskWrapper
         id="altPhone"
-        mask="999-999-9999"
+        mask="000-000-0000"
         placeholder="###-###-####"
         inputMode="tel"
         autoComplete="tel"
