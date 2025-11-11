@@ -893,7 +893,7 @@ I, the undersigned parent or legal guardian of the student, hereby grant permiss
                     By continuing, you also agree to our{" "}
                     <a href="/privacy-policy" className="underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>{" "}
                     and{" "}
-                    <a href="/terms" className="underline" target="_blank" rel="noopener noreferrer">Terms & Conditions</a>.
+                    <a href="/terms-and-conditions" className="underline" target="_blank" rel="noopener noreferrer">Terms & Conditions</a>.
                   </p>
                 </section>
               </>
