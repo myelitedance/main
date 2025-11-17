@@ -13,8 +13,8 @@ interface StepReviewProps {
   accepted: boolean;
   signature: string;
   isAdditionalDancer: boolean;
-  accountEmail: string;   
-  accountName: string;    
+  accountEmail: string;
+  accountName: string;
   onBack: () => void;
 }
 
@@ -28,9 +28,11 @@ export default function StepReview({
   accountName,
   onBack,
 }: StepReviewProps) {
-
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // NEW — auto charge checkbox state
+  const [autoCharge, setAutoCharge] = useState(false);
 
   const selectedClasses = classList.filter((c) => c.selected);
 
@@ -47,6 +49,9 @@ export default function StepReview({
 
   // Final total (informational only)
   const finalTotal = baseTotal - multiClassDiscount - familyDiscount;
+
+  // Auto charge details
+  const remainingBalance = Math.max(finalTotal - 100, 0);
 
   async function submit() {
     setSubmitting(true);
@@ -68,6 +73,7 @@ export default function StepReview({
           familyDiscount,
           finalTotal,
 
+          autoCharge, // ⭐ include new field
           isAdditionalDancer,
           signature,
           submittedAt: new Date().toISOString(),
@@ -127,12 +133,37 @@ export default function StepReview({
           <strong>Final Total:</strong> ${finalTotal}
         </p>
 
-        {/* ⭐ Show footnote ONLY if at least one class is ineligible */}
         {selectedClasses.some((c) => !c.allowMultiDiscount) && (
           <p style={{ fontSize: "0.9rem", color: "#666", marginTop: "1rem" }}>
             * Ineligible for Multi-Class Discount
           </p>
         )}
+      </div>
+
+      {/* ⭐ AUTO-CHARGE AREA */}
+      <div style={{ marginTop: 30 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <input
+            type="checkbox"
+            checked={autoCharge}
+            onChange={(e) => setAutoCharge(e.target.checked)}
+          />
+          <span style={{ fontSize: 16 }}>
+            <strong>Auto Charge my card on file</strong>
+          </span>
+        </label>
+
+        <p style={{ fontSize: 14, color: "#555", marginTop: 8 }}>
+          By selecting this option, you agree to be auto-charged:
+        </p>
+
+        <ul style={{ fontSize: 14, marginLeft: 20, color: "#555" }}>
+          <li><strong>$100</strong> on <strong>December 15th</strong></li>
+          <li>
+            <strong>${remainingBalance}</strong> (remaining balance)
+            on <strong>January 15th</strong>
+          </li>
+        </ul>
       </div>
 
       <p style={{ marginTop: 16 }}>

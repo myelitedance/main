@@ -63,7 +63,8 @@ export default function StepSignature({
     checked={isAdditionalDancer}
     onChange={(e) => setIsAdditionalDancer(e.target.checked)}
   />
-  This is an additional dancer in our family (apply $50 family discount)
+  Check here if this is your 2nd (or more) dancer <br />
+  registering for the recital to apply the sibling discount.
 </label>
 
         <button
