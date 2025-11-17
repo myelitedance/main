@@ -9,7 +9,6 @@ import {
 import { ED_COLORS } from "@/styles/theme";
 import { recitalPricesByClassId } from "@/data/recitalPrices2026";
 
-
 interface StepClassSelectProps {
   student: AkadaStudent;
   classList: RecitalClassSelection[];
@@ -17,7 +16,6 @@ interface StepClassSelectProps {
   onNext: () => void;
   onBack: () => void;
 }
-
 
 export default function StepClassSelect({
   student,
@@ -29,7 +27,7 @@ export default function StepClassSelect({
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  /** Load the student's class history */
+  /** Load student's class history */
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -43,30 +41,24 @@ export default function StepClassSelect({
 
         const history: AkadaClassHistoryItem[] = await res.json();
 
-        // Only classes from session 27450
+        // Only classes from session 27450 (API already filters)
         const filtered = history.filter((c) => c.sessionId === "27450");
 
-        // Map to selection format
-    // Only include classes that HAVE a recital price (means they perform)
-// Only include classes that HAVE a recital price (means they perform)
-const recitalEligible = filtered.filter(
-  (c) => recitalPricesByClassId[c.classId] !== undefined
-);
+        // Only include recital-eligible classes (present in price map)
+        const recitalEligible = filtered.filter(
+          (c) => recitalPricesByClassId[c.classId] !== undefined
+        );
 
-// Map only recital-eligible classes
-const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
-  const priceInfo = recitalPricesByClassId[c.classId]; 
-  return {
-    classId: c.classId,
-    className: c.className,
-    price: priceInfo.price,                 // ⭐ numeric price
-    allowMultiDiscount: priceInfo.allowMultiDiscount, // ⭐ required flag
-    selected: false,
-  };
-});
-
-
-
+        const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
+          const priceInfo = recitalPricesByClassId[c.classId];
+          return {
+            classId: c.classId,
+            className: c.className,
+            price: priceInfo.price,
+            allowMultiDiscount: priceInfo.allowMultiDiscount,
+            selected: false, // default: No
+          };
+        });
 
         setClassList(mapped);
       } catch (e) {
@@ -80,16 +72,18 @@ const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
     if (student?.studentId) load();
   }, [student, setClassList]);
 
-  function toggleClass(classId: string) {
+  /** YES/NO selection for a specific class */
+  function setSelection(classId: string, selected: boolean) {
     setClassList((prev) =>
       prev.map((c) =>
-        c.classId === classId ? { ...c, selected: !c.selected } : c
+        c.classId === classId ? { ...c, selected } : c
       )
     );
   }
 
+  /** Sum of selected (YES) classes */
   const total = classList
-    .filter((c) => c.selected)
+    .filter((c) => c.selected === true)
     .reduce((sum, c) => sum + c.price, 0);
 
   return (
@@ -106,7 +100,7 @@ const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
       {err && <p style={{ color: "red" }}>{err}</p>}
 
       {!loading && classList.length === 0 && (
-        <p>No classes found for the 2026 recital session.</p>
+        <p>No recital-eligible classes found for this student.</p>
       )}
 
       {!loading && classList.length > 0 && (
@@ -115,7 +109,7 @@ const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
             <tr style={{ background: "#f5f5f5" }}>
               <th style={{ padding: 8, textAlign: "left" }}>Class Name</th>
               <th style={{ padding: 8 }}>Price</th>
-              <th style={{ padding: 8 }}>Recital?</th>
+              <th style={{ padding: 8, textAlign: "center" }}>Recital?</th>
             </tr>
           </thead>
 
@@ -124,12 +118,36 @@ const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
               <tr key={c.classId}>
                 <td style={{ padding: 8 }}>{c.className}</td>
                 <td style={{ padding: 8 }}>${c.price}</td>
+
+                {/* YES / NO REQUIRED RADIO BUTTONS */}
                 <td style={{ padding: 8, textAlign: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={c.selected}
-                    onChange={() => toggleClass(c.classId)}
-                  />
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      gap: "1.5rem",
+                    }}
+                  >
+                    <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <input
+                        type="radio"
+                        name={`recital-${c.classId}`}
+                        checked={c.selected === true}
+                        onChange={() => setSelection(c.classId, true)}
+                      />
+                      Yes
+                    </label>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <input
+                        type="radio"
+                        name={`recital-${c.classId}`}
+                        checked={c.selected === false}
+                        onChange={() => setSelection(c.classId, false)}
+                      />
+                      No
+                    </label>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -137,9 +155,14 @@ const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
         </table>
       )}
 
+      {/* Dynamic Total */}
       <h3 style={{ marginTop: 20, color: ED_COLORS.blue }}>
-        Total: ${total}
+        Total (selected classes): ${total}
       </h3>
+
+      <p style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+        * You may opt out of all classes — you will still confirm this in the next steps.
+      </p>
 
       <div style={{ marginTop: 30, display: "flex", gap: 12 }}>
         <button
@@ -153,15 +176,14 @@ const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
           Back
         </button>
 
+        {/* NEXT BUTTON ALWAYS ENABLED */}
         <button
           onClick={onNext}
-          disabled={!classList.some((c) => c.selected)}
           style={{
             padding: "10px 16px",
             background: ED_COLORS.blue,
             color: "white",
             borderRadius: 6,
-            opacity: classList.some((c) => c.selected) ? 1 : 0.5,
           }}
         >
           Next
