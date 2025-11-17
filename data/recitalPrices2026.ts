@@ -1,29 +1,34 @@
-export const recitalPricesByClassId: Record<string, number> = {
-  "1088223": 150, // BALLET (2-3yrs)
-  "1101833": 150, // BALLET LEVEL 1&2
-  "1122064": 150, // BALLET LEVEL 1&2
-  "1088190": 150, // BALLET LEVEL 2
-  "1088184": 150, // BALLET LEVEL 3
-  "1101829": 150, // BALLET LEVEL 3
-  "1088031": 175, // BALLET/TAP LEVEL 1
-  "1088207": 150, // CONTEMPORARY LEVEL 1
-  "1088205": 150, // CONTEMPORARY LEVEL 3
-  "1088203": 175, // INT. HIP HOP
-  "1088036": 175, // JAZZ/LYRICAL LEVEL 1
-  "1088216": 175, // JAZZ/LYRICAL LEVEL 2
-  "1088217": 175, // JAZZ/LYRICAL LEVEL 3
-  "1121457": 175, // MINI HIP HOP
-  "1088226": 150, // MINI MOVERS
-  "1088228": 175, // MINI MOVERS
-  "1088230": 150, // MINI MOVERS
-  "1088186": 175, // PEEWEE HIP HOP
-  "1101831": 150, // POINTE
-  "1088048": 150, // POINTE
-  "1121458": 75, // TAP ADULT
-  "1088211": 75, // TAP LEVEL 2
-  "1088220": 175, // TAP/BALLET/JAZZ
-  "1088225": 175, // TAP/BALLET/JAZZ (Sat
-  "1088224": 150, // TAP/BALLET/TUMBLING
-  "1088033": 150, // TAP/BALLET/TUMBLING
-  "1088204": 150, // TAP/BALLEY/TUMBLING
+import { TruckElectric } from "lucide-react";
+
+export const recitalPricesByClassId: Record<
+  string,
+  { price: number; allowMultiDiscount: boolean }
+> = {
+  "1088223": { price: 150, allowMultiDiscount: true }, // BALLET (2-3yrs)
+  "1101833": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 1&2
+  "1122064": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 1&2
+  "1088190": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 2
+  "1088184": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 3
+  "1101829": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 3
+  "1088031": { price: 175, allowMultiDiscount: false }, // BALLET/TAP LEVEL 1
+  "1088207": { price: 150, allowMultiDiscount: true }, // CONTEMPORARY LEVEL 1
+  "1088205": { price: 150, allowMultiDiscount: true }, // CONTEMPORARY LEVEL 3
+  "1088203": { price: 175, allowMultiDiscount: true }, // INT. HIP HOP
+  "1088036": { price: 175, allowMultiDiscount: true }, // JAZZ/LYRICAL LEVEL 1
+  "1088216": { price: 175, allowMultiDiscount: true }, // JAZZ/LYRICAL LEVEL 2
+  "1088217": { price: 175, allowMultiDiscount: true }, // JAZZ/LYRICAL LEVEL 3
+  "1121457": { price: 175, allowMultiDiscount: true }, // MINI HIP HOP
+  "1088226": { price: 150, allowMultiDiscount: false }, // MINI MOVERS
+  "1088228": { price: 175, allowMultiDiscount: false }, // MINI MOVERS
+  "1088230": { price: 150, allowMultiDiscount: false }, // MINI MOVERS
+  "1088186": { price: 175, allowMultiDiscount: true }, // PEEWEE HIP HOP
+  "1101831": { price: 150, allowMultiDiscount: true }, // POINTE
+  "1088048": { price: 150, allowMultiDiscount: true }, // POINTE
+  "1121458": { price: 75, allowMultiDiscount: false }, // TAP ADULT
+  "1088211": { price: 75, allowMultiDiscount: false }, // TAP LEVEL 2
+  "1088220": { price: 175, allowMultiDiscount: false }, // TAP/BALLET/JAZZ
+  "1088225": { price: 175, allowMultiDiscount: false }, // TAP/BALLET/JAZZ (Sat
+  "1088224": { price: 150, allowMultiDiscount: false }, // TAP/BALLET/TUMBLING
+  "1088033": { price: 150, allowMultiDiscount: false }, // TAP/BALLET/TUMBLING
+  "1088204": { price: 150, allowMultiDiscount: false }, // TAP/BALLEY/TUMBLING
 };

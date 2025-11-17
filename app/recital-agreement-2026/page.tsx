@@ -123,22 +123,6 @@ export default function RecitalAgreement2026Page() {
 
       <hr style={{ margin: "3rem 0" }} />
 
-      <h1 style={{ color: "#8B5CF6" }}>Elite Dance 2026 Recital Agreement</h1>
-
-      <p><em>Please initial each line on your physical agreement form.</em></p>
-
-      <ul>
-        <li>I understand recital fee due dates: $100 by Dec 15 & final balance by Jan 15.</li>
-        <li>I understand auto-pay recital fees only occur upon request.</li>
-        <li>I understand unpaid balances delay costume orders and may cause late arrival.</li>
-        <li>I understand dancers must be measured by Jan 15.</li>
-        <li>I understand the recital contract must be turned in by Dec 15.</li>
-        <li>I understand dance shoes are required and not included in recital fees.</li>
-        <li>I understand the refund policy as listed above.</li>
-        <li>I understand attendance at dress rehearsal is required.</li>
-        <li>I understand dancers cannot perform if any balance remains after May 10th.</li>
-      </ul>
-
       <p style={{ marginTop: "2rem" }}>
         <strong>Register Online:</strong>{" "}
         <a href="https://www.myelitedance.com/2026recital" style={{ color: "#3B82F6" }}>

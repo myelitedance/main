@@ -5,16 +5,22 @@ import { ED_COLORS } from "@/styles/theme";
 interface StepSignatureProps {
   signature: string;
   setSignature: (s: string) => void;
+  isAdditionalDancer: boolean;
+  setIsAdditionalDancer: (v: boolean) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
+
 export default function StepSignature({
   signature,
   setSignature,
+  isAdditionalDancer,
+  setIsAdditionalDancer,
   onNext,
   onBack,
 }: StepSignatureProps) {
+
   return (
     <div style={{ maxWidth: 600, margin: "0 auto" }}>
       <h2 style={{ color: ED_COLORS.purple }}>Sign Your Agreement</h2>
@@ -50,6 +56,15 @@ export default function StepSignature({
         >
           Back
         </button>
+
+<label style={{ marginTop: 20, display: "flex", gap: 8 }}>
+  <input
+    type="checkbox"
+    checked={isAdditionalDancer}
+    onChange={(e) => setIsAdditionalDancer(e.target.checked)}
+  />
+  This is an additional dancer in our family (apply $50 family discount)
+</label>
 
         <button
           onClick={onNext}

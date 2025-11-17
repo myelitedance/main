@@ -19,6 +19,7 @@ export interface RecitalClassSelection {
   classId: string;
   className: string;
   price: number;
+  allowMultiDiscount: boolean;
   selected: boolean;
 }
 

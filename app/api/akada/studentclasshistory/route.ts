@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { akadaFetch } from "@/lib/akada";
+import { recitalPricesByClassId } from "@/data/recitalPrices2026";
 
 export const runtime = "nodejs";
 
-// Hard-coded session ID for recital classes
-const SESSION_ID = 27450; // Note: numeric here because Akada returns numeric
+// Hard-coded recital session ID
+const SESSION_ID = 27450;
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -33,27 +34,27 @@ export async function GET(req: Request) {
 
     const j = JSON.parse(text);
 
-    // Akada wraps differently depending on payload size
+    // Handle possible Akada response formats
     const raw: any[] =
       j?.returnValue?.currentPageItems ||
       j?.returnValue ||
       [];
 
-    // Normalize to what the frontend expects
-    const normalized = raw.map((c: any) => ({
-      classId: String(c.classId ?? c.id ?? ""),           // Always string
-      className: String(c.classDisplayName ?? "").trim(), // Use Akada’s official display name
-      sessionId: String(c.sessionId ?? ""),               // Convert to string for UI comparison
-      startDate: c.startDate ?? null,
-      endDate: c.stopDate ?? null,
-    }));
+    // Normalize & filter
+    const normalized = raw
+      .filter((c: any) => c.isEnrolled === true) // ⭐ only current enrolled classes
+      .filter((c: any) => Number(c.sessionId) === SESSION_ID) // ⭐ only this session
+      .map((c: any) => ({
+        classId: String(c.classId ?? c.id ?? ""),
+        className: String(c.classDisplayName ?? "").trim(),
+        sessionId: String(c.sessionId ?? ""),
+        startDate: c.startDate ?? null,
+        endDate: c.stopDate ?? null,
+        isEnrolled: Boolean(c.isEnrolled),
+      }))
+      .filter((c: any) => recitalPricesByClassId[c.classId] !== undefined); // ⭐ only recital classes
 
-    // Only include classes for the recital session
-    const filtered = normalized.filter(
-      (c: any) => Number(c.sessionId) === SESSION_ID
-    );
-
-    return NextResponse.json(filtered);
+    return NextResponse.json(normalized);
   } catch (err: any) {
     console.error("student class history API error:", err);
     return NextResponse.json(

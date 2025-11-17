@@ -22,6 +22,8 @@ const [lastName, setLastName] = useState("");
 
   const [classList, setClassList] = useState<RecitalClassSelection[]>([]);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [isAdditionalDancer, setIsAdditionalDancer] = useState(false);
+
   const [signature, setSignature] = useState("");
 
   const next = () => setStep((s) => s + 1);
@@ -73,6 +75,8 @@ const [lastName, setLastName] = useState("");
       {step === 5 && (
         <StepSignature
           signature={signature}
+          isAdditionalDancer={isAdditionalDancer}
+          setIsAdditionalDancer={setIsAdditionalDancer} 
           setSignature={setSignature}
           onNext={next}
           onBack={back}
@@ -85,6 +89,7 @@ const [lastName, setLastName] = useState("");
           classList={classList}
           accepted={agreementAccepted}
           signature={signature}
+          isAdditionalDancer={isAdditionalDancer}
           onBack={back}
         />
       )}
