@@ -47,12 +47,19 @@ export default function StepClassSelect({
         const filtered = history.filter((c) => c.sessionId === "27450");
 
         // Map to selection format
-        const mapped: RecitalClassSelection[] = filtered.map((c) => ({
-          classId: c.classId,
-          className: c.className,
-          price: recitalPricesByClassId[c.classId] ?? 0,
-          selected: false,
-        }));
+    // Only include classes that HAVE a recital price (means they perform)
+const recitalEligible = filtered.filter(
+  (c) => recitalPricesByClassId[c.classId] !== undefined
+);
+
+// Map only recital-eligible classes
+const mapped: RecitalClassSelection[] = recitalEligible.map((c) => ({
+  classId: c.classId,
+  className: c.className,
+  price: recitalPricesByClassId[c.classId], // safe
+  selected: false,
+}));
+
 
         setClassList(mapped);
       } catch (e) {
