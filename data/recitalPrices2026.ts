@@ -10,13 +10,13 @@ export const recitalPricesByClassId: Record<
   "1088190": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 2
   "1088184": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 3
   "1101829": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 3
-  "1088031": { price: 175, allowMultiDiscount: false }, // BALLET/TAP LEVEL 1
+  "1088031": { price: 175, allowMultiDiscount: true }, // BALLET/TAP LEVEL 1
   "1088207": { price: 150, allowMultiDiscount: true }, // CONTEMPORARY LEVEL 1
   "1088205": { price: 150, allowMultiDiscount: true }, // CONTEMPORARY LEVEL 3
   "1088203": { price: 175, allowMultiDiscount: true }, // INT. HIP HOP
-  "1088036": { price: 175, allowMultiDiscount: true }, // JAZZ/LYRICAL LEVEL 1
-  "1088216": { price: 175, allowMultiDiscount: true }, // JAZZ/LYRICAL LEVEL 2
-  "1088217": { price: 175, allowMultiDiscount: true }, // JAZZ/LYRICAL LEVEL 3
+  "1088036": { price: 175, allowMultiDiscount: false }, // JAZZ/LYRICAL LEVEL 1
+  "1088216": { price: 175, allowMultiDiscount: false }, // JAZZ/LYRICAL LEVEL 2
+  "1088217": { price: 175, allowMultiDiscount: false }, // JAZZ/LYRICAL LEVEL 3
   "1121457": { price: 175, allowMultiDiscount: true }, // MINI HIP HOP
   "1088226": { price: 150, allowMultiDiscount: false }, // MINI MOVERS
   "1088228": { price: 175, allowMultiDiscount: false }, // MINI MOVERS

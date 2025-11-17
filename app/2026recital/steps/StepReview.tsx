@@ -13,12 +13,10 @@ interface StepReviewProps {
   accepted: boolean;
   signature: string;
   isAdditionalDancer: boolean;
-  accountEmail: string;   // ⭐ REQUIRED
-  accountName: string;    // ⭐ REQUIRED
+  accountEmail: string;   
+  accountName: string;    
   onBack: () => void;
 }
-
-
 
 export default function StepReview({
   student,
@@ -26,11 +24,10 @@ export default function StepReview({
   accepted,
   signature,
   isAdditionalDancer,
-  accountEmail,     // ⭐ add
-  accountName,      // ⭐ add
+  accountEmail,
+  accountName,
   onBack,
 }: StepReviewProps) {
-
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -40,15 +37,15 @@ export default function StepReview({
   // Base total
   const baseTotal = selectedClasses.reduce((sum, c) => sum + c.price, 0);
 
-  // Multi-class discount (only allowed classes)
+  // Multi-class discount
   const eligible = selectedClasses.filter((c) => c.allowMultiDiscount);
   const multiClassDiscount =
     eligible.length > 1 ? (eligible.length - 1) * 75 : 0;
 
-  // Family discount (applied only if parent checks "additional dancer")
+  // Family discount
   const familyDiscount = isAdditionalDancer ? 50 : 0;
 
-  // Final total (for display only)
+  // Final total (informational only)
   const finalTotal = baseTotal - multiClassDiscount - familyDiscount;
 
   async function submit() {
@@ -59,8 +56,8 @@ export default function StepReview({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          accountName: student.accountName,
-          accountEmail: student.accountEmail,
+          accountName,
+          accountEmail,
           studentName: `${student.studentFirstName} ${student.studentLastName}`,
           studentId: student.studentId,
 
@@ -108,9 +105,11 @@ export default function StepReview({
       </div>
 
       <h3 style={{ marginTop: 20 }}>Recital Classes</h3>
+
       <ul>
         {selectedClasses.map((c) => (
           <li key={c.classId}>
+            {c.allowMultiDiscount ? "" : "* "}
             {c.className} – ${c.price}
           </li>
         ))}
@@ -119,12 +118,21 @@ export default function StepReview({
       <div style={{ marginTop: 20 }}>
         <p><strong>Base Total:</strong> ${baseTotal}</p>
         <p><strong>Multi-Class Discount:</strong> -${multiClassDiscount}</p>
+
         {isAdditionalDancer && (
           <p><strong>Sibling Discount:</strong> -$50</p>
         )}
+
         <p style={{ fontSize: "1.2rem", marginTop: 10 }}>
           <strong>Final Total:</strong> ${finalTotal}
         </p>
+
+        {/* ⭐ Show footnote ONLY if at least one class is ineligible */}
+        {selectedClasses.some((c) => !c.allowMultiDiscount) && (
+          <p style={{ fontSize: "0.9rem", color: "#666", marginTop: "1rem" }}>
+            * Ineligible for Multi-Class Discount
+          </p>
+        )}
       </div>
 
       <p style={{ marginTop: 16 }}>
