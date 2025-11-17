@@ -48,17 +48,24 @@ export default function StepClassSelect({
 
         // Map to selection format
     // Only include classes that HAVE a recital price (means they perform)
+// Only include classes that HAVE a recital price (means they perform)
 const recitalEligible = filtered.filter(
   (c) => recitalPricesByClassId[c.classId] !== undefined
 );
 
 // Map only recital-eligible classes
-const mapped: RecitalClassSelection[] = recitalEligible.map((c) => ({
-  classId: c.classId,
-  className: c.className,
-  price: recitalPricesByClassId[c.classId], // safe
-  selected: false,
-}));
+const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
+  const priceInfo = recitalPricesByClassId[c.classId]; 
+  return {
+    classId: c.classId,
+    className: c.className,
+    price: priceInfo.price,                 // ⭐ numeric price
+    allowMultiDiscount: priceInfo.allowMultiDiscount, // ⭐ required flag
+    selected: false,
+  };
+});
+
+
 
 
         setClassList(mapped);
