@@ -116,7 +116,7 @@ export async function POST(req: Request) {
 
     // Send to parent + studio
     await resend.emails.send({
-      from: "Elite Dance <no-reply@myelitedance.com>",
+      from: "Elite Dance <frontdesk@myelitedance.com>",
       to: [accountEmail, "jason@myelitedance.com"],
       subject: "2026 Recital Submission Confirmation",
       html,
