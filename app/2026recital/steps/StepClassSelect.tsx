@@ -175,7 +175,8 @@ export default function StepClassSelect({
       </h3>
 
       <p style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-        * You may opt out of all classes — you will still confirm this in the next steps.
+        * You may opt out of all classes — please email frontdesk@myelitedance.com<br />
+        Multi-Class Discounts are applied on the review page.
       </p>
 
       <div style={{ marginTop: 30, display: "flex", gap: 12 }}>
