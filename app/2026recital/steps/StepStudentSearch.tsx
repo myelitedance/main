@@ -29,7 +29,12 @@ export default function StepStudentSearch({
     setLoading(true);
 
     try {
-      const res = await fetch("/api/akada/students");
+      const res = await fetch("/api/akada/students/search", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ firstName, lastName }),
+});
+
       const allStudents: AkadaStudent[] = await res.json();
 
       const matches = allStudents.filter(
