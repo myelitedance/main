@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
     await resend.emails.send({
       from: "frontdesk@myelitedance.com",
-      to: [accountEmail, "frontdesk@myelitedance.com"],
+      to: [accountEmail, "frontdesk@myelitedance.com", "frontdesk@myelitedance.com"],
       subject: "2026 Recital Submission — Confirmation",
       html,
     });

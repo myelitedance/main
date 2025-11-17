@@ -8,7 +8,6 @@ import {
 } from "@/types/akada";
 
 interface StepReviewProps {
-  email: string;
   student: AkadaStudent;
   classList: RecitalClassSelection[];
   accepted: boolean;
@@ -17,7 +16,6 @@ interface StepReviewProps {
 }
 
 export default function StepReview({
-  email,
   student,
   classList,
   accepted,
@@ -39,7 +37,7 @@ export default function StepReview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           accountName: student.accountName,
-          accountEmail: email,
+          accountEmail: student.accountEmail, // ⭐ NEW
           studentName: `${student.studentFirstName} ${student.studentLastName}`,
           studentId: student.studentId,
           classes: selectedClasses,
@@ -50,7 +48,7 @@ export default function StepReview({
       });
 
       setDone(true);
-    } catch (err) {
+    } catch {
       alert("Submission failed. Please try again.");
     }
 
@@ -74,16 +72,12 @@ export default function StepReview({
       <h2 style={{ color: ED_COLORS.purple }}>Review Your Submission</h2>
 
       <div style={{ marginTop: 16 }}>
-        <p><strong>Parent Email:</strong> {email}</p>
         <p><strong>Account:</strong> {student.accountName}</p>
-        <p>
-          <strong>Student:</strong>{" "}
-          {student.studentFirstName} {student.studentLastName}
-        </p>
+        <p><strong>Parent Email:</strong> {student.accountEmail}</p>
+        <p><strong>Student:</strong> {student.studentFirstName} {student.studentLastName}</p>
       </div>
 
       <h3 style={{ marginTop: 20 }}>Recital Classes</h3>
-
       <ul>
         {selectedClasses.map((c) => (
           <li key={c.classId}>

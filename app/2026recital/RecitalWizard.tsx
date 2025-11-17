@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import StepEmail from "./steps/StepEmail";
+import StepStudentSearch from "./steps/StepStudentSearch";
 import StepStudentSelect from "./steps/StepStudentSelect";
 import StepClassSelect from "./steps/StepClassSelect";
 import StepAgreement from "./steps/StepAgreement";
@@ -14,7 +14,9 @@ export default function RecitalWizard() {
 
   const [step, setStep] = useState(1);
 
-  const [email, setEmail] = useState("");
+const [firstName, setFirstName] = useState("");
+const [lastName, setLastName] = useState("");
+
   const [students, setStudents] = useState<AkadaStudent[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<AkadaStudent | null>(null);
 
@@ -28,13 +30,16 @@ export default function RecitalWizard() {
   return (
     <>
       {step === 1 && (
-        <StepEmail
-          email={email}
-          setEmail={setEmail}
-          setStudents={setStudents}
-          onNext={next}
-        />
-      )}
+  <StepStudentSearch
+    firstName={firstName}
+    lastName={lastName}
+    setFirstName={setFirstName}
+    setLastName={setLastName}
+    setStudents={setStudents}
+    onNext={next}
+  />
+)}
+
 
       {step === 2 && (
         <StepStudentSelect
@@ -76,7 +81,6 @@ export default function RecitalWizard() {
 
       {step === 6 && (
         <StepReview
-          email={email}
           student={selectedStudent!}
           classList={classList}
           accepted={agreementAccepted}

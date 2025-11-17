@@ -4,19 +4,23 @@ import { useState } from "react";
 import { ED_COLORS } from "@/styles/theme";
 import { AkadaStudent } from "@/types/akada";
 
-interface StepEmailProps {
-  email: string;
-  setEmail: (email: string) => void;
+interface StepStudentSearchProps {
+  firstName: string;
+  lastName: string;
+  setFirstName: (v: string) => void;
+  setLastName: (v: string) => void;
   setStudents: (students: AkadaStudent[]) => void;
   onNext: () => void;
 }
 
-export default function StepEmail({
-  email,
-  setEmail,
+export default function StepStudentSearch({
+  firstName,
+  lastName,
+  setFirstName,
+  setLastName,
   setStudents,
   onNext,
-}: StepEmailProps) {
+}: StepStudentSearchProps) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
@@ -26,16 +30,16 @@ export default function StepEmail({
 
     try {
       const res = await fetch("/api/akada/students");
-      if (!res.ok) throw new Error("API error");
-
       const allStudents: AkadaStudent[] = await res.json();
 
       const matches = allStudents.filter(
-        (s) => s.accountEmail.toLowerCase() === email.toLowerCase()
+        (s) =>
+          s.studentFirstName.toLowerCase() === firstName.toLowerCase() &&
+          s.studentLastName.toLowerCase() === lastName.toLowerCase()
       );
 
       if (!matches.length) {
-        setErr("No students found for that email.");
+        setErr("No student found with that name.");
         setLoading(false);
         return;
       }
@@ -43,21 +47,37 @@ export default function StepEmail({
       setStudents(matches);
       onNext();
     } catch (e) {
-      setErr("There was an error looking up your account.");
+      setErr("Error fetching Akada data.");
     }
 
     setLoading(false);
   }
 
+  const disabled = !firstName.trim() || !lastName.trim() || loading;
+
   return (
     <div style={{ maxWidth: 500, margin: "0 auto" }}>
-      <h2 style={{ color: ED_COLORS.purple }}>Enter Your Email</h2>
+      <h2 style={{ color: ED_COLORS.purple }}>Find Your Student</h2>
 
       <input
-        type="email"
-        placeholder="parent@example.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        type="text"
+        placeholder="Student First Name"
+        value={firstName}
+        onChange={(e) => setFirstName(e.target.value)}
+        style={{
+          width: "100%",
+          padding: 12,
+          marginTop: 12,
+          borderRadius: 6,
+          border: "1px solid #ddd",
+        }}
+      />
+
+      <input
+        type="text"
+        placeholder="Student Last Name"
+        value={lastName}
+        onChange={(e) => setLastName(e.target.value)}
         style={{
           width: "100%",
           padding: 12,
@@ -71,17 +91,17 @@ export default function StepEmail({
 
       <button
         onClick={lookup}
-        disabled={!email || loading}
+        disabled={disabled}
         style={{
           marginTop: 20,
           padding: "12px 20px",
           background: ED_COLORS.blue,
           color: "white",
           borderRadius: 6,
-          opacity: email ? 1 : 0.5,
+          opacity: disabled ? 0.5 : 1,
         }}
       >
-        {loading ? "Looking up..." : "Next"}
+        {loading ? "Searching…" : "Next"}
       </button>
     </div>
   );
