@@ -12,21 +12,38 @@ interface StepReviewProps {
   classList: RecitalClassSelection[];
   accepted: boolean;
   signature: string;
+  isAdditionalDancer: boolean;   // ⭐ REQUIRED
   onBack: () => void;
 }
+
 
 export default function StepReview({
   student,
   classList,
   accepted,
   signature,
+  isAdditionalDancer,   // ⭐ REQUIRED
   onBack,
 }: StepReviewProps) {
+
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
   const selectedClasses = classList.filter((c) => c.selected);
-  const total = selectedClasses.reduce((sum, c) => sum + c.price, 0);
+
+  // Base total
+  const baseTotal = selectedClasses.reduce((sum, c) => sum + c.price, 0);
+
+  // Multi-class discount (only allowed classes)
+  const eligible = selectedClasses.filter((c) => c.allowMultiDiscount);
+  const multiClassDiscount =
+    eligible.length > 1 ? (eligible.length - 1) * 75 : 0;
+
+  // Family discount (applied only if parent checks "additional dancer")
+  const familyDiscount = isAdditionalDancer ? 50 : 0;
+
+  // Final total (for display only)
+  const finalTotal = baseTotal - multiClassDiscount - familyDiscount;
 
   async function submit() {
     setSubmitting(true);
@@ -37,11 +54,18 @@ export default function StepReview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           accountName: student.accountName,
-          accountEmail: student.accountEmail, // ⭐ NEW
+          accountEmail: student.accountEmail,
           studentName: `${student.studentFirstName} ${student.studentLastName}`,
           studentId: student.studentId,
+
           classes: selectedClasses,
-          total,
+
+          baseTotal,
+          multiClassDiscount,
+          familyDiscount,
+          finalTotal,
+
+          isAdditionalDancer,
           signature,
           submittedAt: new Date().toISOString(),
         }),
@@ -86,7 +110,16 @@ export default function StepReview({
         ))}
       </ul>
 
-      <h3>Total: ${total}</h3>
+      <div style={{ marginTop: 20 }}>
+        <p><strong>Base Total:</strong> ${baseTotal}</p>
+        <p><strong>Multi-Class Discount:</strong> -${multiClassDiscount}</p>
+        {isAdditionalDancer && (
+          <p><strong>Sibling Discount:</strong> -$50</p>
+        )}
+        <p style={{ fontSize: "1.2rem", marginTop: 10 }}>
+          <strong>Final Total:</strong> ${finalTotal}
+        </p>
+      </div>
 
       <p style={{ marginTop: 16 }}>
         <strong>Signature:</strong> {signature}
