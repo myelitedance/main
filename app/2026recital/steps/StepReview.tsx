@@ -12,9 +12,12 @@ interface StepReviewProps {
   classList: RecitalClassSelection[];
   accepted: boolean;
   signature: string;
-  isAdditionalDancer: boolean;   // ⭐ REQUIRED
+  isAdditionalDancer: boolean;
+  accountEmail: string;   // ⭐ REQUIRED
+  accountName: string;    // ⭐ REQUIRED
   onBack: () => void;
 }
+
 
 
 export default function StepReview({
@@ -22,9 +25,12 @@ export default function StepReview({
   classList,
   accepted,
   signature,
-  isAdditionalDancer,   // ⭐ REQUIRED
+  isAdditionalDancer,
+  accountEmail,     // ⭐ add
+  accountName,      // ⭐ add
   onBack,
 }: StepReviewProps) {
+
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -96,8 +102,8 @@ export default function StepReview({
       <h2 style={{ color: ED_COLORS.purple }}>Review Your Submission</h2>
 
       <div style={{ marginTop: 16 }}>
-        <p><strong>Account:</strong> {student.accountName}</p>
-        <p><strong>Parent Email:</strong> {student.accountEmail}</p>
+        <p><strong>Account:</strong> {accountName}</p>
+        <p><strong>Parent Email:</strong> {accountEmail}</p>
         <p><strong>Student:</strong> {student.studentFirstName} {student.studentLastName}</p>
       </div>
 
