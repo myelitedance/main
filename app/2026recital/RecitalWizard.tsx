@@ -17,6 +17,10 @@ export default function RecitalWizard() {
 const [firstName, setFirstName] = useState("");
 const [lastName, setLastName] = useState("");
 
+const [accountEmail, setAccountEmail] = useState("");
+const [accountName, setAccountName] = useState("");
+
+
   const [students, setStudents] = useState<AkadaStudent[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<AkadaStudent | null>(null);
 
@@ -54,14 +58,16 @@ const [lastName, setLastName] = useState("");
       )}
 
       {step === 3 && (
-        <StepClassSelect
-          student={selectedStudent!}
-          classList={classList}
-          setClassList={setClassList}
-          onNext={next}
-          onBack={back}
-        />
-      )}
+  <StepClassSelect
+    student={selectedStudent!}
+    classList={classList}
+    setClassList={setClassList}
+    setAccountEmail={setAccountEmail}
+    setAccountName={setAccountName}
+    onNext={next}
+    onBack={back}
+  />
+)}
 
       {step === 4 && (
         <StepAgreement
@@ -84,15 +90,18 @@ const [lastName, setLastName] = useState("");
       )}
 
       {step === 6 && (
-        <StepReview
-          student={selectedStudent!}
-          classList={classList}
-          accepted={agreementAccepted}
-          signature={signature}
-          isAdditionalDancer={isAdditionalDancer}
-          onBack={back}
-        />
-      )}
+  <StepReview
+    student={selectedStudent!}
+    classList={classList}
+    accepted={agreementAccepted}
+    signature={signature}
+    isAdditionalDancer={isAdditionalDancer}
+    accountEmail={accountEmail}
+    accountName={accountName}
+    onBack={back}
+  />
+)}
+
     </>
   );
 }

@@ -51,6 +51,9 @@ export async function GET(req: Request) {
         startDate: c.startDate ?? null,
         endDate: c.stopDate ?? null,
         isEnrolled: Boolean(c.isEnrolled),
+        accountEmail: c.accountEmail ?? null,
+        accountFirstName: c.accountFirstName ?? null,
+        accountLastName: c.accountLastName ?? null,
       }))
       .filter((c: any) => recitalPricesByClassId[c.classId] !== undefined); // ⭐ only recital classes
 

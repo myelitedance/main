@@ -13,6 +13,9 @@ export interface AkadaClassHistoryItem {
   sessionId: string;
   startDate: string;
   endDate: string;
+  accountEmail?: string;
+  accountFirstName?: string;
+  accountLastName?: string;
 }
 
 export interface RecitalClassSelection {

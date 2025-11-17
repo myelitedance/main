@@ -16,21 +16,39 @@ export default function StepAgreement({
   onBack,
 }: StepAgreementProps) {
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto" }}>
-      <h2 style={{ color: ED_COLORS.purple }}>Agreement</h2>
+    <div style={{ maxWidth: 700, margin: "0 auto" }}>
+      <h2 style={{ color: ED_COLORS.purple }}>Recital Agreement Acknowledgment</h2>
 
       <p style={{ marginTop: 12, lineHeight: 1.5 }}>
-        Please review our{" "}
+        Please review the key points of the Elite Dance 2026 Recital Agreement below.
+        This is a summary; the full agreement can be viewed here:
+        <br />
         <a
           href="/recital-agreement-2026"
           target="_blank"
           style={{ color: ED_COLORS.blue, textDecoration: "underline" }}
         >
-          2026 Recital Agreement
+          View Full 2026 Recital Agreement
         </a>
-        . Once you’ve read and understood the terms, check the box below.
       </p>
 
+      {/* ⭐ NEW: Agreement summary bullets */}
+      <div style={{ marginTop: "1.5rem" }}>
+        <h3 style={{ color: ED_COLORS.blue }}>Key Acknowledgements</h3>
+        <ul style={{ marginTop: "0.75rem", marginLeft: "1.25rem", lineHeight: 1.6 }}>
+          <li>I understand recital fee due dates: $100 by Dec 15 & final balance by Jan 15.</li>
+          <li>I understand auto-pay recital fees only occur upon request.</li>
+          <li>I understand unpaid balances delay costume orders and may cause late arrival.</li>
+          <li>I understand dancers must be measured by Jan 15.</li>
+          <li>I understand the recital contract must be turned in by Dec 15.</li>
+          <li>I understand dance shoes are required and not included in recital fees.</li>
+          <li>I understand the refund policy as listed above.</li>
+          <li>I understand attendance at dress rehearsal is required.</li>
+          <li>I understand dancers cannot perform if any balance remains after May 10th.</li>
+        </ul>
+      </div>
+
+      {/* Checkbox */}
       <label
         style={{
           display: "flex",

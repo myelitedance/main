@@ -13,17 +13,23 @@ interface StepClassSelectProps {
   student: AkadaStudent;
   classList: RecitalClassSelection[];
   setClassList: React.Dispatch<React.SetStateAction<RecitalClassSelection[]>>;
+  setAccountEmail: (v: string) => void;     // ⭐ NEW
+  setAccountName: (v: string) => void;      // ⭐ NEW
   onNext: () => void;
   onBack: () => void;
 }
+
 
 export default function StepClassSelect({
   student,
   classList,
   setClassList,
+  setAccountEmail,
+  setAccountName,
   onNext,
   onBack,
 }: StepClassSelectProps) {
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -48,6 +54,14 @@ export default function StepClassSelect({
         const recitalEligible = filtered.filter(
           (c) => recitalPricesByClassId[c.classId] !== undefined
         );
+
+        // ⭐ Extract account info from first class
+        if (recitalEligible.length > 0) {
+          const first = recitalEligible[0];
+
+          setAccountEmail(first.accountEmail || "");
+          setAccountName(`${first.accountFirstName || ""} ${first.accountLastName || ""}`.trim());
+        }
 
         const mapped: RecitalClassSelection[] = recitalEligible.map((c) => {
           const priceInfo = recitalPricesByClassId[c.classId];
