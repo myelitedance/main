@@ -3,7 +3,14 @@ import { Resend } from "resend";
 
 export const runtime = "nodejs";
 
+const need = (k: string) => {
+  const v = process.env[k];
+  if (!v) throw new Error(`Missing env: ${k}`);
+  return v;
+};
+
 const resend = new Resend(process.env.RESEND_API_KEY!);
+const EMAIL_FROM = need("EMAIL_FROM");
 
 export async function POST(req: Request) {
   try {
@@ -116,7 +123,7 @@ export async function POST(req: Request) {
 
     // Send to parent + studio
     await resend.emails.send({
-      from: "Elite Dance <frontdesk@myelitedance.com>",
+      from: EMAIL_FROM,
       to: [accountEmail, "jason@myelitedance.com"],
       subject: "2026 Recital Submission Confirmation",
       html,
