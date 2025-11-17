@@ -1,27 +1,54 @@
-// app/api/akada/students/route.ts
-
 import { NextResponse } from "next/server";
 import { akadaFetch } from "@/lib/akada";
 
+export const runtime = "nodejs";
+
+let cache: { data: any[]; exp: number } | null = null;
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
+
 export async function GET() {
   try {
-    const res = await akadaFetch("/studio/students");
+    // use cached list if still valid
+    if (cache && cache.exp > Date.now()) {
+      return NextResponse.json(cache.data);
+    }
+
+    // Akada endpoint
+    const res = await akadaFetch(`/studio/students`, { method: "GET" });
+    const text = await res.text();
 
     if (!res.ok) {
-      const text = await res.text();
       return NextResponse.json(
-        { error: "Akada error", details: text },
+        { error: `Akada students ${res.status}: ${text}` },
         { status: res.status }
       );
     }
 
-    const text = await res.text();
-    const json = JSON.parse(text);
+    const j = JSON.parse(text);
 
-    return NextResponse.json(json);
+    // Support multiple possible formats
+    const raw: any[] =
+      j?.returnValue?.currentPageItems ||
+      j?.returnValue ||
+      [];
+
+    // Normalize student object to a stable shape
+    const normalized = raw.map((s) => ({
+      studentId: String(s.id ?? s.studentId ?? ""),
+      studentFirstName: String(s.fName ?? s.firstName ?? s.studentFirstName ?? "").trim(),
+      studentLastName: String(s.lName ?? s.lastName ?? s.studentLastName ?? "").trim(),
+      accountEmail: String(s.accountEmail ?? s.email ?? "").trim(),
+      accountName: String(s.accountName ?? `${s.parentFirstName || ""} ${s.parentLastName || ""}`).trim(),
+    }));
+
+    // Cache
+    cache = { data: normalized, exp: Date.now() + CACHE_TTL_MS };
+
+    return NextResponse.json(normalized);
   } catch (err: any) {
+    console.error("students API error:", err);
     return NextResponse.json(
-      { error: "Server error", details: err.message },
+      { error: String(err?.message || err) },
       { status: 500 }
     );
   }
