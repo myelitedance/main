@@ -8,6 +8,8 @@ import StepAgreement from "./steps/StepAgreement";
 import StepSignature from "./steps/StepSignature";
 import StepReview from "./steps/StepReview";
 import { AkadaStudent, RecitalClassSelection } from "@/types/akada";
+import ProgressBar from "./components/ProgressBar";
+
 
 
 export default function RecitalWizard() {
@@ -32,9 +34,13 @@ const [accountName, setAccountName] = useState("");
 
   const next = () => setStep((s) => s + 1);
   const back = () => setStep((s) => s - 1);
+  const TOTAL_STEPS = 6;
+
 
   return (
     <>
+    <ProgressBar step={step} total={TOTAL_STEPS} />
+
       {step === 1 && (
   <StepStudentSearch
     firstName={firstName}
