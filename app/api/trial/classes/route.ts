@@ -2,22 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-/**
- * Proxy that calls the existing Akada integration at /api/elite/classes
- */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const age = searchParams.get("age") || "";
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/elite/classes?age=${age}`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      }
-    );
+    // Always resolve origin dynamically — works on desktop, mobile, Vercel, anywhere
+    const origin = req.nextUrl.origin;
+
+    const res = await fetch(`${origin}/api/elite/classes?age=${age}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
 
     const json = await res.json();
 
@@ -29,8 +26,8 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ classes: json.classes || [] });
-  } catch (err: any) {
-    console.error("Trial classes proxy error:", err);
+  } catch (error: any) {
+    console.error("Trial classes proxy error:", error);
     return NextResponse.json(
       { error: "Error loading class list" },
       { status: 500 }
