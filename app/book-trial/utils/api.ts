@@ -36,9 +36,14 @@ export async function sendContact(data: {
 
 export async function sendOpportunity(data: {
   contactId: string;
+  parentFirstName: string;
+  parentLastName: string;
   dancerFirstName: string;
   dancerAge: number;
-  className: string;
+  selectedClass: {
+    id: string;
+    name: string;
+  };
 }) {
   try {
     const res = await fetch("/api/trial/opportunity", {

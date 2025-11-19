@@ -12,9 +12,16 @@ const need = (k: string) => {
 const GHL_KEY = need("GHL_API_KEY");
 const LOCATION_ID = need("GHL_LOCATION_ID");
 
-// From your existing opportunity JSON
+// Correct pipeline + stage IDs
 const PIPELINE_ID = "BKJR7YvccnciXEqOEHJV";
 const PIPELINE_STAGE_ID = "0eef5e7d-001b-4b31-8a3c-ce48521c45e7";
+
+// REQUIRED FIELD IDS
+const OF = {
+  STUDENT_FIRST: "e8iULpr8OOMLyXrg6lfO",
+  STUDENT_AGE: "CcjIXBIjx8QMOFrU37rG",
+  TRIAL_CLASS: "PeszVlmQTXH1Cx7VpYWU",
+};
 
 function headers() {
   return {
@@ -45,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Safe name fallback: prefer parent name, then dancer name, then generic
+    // Clean & fallback
     const opportunityName =
       parentFirstName && parentLastName
         ? `${parentFirstName} ${parentLastName}`
@@ -53,17 +60,20 @@ export async function POST(req: NextRequest) {
         ? `${dancerFirstName} Trial Class Inquiry`
         : "Trial Class Inquiry";
 
-    // Opportunity custom fields must be an array with field_value
+    // Opportunity CFs use: id, key, field_value
     const customFields = [
       {
+        id: OF.STUDENT_FIRST,
         key: "opportunity.student__first_name",
         field_value: dancerFirstName || "",
       },
       {
+        id: OF.STUDENT_AGE,
         key: "opportunity.student__age",
         field_value: dancerAge ?? "",
       },
       {
+        id: OF.TRIAL_CLASS,
         key: "opportunity.trial_class_name",
         field_value: selectedClass?.name || "",
       },
@@ -87,13 +97,8 @@ export async function POST(req: NextRequest) {
 
     const txt = await res.text();
     let json: any = null;
-    try {
-      json = JSON.parse(txt);
-    } catch {
-      // leave as text
-    }
+    try { json = JSON.parse(txt); } catch {}
 
-    // Normalize ID: GHL returns { opportunity: { id: ... } }
     const opportunityId =
       json?.id ||
       json?.opportunity?.id ||
@@ -107,7 +112,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Success
     return NextResponse.json({ opportunityId });
 
   } catch (err: any) {
