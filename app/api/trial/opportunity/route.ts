@@ -2,66 +2,90 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const GHL_BASE = "https://services.leadconnectorhq.com"; // your final base URL
+const API = "https://services.leadconnectorhq.com";
+const need = (k: string) => {
+  const v = process.env[k];
+  if (!v) throw new Error(`Missing env: ${k}`);
+  return v;
+};
+
+const GHL_KEY = need("GHL_API_KEY");
+const LOCATION_ID = need("GHL_LOCATION_ID");
+
+// Your pipeline + stage
+const PIPELINE_ID = "Dance Lead / Prospect";   // You said this is the pipeline
+const STAGE_ID = "New Lead / Inquiry";         // You said this is the stage
+
+function headers() {
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${GHL_KEY}`,
+    Version: "2021-07-28",
+    "Content-Type": "application/json",
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
     const {
       contactId,
       dancerFirstName,
       dancerAge,
-      className,
+      selectedClass,
     } = body;
 
     if (!contactId) {
       return NextResponse.json(
-        { error: "Missing contact ID" },
+        { error: "Missing contactId for opportunity creation." },
         { status: 400 }
       );
     }
 
-    // Build opportunity payload
+    // build the opportunity payload
     const payload = {
-      name: `Trial Class – ${dancerFirstName}`,
+      locationId: LOCATION_ID,
       contactId,
-      pipelineId: process.env.GHL_PIPELINE_ID,  // Must be set in env
-      stageId: process.env.GHL_STAGE_ID,        // Must be set in env
+      pipelineId: PIPELINE_ID,
+      stageId: STAGE_ID,
 
-      // Custom fields
-      customField: {
-        student__first_name: dancerFirstName,
-        student__age: dancerAge,
-        trial_class_name: className,
-      }
+      // custom fields for opportunity-level variables
+      customFields: {
+        "opportunity.student__first_name": dancerFirstName || "",
+        "opportunity.student__age": dancerAge || "",
+        "opportunity.trial_class_name": selectedClass?.name || "",
+      },
     };
 
-    const res = await fetch(`${GHL_BASE}/opportunities/`, {
+    // send to GHL
+    const res = await fetch(`${API}/opportunities/`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.GHL_API_KEY}`,
-        "Content-Type": "application/json",
-        Version: "2021-07-28"    // Required for LeadConnector API
-      },
+      headers: headers(),
       body: JSON.stringify(payload),
     });
 
-    const json = await res.json();
+    const txt = await res.text();
+    let json = null;
+    try { json = JSON.parse(txt); } catch {}
 
-    if (!res.ok || !json.id) {
-      console.error("GHL opportunity creation failed:", json);
+    if (!res.ok || !json?.id) {
+      console.error("Opportunity Create Error:", json || txt);
       return NextResponse.json(
-        { error: "Failed to create opportunity" },
-        { status: 500 }
+        { error: json || txt, status: res.status },
+        { status: res.status }
       );
     }
 
-    return NextResponse.json({ opportunityId: json.id });
+    // Success
+    return NextResponse.json({
+      opportunityId: json.id,
+    });
 
   } catch (err: any) {
-    console.error("trial opportunity API error:", err);
+    console.error("Trial Opportunity Error:", err);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: err?.message || "Server error" },
       { status: 500 }
     );
   }

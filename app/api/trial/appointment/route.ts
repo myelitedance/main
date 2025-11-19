@@ -1,163 +1,105 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildAppointmentTitle } from "@/app/book-trial/utils/format";
 
 export const runtime = "nodejs";
 
-const GHL_BASE = "https://services.leadconnectorhq.com";
+const API = "https://services.leadconnectorhq.com";
+const need = (k: string) => {
+  const v = process.env[k];
+  if (!v) throw new Error(`Missing env variable: ${k}`);
+  return v;
+};
+
+const GHL_KEY = need("GHL_API_KEY");
+const LOCATION_ID = need("GHL_LOCATION_ID");
+const CALENDAR_ID = "ZQfdk4DMSCu0yhUSjell"; // Trial Class calendar
+
+function headers() {
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${GHL_KEY}`,
+    Version: "2021-07-28",
+    "Content-Type": "application/json",
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
     const {
-      classId,
-      className,
-      lengthMinutes,
-      dancerFirstName,
-      day,
-      time,
       contactId,
       opportunityId,
-      appointmentTitle, // built client-side
+      classDate,      // YYYY-MM-DD
+      classStartTime, // "18:00"
+      classEndTime,   // "19:00"
+      selectedClass,  // { id, name }
+      parentName,
+      dancerFirstName,
+      smsOptIn,
     } = body;
 
-    if (!contactId || !opportunityId) {
+    // Validation
+    if (!contactId) {
       return NextResponse.json(
-        { error: "Missing contact or opportunity ID" },
+        { error: "Missing contactId for appointment" },
+        { status: 400 }
+      );
+    }
+    if (!classDate || !classStartTime || !classEndTime) {
+      return NextResponse.json(
+        { error: "Date and time required" },
         { status: 400 }
       );
     }
 
-    // -------------------------------------------
-    // Convert "Tue" + "6:00pm – 7:00pm" into an ISO datetime
-    // -------------------------------------------
-    const dateForNextClass = getNextClassDate(day, time);
-    if (!dateForNextClass) {
-      return NextResponse.json(
-        { error: "Invalid class day/time format" },
-        { status: 400 }
-      );
-    }
-
-    const startISO = dateForNextClass.toISOString();
-
-    // Add lengthMinutes for end time
-    const endISO = new Date(
-      dateForNextClass.getTime() + lengthMinutes * 60000
-    ).toISOString();
-
-    // -------------------------------------------
-    // Build payload for GHL appointment
-    // -------------------------------------------
-    const payload = {
-      title: appointmentTitle || buildAppointmentTitle(
-        dancerFirstName,
-        className,
-        day,
-        time
-      ),
+    // Build the appointment payload
+    const payload: any = {
+      locationId: LOCATION_ID,
+      calendarId: CALENDAR_ID,
       contactId,
-      opportunityId,
-      calendarId: process.env.GHL_TRIAL_CALENDAR_ID, // Should be set to ZQfdk4DMSCu0yhUSjell
-      startTime: startISO,
-      endTime: endISO,
+      title: `Trial Class: ${selectedClass?.name || "Class"}`,
+      startTime: `${classDate}T${classStartTime}:00`,
+      endTime: `${classDate}T${classEndTime}:00`,
       status: "confirmed",
-      location: "Elite Dance & Music",
+      appointmentStatus: "confirmed",
+      additionalNotes: `Parent: ${parentName}\nDancer: ${dancerFirstName}\nClass: ${selectedClass?.name}`,
+      smsReminder: smsOptIn ? true : false,
     };
 
-    const res = await fetch(`${GHL_BASE}/calendars/events/`, {
+    // Attach opportunity if we have one
+    if (opportunityId) {
+      payload.opportunityId = opportunityId;
+    }
+
+    // Make the API request
+    const res = await fetch(`${API}/appointments/`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.GHL_API_KEY}`,
-        "Content-Type": "application/json",
-        Version: "2021-07-28",
-      },
+      headers: headers(),
       body: JSON.stringify(payload),
     });
 
-    const json = await res.json();
+    const txt = await res.text();
+    let json = null;
+    try { json = JSON.parse(txt); } catch {}
 
-    if (!res.ok || !json.id) {
-      console.error("GHL Appointment Error:", json);
+    if (!res.ok || !json?.id) {
+      console.error("Appointment Create Error:", json || txt);
       return NextResponse.json(
-        { error: "Failed to schedule appointment" },
-        { status: 500 }
+        { error: json || txt, status: res.status },
+        { status: res.status }
       );
     }
 
-    return NextResponse.json({ appointmentId: json.id });
+    return NextResponse.json({
+      appointmentId: json.id,
+      ok: true,
+    });
 
   } catch (err: any) {
-    console.error("Appointment API Error:", err);
+    console.error("Trial Appointment Error:", err);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: err?.message || "Server error" },
       { status: 500 }
     );
-  }
-}
-
-
-
-/* ---------------------------------------------------
-   Helper: Convert Class Day + Time to Next Occurrence
-   Example:
-     day = "Tue"
-     time = "6:00pm – 7:00pm"
---------------------------------------------------- */
-
-function getNextClassDate(day: string, timeRange: string): Date | null {
-  try {
-    const dayMap: Record<string, number> = {
-      Sun: 0,
-      Mon: 1,
-      Tue: 2,
-      Wed: 3,
-      Thu: 4,
-      Fri: 5,
-      Sat: 6,
-    };
-
-    const targetDay = dayMap[day];
-    if (targetDay === undefined) return null;
-
-    const [startTime] = timeRange.split("–").map((s) => s.trim());
-    const parsed = parseTime(startTime);
-    if (!parsed) return null;
-
-    const now = new Date();
-    const date = new Date();
-
-    // Move to next matching weekday
-    const diff = (targetDay + 7 - now.getDay()) % 7;
-    date.setDate(now.getDate() + diff);
-
-    // Apply the time (hours/minutes)
-    date.setHours(parsed.hours, parsed.minutes, 0, 0);
-
-    // If today + time already passed, move to next week
-    if (date < now) date.setDate(date.getDate() + 7);
-
-    return date;
-  } catch {
-    return null;
-  }
-}
-
-/* Parse "6:00pm" into hours/minutes */
-function parseTime(str: string): { hours: number; minutes: number } | null {
-  try {
-    const match = str.match(/(\d+):(\d+)\s*(am|pm)/i);
-    if (!match) return null;
-
-    let hours = parseInt(match[1], 10);
-    const minutes = parseInt(match[2], 10);
-    const period = match[3].toLowerCase();
-
-    if (period === "pm" && hours !== 12) hours += 12;
-    if (period === "am" && hours === 12) hours = 0;
-
-    return { hours, minutes };
-  } catch {
-    return null;
   }
 }
