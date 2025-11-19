@@ -116,7 +116,13 @@ export async function POST(req: NextRequest) {
     let json = null;
     try { json = JSON.parse(txt); } catch {}
 
-    if (!res.ok || !json?.id) {
+    // Normalize response formats
+    const contactId =
+      json?.id ||
+      json?.contact?.id ||
+      null;
+
+    if (!res.ok || !contactId) {
       console.error("GHL Contact Create Error:", json || txt);
       return NextResponse.json(
         { error: json || txt, status: res.status },
@@ -124,7 +130,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ contactId: json.id });
+    return NextResponse.json({ contactId });
 
   } catch (e: any) {
     return NextResponse.json(
