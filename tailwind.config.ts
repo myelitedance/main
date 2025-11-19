@@ -18,6 +18,21 @@ export default {
         "dance-gold": "#F59E0B",
         "dance-green": "#32B486",
       },
+      keyframes: {
+        "fade-slide": {
+          "0%": {
+            opacity: "0",
+            transform: "translateY(8px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0px)",
+          },
+        },
+      },
+      animation: {
+        "fade-slide": "fade-slide 0.35s ease-out",
+      },
     },
   },
   safelist: [
