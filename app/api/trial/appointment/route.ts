@@ -101,7 +101,7 @@ console.log("DEBUG selectedClass:", JSON.stringify(selectedClass, null, 2));
       opportunityId: opportunityId || undefined
     };
 
-    const res = await fetch(`${API}/calendars/appointments/`, {
+    const res = await fetch(`${API}/calendars/events/appointments/`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify(payload),
