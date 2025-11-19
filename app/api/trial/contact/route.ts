@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-// GHL API base URL
 const GHL_BASE = "https://services.leadconnectorhq.com";
 
 export async function POST(req: NextRequest) {
@@ -29,23 +28,18 @@ export async function POST(req: NextRequest) {
     // Normalize phone
     const cleanedPhone = phone.replace(/\D/g, "");
 
-    // Build contact payload for GHL
+    // Build payload for GHL
     const payload = {
       firstName: parentFirstName,
       lastName: parentLastName,
       email: email.toLowerCase(),
       phone: cleanedPhone,
-      // SMS opt-in
-      sms: smsOptIn ? "1" : "0",
-
-      // Custom fields: UTM data
       customField: {
-        // Contact custom fields
-        edm__utm_source: utms?.utm_source || "",
-        edm__utm_medium: utms?.utm_medium || "",
-        edm__utm_campaign: utms?.utm_campaign || "",
-        edm__page_path: utms?.page_path || "",
-      },
+        edm__utm_source: utms?.utm_source ?? "",
+        edm__utm_medium: utms?.utm_medium ?? "",
+        edm__utm_campaign: utms?.utm_campaign ?? "",
+        edm__page_path: utms?.page_path ?? "",
+      }
     };
 
     const res = await fetch(`${GHL_BASE}/contacts/`, {
@@ -53,6 +47,7 @@ export async function POST(req: NextRequest) {
       headers: {
         Authorization: `Bearer ${process.env.GHL_API_KEY}`,
         "Content-Type": "application/json",
+        Version: "2021-07-28",
       },
       body: JSON.stringify(payload),
     });
@@ -60,18 +55,19 @@ export async function POST(req: NextRequest) {
     const json = await res.json();
 
     if (!res.ok || !json.id) {
-      console.error("GHL contact error:", json);
+      console.error("GHL Contact Error:", json);
       return NextResponse.json(
-        { error: "Failed to create or update GHL contact" },
-        { status: 500 }
+        { error: json, status: res.status },
+        { status: res.status }
       );
     }
 
     return NextResponse.json({ contactId: json.id });
+
   } catch (err: any) {
     console.error("Trial Contact API Error:", err);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: String(err) },
       { status: 500 }
     );
   }
