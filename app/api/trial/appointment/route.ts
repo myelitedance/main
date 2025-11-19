@@ -5,13 +5,13 @@ export const runtime = "nodejs";
 const API = "https://services.leadconnectorhq.com";
 const need = (k: string) => {
   const v = process.env[k];
-  if (!v) throw new Error(`Missing env variable: ${k}`);
+  if (!v) throw new Error(`Missing env: ${k}`);
   return v;
 };
 
 const GHL_KEY = need("GHL_API_KEY");
 const LOCATION_ID = need("GHL_LOCATION_ID");
-const CALENDAR_ID = "ZQfdk4DMSCu0yhUSjell"; // Trial Class calendar
+const CALENDAR_ID = "ZQfdk4DMSCu0yhUSjell"; // your trial calendar
 
 function headers() {
   return {
@@ -29,60 +29,91 @@ export async function POST(req: NextRequest) {
     const {
       contactId,
       opportunityId,
-      classDate,      // YYYY-MM-DD
-      classStartTime, // "18:00"
-      classEndTime,   // "19:00"
-      selectedClass,  // { id, name }
-      parentName,
-      dancerFirstName,
-      smsOptIn,
+      selectedClass   // { id, name, day, time, lengthMinutes }
     } = body;
 
-    // Validation
-    if (!contactId) {
+    if (!contactId || !selectedClass) {
       return NextResponse.json(
-        { error: "Missing contactId for appointment" },
-        { status: 400 }
-      );
-    }
-    if (!classDate || !classStartTime || !classEndTime) {
-      return NextResponse.json(
-        { error: "Date and time required" },
+        { error: "Missing contactId or selectedClass" },
         { status: 400 }
       );
     }
 
-    // Build the appointment payload
-    const payload: any = {
+    // Start/End times must be real ISO datetime stamps.
+    // selectedClass.time is like: "6:00pm - 7:00pm"
+    const [startStr, endStr] = selectedClass.time
+  .split("-")
+  .map((s: string) => s.trim());
+
+
+    // We need a date—use the *next upcoming day* for the class
+    function nextClassDate(dayName: string) {
+      const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const target = days.indexOf(dayName);
+      const now = new Date();
+      const result = new Date(now);
+      result.setHours(0,0,0,0);
+      let delta = target - now.getDay();
+      if (delta <= 0) delta += 7;
+      result.setDate(now.getDate() + delta);
+      return result;
+    }
+
+    const runDate = nextClassDate(selectedClass.day);
+
+    function parseTime(t: string) {
+      const d = new Date(runDate);
+      const [time, period] = t.split(/(am|pm)/i);
+      let [h, m] = time.split(":").map(Number);
+      if (period.toLowerCase() === "pm" && h < 12) h += 12;
+      if (period.toLowerCase() === "am" && h === 12) h = 0;
+      d.setHours(h, m, 0, 0);
+      return d;
+    }
+
+    const startTimeISO = parseTime(startStr).toISOString();
+    const endTimeISO = parseTime(endStr).toISOString();
+
+    const payload = {
+      title: `${selectedClass.name} Trial Class`,
       locationId: LOCATION_ID,
       calendarId: CALENDAR_ID,
       contactId,
-      title: `Trial Class: ${selectedClass?.name || "Class"}`,
-      startTime: `${classDate}T${classStartTime}:00`,
-      endTime: `${classDate}T${classEndTime}:00`,
-      status: "confirmed",
       appointmentStatus: "confirmed",
-      additionalNotes: `Parent: ${parentName}\nDancer: ${dancerFirstName}\nClass: ${selectedClass?.name}`,
-      smsReminder: smsOptIn ? true : false,
+
+      // Required for most calendars even if dummy
+      meetingLocationType: "custom",
+      meetingLocationId: "custom_0",
+      overrideLocationConfig: true,
+
+      // Optional but recommended flags
+      toNotify: false,
+      ignoreDateRange: true,
+      ignoreFreeSlotValidation: true,
+
+      startTime: startTimeISO,
+      endTime: endTimeISO,
+
+      // Connect to opportunity if provided
+      opportunityId: opportunityId || undefined
     };
 
-    // Attach opportunity if we have one
-    if (opportunityId) {
-      payload.opportunityId = opportunityId;
-    }
-
-    // Make the API request
-    const res = await fetch(`${API}/appointments/`, {
+    const res = await fetch(`${API}/calendars/appointments/`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify(payload),
     });
 
     const txt = await res.text();
-    let json = null;
+    let json: any = null;
     try { json = JSON.parse(txt); } catch {}
 
-    if (!res.ok || !json?.id) {
+    const appointmentId =
+      json?.id ||
+      json?.appointment?.id ||
+      null;
+
+    if (!res.ok || !appointmentId) {
       console.error("Appointment Create Error:", json || txt);
       return NextResponse.json(
         { error: json || txt, status: res.status },
@@ -90,13 +121,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      appointmentId: json.id,
-      ok: true,
-    });
+    return NextResponse.json({ appointmentId });
 
   } catch (err: any) {
-    console.error("Trial Appointment Error:", err);
+    console.error("Appointment API Error:", err);
     return NextResponse.json(
       { error: err?.message || "Server error" },
       { status: 500 }
