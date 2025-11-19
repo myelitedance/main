@@ -12,7 +12,7 @@ const need = (k: string) => {
 const GHL_KEY = need("GHL_API_KEY");
 const LOCATION_ID = need("GHL_LOCATION_ID");
 
-// Correct pipeline + stage IDs from your JSON
+// Correct pipeline + stage IDs you provided
 const PIPELINE_ID = "BKJR7YvccnciXEqOEHJV";
 const PIPELINE_STAGE_ID = "0eef5e7d-001b-4b31-8a3c-ce48521c45e7";
 
@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
 
     const {
       contactId,
+      parentFirstName,
+      parentLastName,
       dancerFirstName,
       dancerAge,
       selectedClass
@@ -43,25 +45,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Required name
-    const opportunityName =
-      `${dancerFirstName || "Student"} Trial Class Inquiry`;
+    // REQUIRED: Opportunity name = Parent first + last
+    const opportunityName = `${parentFirstName} ${parentLastName}`;
 
-    // Custom fields MUST be array objects
+    // Custom fields MUST use field_value format
     const customFields = [
-      { key: "opportunity.student__first_name", value: dancerFirstName || "" },
-      { key: "opportunity.student__age", value: dancerAge || "" },
-      { key: "opportunity.trial_class_name", value: selectedClass?.name || "" },
+      {
+        key: "opportunity.student__first_name",
+        field_value: dancerFirstName || ""
+      },
+      {
+        key: "opportunity.student__age",
+        field_value: dancerAge || ""
+      },
+      {
+        key: "opportunity.trial_class_name",
+        field_value: selectedClass?.name || ""
+      }
     ];
 
     const payload = {
       locationId: LOCATION_ID,
       contactId,
       pipelineId: PIPELINE_ID,
-      pipelineStageId: PIPELINE_STAGE_ID, // ✔ correct key
+      pipelineStageId: PIPELINE_STAGE_ID,
       name: opportunityName,
-      status: "open",                    // ✔ required
-      customFields                       // ✔ array
+      status: "open",
+      customFields
     };
 
     const res = await fetch(`${API}/opportunities/`, {
