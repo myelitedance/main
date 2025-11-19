@@ -12,7 +12,7 @@ const need = (k: string) => {
 const GHL_KEY = need("GHL_API_KEY");
 const LOCATION_ID = need("GHL_LOCATION_ID");
 
-// Correct pipeline + stage IDs you provided
+// From your existing opportunity JSON
 const PIPELINE_ID = "BKJR7YvccnciXEqOEHJV";
 const PIPELINE_STAGE_ID = "0eef5e7d-001b-4b31-8a3c-ce48521c45e7";
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       parentLastName,
       dancerFirstName,
       dancerAge,
-      selectedClass
+      selectedClass,
     } = body;
 
     if (!contactId) {
@@ -45,23 +45,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // REQUIRED: Opportunity name = Parent first + last
-    const opportunityName = `${parentFirstName} ${parentLastName}`;
+    // Safe name fallback: prefer parent name, then dancer name, then generic
+    const opportunityName =
+      parentFirstName && parentLastName
+        ? `${parentFirstName} ${parentLastName}`
+        : dancerFirstName
+        ? `${dancerFirstName} Trial Class Inquiry`
+        : "Trial Class Inquiry";
 
-    // Custom fields MUST use field_value format
+    // Opportunity custom fields must be an array with field_value
     const customFields = [
       {
         key: "opportunity.student__first_name",
-        field_value: dancerFirstName || ""
+        field_value: dancerFirstName || "",
       },
       {
         key: "opportunity.student__age",
-        field_value: dancerAge || ""
+        field_value: dancerAge ?? "",
       },
       {
         key: "opportunity.trial_class_name",
-        field_value: selectedClass?.name || ""
-      }
+        field_value: selectedClass?.name || "",
+      },
     ];
 
     const payload = {
@@ -71,7 +76,7 @@ export async function POST(req: NextRequest) {
       pipelineStageId: PIPELINE_STAGE_ID,
       name: opportunityName,
       status: "open",
-      customFields
+      customFields,
     };
 
     const res = await fetch(`${API}/opportunities/`, {
@@ -81,10 +86,20 @@ export async function POST(req: NextRequest) {
     });
 
     const txt = await res.text();
-    let json = null;
-    try { json = JSON.parse(txt); } catch {}
+    let json: any = null;
+    try {
+      json = JSON.parse(txt);
+    } catch {
+      // leave as text
+    }
 
-    if (!res.ok || !json?.id) {
+    // Normalize ID: GHL returns { opportunity: { id: ... } }
+    const opportunityId =
+      json?.id ||
+      json?.opportunity?.id ||
+      null;
+
+    if (!res.ok || !opportunityId) {
       console.error("Opportunity Create Error:", json || txt);
       return NextResponse.json(
         { error: json || txt, status: res.status },
@@ -92,9 +107,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      opportunityId: json.id,
-    });
+    // Success
+    return NextResponse.json({ opportunityId });
 
   } catch (err: any) {
     console.error("Trial Opportunity Error:", err);
