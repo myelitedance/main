@@ -113,13 +113,21 @@ export async function POST(req: NextRequest) {
       json?.appointment?.id ||
       null;
 
-    if (!res.ok || !appointmentId) {
-      console.error("Appointment Create Error:", json || txt);
-      return NextResponse.json(
-        { error: json || txt, status: res.status },
-        { status: res.status }
-      );
-    }
+if (!res.ok || !appointmentId) {
+  console.error("Appointment Create Error:");
+  console.error("Status:", res.status);
+  console.error("Raw Text:", txt);
+  console.error("Parsed JSON:", json);
+
+  return NextResponse.json(
+    {
+      error: json || txt || "Unknown error",
+      status: res.status
+    },
+    { status: res.status }
+  );
+}
+
 
     return NextResponse.json({ appointmentId });
 
