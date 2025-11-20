@@ -26,7 +26,7 @@ const DAY_MAP: [keyof any, string][] = [
 const CLOSED_RANGES = [
   ["2025-11-24", "2025-11-30"],
   ["2025-12-22", "2026-01-04"],
-  ["2025-03-02", "2026-03-08"], // Your provided window
+  ["2026-03-02", "2026-03-08"], // Your provided window
 ].map(([s, e]) => ({
   start: new Date(`${s}T00:00:00`),
   end: new Date(`${e}T23:59:59`),
