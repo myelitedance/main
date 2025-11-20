@@ -79,8 +79,9 @@ function nextWeekday(label: string): Date {
 // TIME HELPERS
 // ---------------------------------------------------------------------------
 
-function parseTime(str: string) {
-  const m = str.match(/(\d{1,2}):(\d{2})(am|pm)/i);
+function parseTime(str: any) {
+  if (!str || typeof str !== "string") return null;
+  const m = str.trim().match(/(\d{1,2}):(\d{2})(am|pm)/i);
   if (!m) return null;
 
   let [, hh, mm, ap] = m;
