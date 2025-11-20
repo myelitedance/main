@@ -73,35 +73,46 @@ console.log("DEBUG selectedClass:", JSON.stringify(selectedClass, null, 2));
       d.setHours(h, m, 0, 0);
       return d;
     }
+function toOffsetString(date: Date) {
+  const pad = (n: number) => `${n < 10 ? "0" : ""}${n}`;
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const oh = pad(Math.floor(Math.abs(offset) / 60));
+  const om = pad(Math.abs(offset) % 60);
 
-    const startTimeISO = parseTime(startStr).toISOString();
-    const endTimeISO = parseTime(endStr).toISOString();
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:00${sign}${oh}:${om}`
+  );
+}
 
-    const payload = {
-      title: `${selectedClass.name} Trial Class`,
-      locationId: LOCATION_ID,
-      calendarId: CALENDAR_ID,
-      contactId,
-      appointmentStatus: "confirmed",
+const startTimeISO = toOffsetString(parseTime(startStr));
+const endTimeISO = toOffsetString(parseTime(endStr));
 
-      // Required for most calendars even if dummy
-      meetingLocationType: "custom",
-      meetingLocationId: "custom_0",
-      overrideLocationConfig: true,
 
-      // Optional but recommended flags
-      toNotify: false,
-      ignoreDateRange: true,
-      ignoreFreeSlotValidation: true,
+const payload = {
+  title: `${selectedClass.name} Trial Class`,
+  meetingLocationType: "custom",
+  meetingLocationId: "custom_0",
+  overrideLocationConfig: true,
+  appointmentStatus: "confirmed",
 
-      startTime: startTimeISO,
-      endTime: endTimeISO,
+  description: "Elite Dance Trial Class",
+  address: "7177 Nolensville Rd Suite B3, Nashville, TN 37211",
 
-      // Connect to opportunity if provided
-      opportunityId: opportunityId || undefined
-    };
+  ignoreDateRange: false,
+  toNotify: false,
+  ignoreFreeSlotValidation: true,
 
-    const res = await fetch(`${API}/calendars/events/appointments/`, {
+  calendarId: CALENDAR_ID,
+  locationId: LOCATION_ID,
+  contactId,
+
+  startTime: startTimeISO,   // MUST include offset
+  endTime: endTimeISO        // MUST include offset
+};
+
+    const res = await fetch(`${API}/calendars/events/appointments`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify(payload),
