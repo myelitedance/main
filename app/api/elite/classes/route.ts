@@ -31,7 +31,7 @@ const WEEKDAY_MAP: Record<Weekday, number> = {
   Sat: 6,
 };
 
-// Get next occurrence of a weekday (local to Nashville)
+// Get next occurrence of a weekday (local to CST)
 function nextDateForDay(day: Weekday): Date {
   const now = new Date(
     new Date().toLocaleString("en-US", { timeZone: TZ })
@@ -92,19 +92,30 @@ function to24Hour(str: string): { hour: number; min: number } {
   return { hour, min };
 }
 
-// Build local Nashville ISO for GHL
+// ============================================================================
+// FIXED: Build proper ISO-8601 with offset (matches 2021-06-23T03:30:00+05:30)
+// ============================================================================
 function buildISO(date: Date, timeStr: string): string {
   const { hour, min } = to24Hour(timeStr);
 
-  const d = new Date(date);
-  d.setHours(hour, min, 0, 0);
+  // Normalize the date to CST
+  const localDate = new Date(
+    new Date(date.toLocaleString("en-US", { timeZone: TZ }))
+  );
+  localDate.setHours(hour, min, 0, 0);
 
-  return d
-    .toLocaleString("en-CA", {
-      timeZone: TZ,
-      hour12: false,
-    })
-    .replace(", ", "T") + ":00";
+  // Offset calculation
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const offsetMin = localDate.getTimezoneOffset() * -1;
+  const offHr = Math.floor(offsetMin / 60);
+  const offMin = Math.abs(offsetMin % 60);
+  const offset =
+    `${offHr >= 0 ? "+" : "-"}${pad(Math.abs(offHr))}:${pad(offMin)}`;
+
+  return (
+    `${localDate.getFullYear()}-${pad(localDate.getMonth() + 1)}-${pad(localDate.getDate())}` +
+    `T${pad(localDate.getHours())}:${pad(localDate.getMinutes())}:00${offset}`
+  );
 }
 
 // Does YYYY-MM-DD fall inside a closure window?
@@ -172,7 +183,9 @@ export async function GET(req: NextRequest) {
       .filter((c) => !["FLX", "PRE", "DT"].includes(c.level.toUpperCase()));
 
     if (!isNaN(age)) {
-      filtered = filtered.filter((c) => age >= c.ageMin && age <= c.ageMax);
+      filtered = filtered.filter(
+        (c) => age >= c.ageMin && age <= c.ageMax
+      );
     }
 
     // Group by description
@@ -232,7 +245,9 @@ export async function GET(req: NextRequest) {
     // FINAL: Keep next 2 earliest
     const results = Object.values(groups).map((g: any) => {
       const sorted = [...g.options].sort(
-        (a, b) => new Date(a.startISO).getTime() - new Date(b.startISO).getTime()
+        (a, b) =>
+          new Date(a.startISO).getTime() -
+          new Date(b.startISO).getTime()
       );
       g.options = sorted.slice(0, 2);
       return g;

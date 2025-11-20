@@ -19,7 +19,7 @@ interface ClassOption {
 
 interface ClassGroup {
   groupId: string;
-  name: string;        // description
+  name: string; // description
   ageMin: number;
   ageMax: number;
   options: ClassOption[];
@@ -34,6 +34,26 @@ interface Props {
     option: ClassOption;
     lengthMinutes: number;
   }) => void;
+}
+
+// ================================================
+// FIX: DATE DISPLAY USING AMERICA/CHICAGO CORRECTLY
+// ================================================
+function formatCSTDate(isoDate: string): string {
+  // isoDate is "YYYY-MM-DD"
+  const [y, m, d] = isoDate.split("-").map(Number);
+
+  // Create a date at midnight *local*, not UTC-shifted.
+  // We use Date.UTC only to safely construct the date parts,
+  // and then force the formatter to interpret it in CST.
+  const dt = new Date(Date.UTC(y, m - 1, d, 12)); 
+  // Using noon UTC prevents DST day-shifts.
+
+  return dt.toLocaleDateString("en-US", {
+    timeZone: "America/Chicago",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
@@ -56,15 +76,17 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           return;
         }
 
+        // ================================================
+        // FIX APPLIED HERE:
+        // Convert the raw YYYY-MM-DD date into a CST display date
+        // without affecting backend logic or ISO timestamps.
+        // ================================================
         setGroups(
           (data.classes || []).map((group: ClassGroup) => ({
             ...group,
             options: group.options.map((o) => ({
               ...o,
-              dateFormatted: new Date(o.date).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              }),
+              dateFormatted: formatCSTDate(o.date),
             })),
           }))
         );
@@ -115,7 +137,10 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
         {!loading &&
           groups.length > 0 &&
           groups.map((group) => (
-            <div key={group.groupId} className="border rounded-xl p-4 bg-white space-y-3">
+            <div
+              key={group.groupId}
+              className="border rounded-xl p-4 bg-white space-y-3"
+            >
               {/* CLASS DESCRIPTION */}
               <h2 className="text-xl font-bold text-dance-blue text-center">
                 {group.name}
@@ -148,9 +173,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                       <div className="text-base font-bold">
                         {opt.dateFormatted}
                       </div>
-                      <div className="text-sm opacity-90">
-                        {opt.label}
-                      </div>
+                      <div className="text-sm opacity-90">{opt.label}</div>
                     </button>
                   );
                 })}
