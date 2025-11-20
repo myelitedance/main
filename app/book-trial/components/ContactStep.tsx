@@ -7,14 +7,22 @@ import Checkbox from "./ui/Checkbox";
 import ErrorText from "./ui/ErrorText";
 import StepWrapper from "./StepWrapper";
 
+interface ClassOption {
+  id: string;
+  day: string;
+  date: string;
+  label: string;
+  timeRange: string;
+  startISO: string;
+  endISO: string;
+}
+
 interface Props {
   age: number;
   years: number;
   selectedClass: {
-    id: string;
-    name: string;
-    day: string;
-    time: string;
+    className: string;
+    option: ClassOption;
     lengthMinutes: number;
   };
   onBack: () => void;
@@ -44,13 +52,7 @@ export default function ContactStep({
   const [error, setError] = useState("");
 
   const handleNext = () => {
-    if (
-      !parentFirstName ||
-      !parentLastName ||
-      !email ||
-      !phone ||
-      !dancerFirstName
-    ) {
+    if (!parentFirstName || !parentLastName || !email || !phone || !dancerFirstName) {
       return setError("Please fill in all fields.");
     }
 
@@ -73,14 +75,15 @@ export default function ContactStep({
   return (
     <StepWrapper>
       <div className="space-y-6 px-4 py-6">
+
         <h1 className="text-2xl font-bold text-dance-purple text-center">
           Parent & Dancer Information
         </h1>
 
         <div className="text-center text-gray-600">
-          <p className="font-medium">{selectedClass.name}</p>
+          <p className="font-medium">{selectedClass.className}</p>
           <p className="text-sm">
-            {selectedClass.day} • {selectedClass.time}
+            {selectedClass.option.day} • {selectedClass.option.label}
           </p>
         </div>
 
@@ -143,6 +146,7 @@ export default function ContactStep({
           </Button>
           <Button onClick={handleNext}>Review & Confirm</Button>
         </div>
+
       </div>
     </StepWrapper>
   );

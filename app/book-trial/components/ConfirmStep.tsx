@@ -6,14 +6,22 @@ import ErrorText from "./ui/ErrorText";
 import StepWrapper from "./StepWrapper";
 import { sendContact, sendOpportunity, sendAppointment } from "../utils/api";
 
+interface ClassOption {
+  id: string;
+  day: string;
+  date: string;
+  label: string;
+  timeRange: string;
+  startISO: string;
+  endISO: string;
+}
+
 interface ConfirmStepProps {
   age: number;
   years: number;
   selectedClass: {
-    id: string;
-    name: string;
-    day: string;
-    time: string;
+    className: string;
+    option: ClassOption;
     lengthMinutes: number;
   };
   contactData: {
@@ -36,7 +44,7 @@ export default function ConfirmStep({
   contactData,
   utms,
   onBack,
-  onComplete
+  onComplete,
 }: ConfirmStepProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -47,10 +55,7 @@ export default function ConfirmStep({
       setError("");
 
       // 1️⃣ Create / Update Contact
-      const contactRes = await sendContact({
-        ...contactData,
-        utms
-      });
+      const contactRes = await sendContact({ ...contactData, utms });
 
       if (!contactRes?.contactId) {
         setError("Unable to save contact information.");
@@ -61,14 +66,19 @@ export default function ConfirmStep({
       const contactId = contactRes.contactId;
 
       // 2️⃣ Create Opportunity
+      //    Adapt our richer selectedClass into the shape sendOpportunity expects:
+      //    selectedClass: { id: string; name: string }
       const oppRes = await sendOpportunity({
-  contactId,
-  parentFirstName: contactData.parentFirstName,
-  parentLastName: contactData.parentLastName,
-  dancerFirstName: contactData.dancerFirstName,
-  dancerAge: age,
-  selectedClass,
-});
+        contactId,
+        parentFirstName: contactData.parentFirstName,
+        parentLastName: contactData.parentLastName,
+        dancerFirstName: contactData.dancerFirstName,
+        dancerAge: age,
+        selectedClass: {
+          id: selectedClass.option.id,
+          name: selectedClass.className,
+        },
+      });
 
       if (!oppRes?.opportunityId) {
         setError("Unable to create opportunity.");
@@ -79,15 +89,17 @@ export default function ConfirmStep({
       const opportunityId = oppRes.opportunityId;
 
       // 3️⃣ Schedule Appointment
+      //    Adapt to the current sendAppointment signature:
+      //    { classId, className, lengthMinutes, dancerFirstName, day, time, contactId, opportunityId }
       const apptRes = await sendAppointment({
-        classId: selectedClass.id,
-        className: selectedClass.name,
+        classId: selectedClass.option.id,
+        className: selectedClass.className,
         lengthMinutes: selectedClass.lengthMinutes,
         dancerFirstName: contactData.dancerFirstName,
-        day: selectedClass.day,
-        time: selectedClass.time,
+        day: selectedClass.option.day,
+        time: selectedClass.option.timeRange,
         contactId,
-        opportunityId
+        opportunityId,
       });
 
       if (!apptRes?.appointmentId) {
@@ -98,8 +110,8 @@ export default function ConfirmStep({
 
       setLoading(false);
       onComplete();
-
     } catch (err: any) {
+      console.error(err);
       setError("Something went wrong completing your booking.");
       setLoading(false);
     }
@@ -108,22 +120,16 @@ export default function ConfirmStep({
   return (
     <StepWrapper>
       <div className="space-y-6 px-4 py-6">
-
         <h1 className="text-2xl font-bold text-dance-purple text-center">
           Review & Confirm
         </h1>
 
-        <p className="text-center text-gray-600">
-          Make sure everything looks correct before we finalize your trial class.
-        </p>
-
         <div className="bg-gray-50 border rounded-lg p-4 space-y-4">
-
           <div>
             <h2 className="font-semibold text-dance-blue">Class</h2>
-            <p>{selectedClass.name}</p>
+            <p>{selectedClass.className}</p>
             <p className="text-sm text-gray-600">
-              {selectedClass.day} • {selectedClass.time}
+              {selectedClass.option.day} • {selectedClass.option.label}
             </p>
           </div>
 

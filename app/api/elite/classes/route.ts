@@ -3,227 +3,202 @@ import { akadaFetch } from "@/lib/akada";
 
 export const runtime = "nodejs";
 
-// Cache 5 minutes
-let classesCache: { key: string; data: any[]; exp: number } | null = null;
-const CACHE_TTL = 1000 * 60 * 5;
+// ---- CONFIG ----
+const TZ = "America/Chicago";
 
-// ---------------------------------------------
-// CONFIG
-// ---------------------------------------------
-const TIMEZONE = "America/Chicago";
-
-const DAY_MAP: [keyof any, string][] = [
-  ["monday", "Mon"],
-  ["tuesday", "Tue"],
-  ["wednesday", "Wed"],
-  ["thursday", "Thu"],
-  ["friday", "Fri"],
-  ["saturday", "Sat"],
-  ["sunday", "Sun"],
-];
-
-// Closure windows (inclusive)
+// These ranges are inclusive “closed” days
 const CLOSED_RANGES = [
   ["2025-11-24", "2025-11-30"],
   ["2025-12-22", "2026-01-04"],
-  ["2026-03-02", "2026-03-08"], // Your provided window
-].map(([s, e]) => ({
-  start: new Date(`${s}T00:00:00`),
-  end: new Date(`${e}T23:59:59`),
-}));
+  ["2026-03-02", "2026-03-08"],
+];
 
-// ---------------------------------------------
-// HELPERS
-// ---------------------------------------------
-
-function getDays(c: any) {
-  return DAY_MAP.filter(([key]) => !!c[key]).map(([, label]) => label);
+function isClosed(date: Date) {
+  const ds = date.toISOString().split("T")[0];
+  return CLOSED_RANGES.some(([start, end]) => ds >= start && ds <= end);
 }
 
-function isClosed(d: Date): boolean {
-  return CLOSED_RANGES.some(
-    (rng) => d >= rng.start && d <= rng.end
-  );
+function nextWeek(d: Date) {
+  const n = new Date(d);
+  n.setDate(d.getDate() + 7);
+  return n;
 }
 
-// Get next occurrence of "Mon", "Tue", etc.
-function nextDateForDay(dayLabel: string): Date {
-  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const target = days.indexOf(dayLabel);
+const DAY_MAP: Record<string, number> = {
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+function getDays(c: any): string[] {
+  const map: [keyof any, string][] = [
+    ["monday", "Mon"],
+    ["tuesday", "Tue"],
+    ["wednesday", "Wed"],
+    ["thursday", "Thu"],
+    ["friday", "Fri"],
+    ["saturday", "Sat"],
+  ];
+  return map.filter(([k]) => !!c[k]).map(([, lbl]) => lbl);
+}
+
+function nextDateForWeekday(dayLabel: string): Date {
   const now = new Date();
+  const todayDow = now.getDay(); // Sunday=0
+  const target = DAY_MAP[dayLabel];
 
-  for (let i = 0; i < 60; i++) {
-    let d = new Date(now);
-    d.setHours(0,0,0,0);
+  const d = new Date(
+    new Date().toLocaleString("en-US", { timeZone: TZ })
+  );
+  d.setHours(0, 0, 0, 0);
 
-    const delta = (target - d.getDay() + 7) % 7;
-    d.setDate(d.getDate() + delta + i * 7);
+  // Convert Sunday=0 → 7 for easier math
+  const todayFixed = todayDow === 0 ? 7 : todayDow;
 
-    if (!isClosed(d)) return d;
-  }
+  let delta = target - todayFixed;
+  if (delta <= 0) delta += 7;
 
-  return new Date(); // fallback should never happen
+  d.setDate(d.getDate() + delta);
+  return d;
 }
 
-// Format YYYY-MM-DD
-function dateString(d: Date) {
-  return d.toISOString().split("T")[0];
+function formatDateLabel(d: Date, day: string, timeRange: string) {
+  return `${day} • ${d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: TZ,
+  })} @ ${timeRange}`;
 }
 
-// Convert "4:45pm" + runDate into ISO with correct CST/CDT offset
-function toLocalISO(runDate: Date, timeStr: string): string {
+function parseISO(runDate: Date, timeStr: string): string {
   const m = timeStr.trim().match(/(\d{1,2}):(\d{2})(am|pm)/i);
   if (!m) return runDate.toISOString();
 
   let [, hh, mm, ap] = m;
-  let h = parseInt(hh, 10);
-  let minutes = parseInt(mm, 10);
+  let hour = parseInt(hh);
+  const min = parseInt(mm);
 
-  if (ap.toLowerCase() === "pm" && h < 12) h += 12;
-  if (ap.toLowerCase() === "am" && h === 12) h = 0;
+  if (ap.toLowerCase() === "pm" && hour < 12) hour += 12;
+  if (ap.toLowerCase() === "am" && hour === 12) hour = 0;
 
-  // Build local datetime string
-  const local = new Date(
-    `${dateString(runDate)}T${String(h).padStart(2,"0")}:${String(
-      minutes
-    ).padStart(2,"0")}:00`
-  );
-
-  // Convert to ISO *with correct offset*
-  return local.toLocaleString("sv-SE", { timeZone: TIMEZONE }).replace(" ", "T");
+  const d = new Date(runDate);
+  d.setHours(hour, min, 0, 0);
+  return d.toISOString();
 }
 
-// ---------------------------------------------
-// ROUTE HANDLER
-// ---------------------------------------------
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const ageParam = searchParams.get("age");
-    const age = ageParam ? Number(ageParam) : NaN;
+    const age = Number(searchParams.get("age") || NaN);
 
-    const key = `grouped:${ageParam || ""}`;
-    if (classesCache && classesCache.key === key && Date.now() < classesCache.exp) {
-      return NextResponse.json({ classes: classesCache.data, cached: true });
-    }
-
-    // Fetch Akada Classes
     const res = await akadaFetch(`/studio/classes`, { method: "GET" });
     const txt = await res.text();
-    if (!res.ok) return NextResponse.json({ error: txt }, { status: res.status });
+    if (!res.ok) {
+      return NextResponse.json({ error: txt }, { status: res.status });
+    }
 
     const j = JSON.parse(txt);
     const raw: any[] = j?.returnValue?.currentPageItems || [];
 
-    // ---------------------------------------------
-    // Normalize
-    // ---------------------------------------------
-    const normalized = raw.map((c) => {
+    // ---- Normalize ----
+    const norm = raw.map((c) => {
       const days = getDays(c);
       const timeRange = `${(c.startTimeDisplay || "").trim()} - ${(c.stopTimeDisplay || "").trim()}`;
 
       return {
         id: String(c.id),
-        description: String(c.description || "").trim(),
-        days,
-        timeRange,
+        description: (c.description || "").trim(),
         level: (c.levelDescription || "").trim(),
         ageMin: Number(c.lowerAgeLimit ?? 0),
         ageMax: Number(c.upperAgeLimit ?? 99),
+        days,
+        timeRange,
         lengthMinutes: Number(c.lengthMinutes ?? 0),
       };
     });
 
-    // ---------------------------------------------
-    // Filtering
-    // ---------------------------------------------
-    let filtered = normalized
+    // ---- Filter ----
+    let filtered = norm
       .filter((c) => c.days.length > 0)
-      .filter((c) => !c.days.includes("Sun"))
-      .filter((c) => c.ageMin !== c.ageMax) // private lessons
+      .filter((c) => c.ageMin !== c.ageMax)
       .filter((c) => !["FLX", "PRE", "DT"].includes(c.level.toUpperCase()));
 
-    if (!Number.isNaN(age)) {
+    if (!isNaN(age)) {
       filtered = filtered.filter((c) => age >= c.ageMin && age <= c.ageMax);
     }
 
-    // ---------------------------------------------
-    // Group by class description
-    // ---------------------------------------------
+    // ---- Group by description ----
     const groups: Record<string, any> = {};
-
     for (const c of filtered) {
       if (!groups[c.description]) {
         groups[c.description] = {
-          groupId: c.description,
-          name: c.description,
+          className: c.description,
           ageMin: c.ageMin,
           ageMax: c.ageMax,
+          lengthMinutes: c.lengthMinutes,
           options: [],
         };
       }
 
-      // For each day → create 2 upcoming dates
+      // Build date candidates for ALL days
       for (const day of c.days) {
-        // First good date (not closed)
-        const first = nextDateForDay(day);
+        let first = nextDateForWeekday(day);
 
-        // Second good date
-        let second = new Date(first);
-        second.setDate(first.getDate() + 7);
-        while (isClosed(second)) {
-          second.setDate(second.getDate() + 7);
+        // Skip closures
+        while (isClosed(first)) {
+          first = nextWeek(first);
         }
 
+        let second = nextWeek(first);
+        while (isClosed(second)) {
+          second = nextWeek(second);
+        }
+
+        // Extract 4:45pm from "4:45pm - 5:45pm"
         const [startStr, endStr] = c.timeRange.split("-").map((s) => s.trim());
 
-        const startISO1 = toLocalISO(first, startStr);
-        const endISO1 = toLocalISO(first, endStr);
-
-        const startISO2 = toLocalISO(second, startStr);
-        const endISO2 = toLocalISO(second, endStr);
-
         groups[c.description].options.push({
           id: c.id,
           day,
-          date: dateString(first),
-          label: `${day} • ${first.toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-          })} @ ${c.timeRange}`,
+          date: first.toISOString().split("T")[0],
+          label: formatDateLabel(first, day, c.timeRange),
           timeRange: c.timeRange,
-          lengthMinutes: c.lengthMinutes,
-          startISO: startISO1,
-          endISO: endISO1,
+          startISO: parseISO(first, startStr),
+          endISO: parseISO(first, endStr),
         });
 
         groups[c.description].options.push({
           id: c.id,
           day,
-          date: dateString(second),
-          label: `${day} • ${second.toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-          })} @ ${c.timeRange}`,
+          date: second.toISOString().split("T")[0],
+          label: formatDateLabel(second, day, c.timeRange),
           timeRange: c.timeRange,
-          lengthMinutes: c.lengthMinutes,
-          startISO: startISO2,
-          endISO: endISO2,
+          startISO: parseISO(second, startStr),
+          endISO: parseISO(second, endStr),
         });
       }
+
+      // Sort options soon
     }
 
-    const results = Object.values(groups);
+    // ---- Flatten + Reduce to NEXT 2 DATES ONLY ----
+    const results = Object.values(groups).map((g: any) => {
+      // Combine all options, sort chronologically
+      const sorted = [...g.options].sort(
+        (a, b) => new Date(a.startISO).getTime() - new Date(b.startISO).getTime()
+      );
 
-    classesCache = {
-      key,
-      data: results,
-      exp: Date.now() + CACHE_TTL,
-    };
+      // Keep only next 2
+      g.options = sorted.slice(0, 2);
+      return g;
+    });
 
     return NextResponse.json({ classes: results });
   } catch (err: any) {
-    console.error("Grouped classes error:", err);
-    return NextResponse.json({ error: err.message || "Server error" }, { status: 500 });
+    console.error("CLASS ERROR:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
