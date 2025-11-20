@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       selectedClass   // { id, name, day, time, lengthMinutes }
     } = body;
 
-    if (!contactId || !selectedClass) {
+    if (!contactId) {
       return NextResponse.json(
         { error: "Missing contactId or selectedClass" },
         { status: 400 }
@@ -41,8 +41,6 @@ export async function POST(req: NextRequest) {
 
     // Start/End times must be real ISO datetime stamps.
     // selectedClass.time is like: "6:00pm - 7:00pm"
-console.log("DEBUG selectedClass:", JSON.stringify(selectedClass, null, 2));
-
 
     const [startStr, endStr] = selectedClass.time
   .split("-")
