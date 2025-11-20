@@ -1,46 +1,86 @@
-import { NextRequest, NextResponse } from "next/server";
+// app/api/elite/classes/route.ts
+import { NextResponse, NextRequest } from "next/server";
 import { akadaFetch } from "@/lib/akada";
 
 export const runtime = "nodejs";
 
+// ============================================================================
+// CONFIG
+// ============================================================================
 const TZ = "America/Chicago";
 
-const CLOSED_RANGES = [
+// Closure windows (inclusive)
+const CLOSED_RANGES: [string, string][] = [
   ["2025-11-24", "2025-11-30"],
   ["2025-12-22", "2026-01-04"],
   ["2026-03-02", "2026-03-08"],
 ];
 
-// --- Utility: produce a Date object in CST/CDT -----------------
-function makeLocalDate(y: number, m: number, d: number): Date {
-  // Midnight local time
-  return new Date(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}T00:00:00`);
+// ============================================================================
+// UTILITY HELPERS
+// ============================================================================
+
+type Weekday = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
+
+const WEEKDAY_MAP: Record<Weekday, number> = {
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+// Get next occurrence of a weekday (local to Nashville)
+function nextDateForDay(day: Weekday): Date {
+  const now = new Date(
+    new Date().toLocaleString("en-US", { timeZone: TZ })
+  );
+
+  const todayDow = now.getDay(); // 0=Sun,1=Mon,...
+  const target = WEEKDAY_MAP[day];
+
+  const todayFixed = todayDow === 0 ? 7 : todayDow;
+
+  let delta = target - todayFixed;
+  if (delta <= 0) delta += 7;
+
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + delta);
+  return d;
 }
 
-// --- Utility: get YYYY-MM-DD in CST/CDT ------------------------
-function localISO(date: Date): string {
+// Add 7 days
+function nextWeek(d: Date): Date {
+  const n = new Date(d);
+  n.setDate(d.getDate() + 7);
+  return n;
+}
+
+// Convert Date → "YYYY-MM-DD" in CST
+function localISO(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(date);
+  }).format(d);
 }
 
-// --- Utility: formatted date like "Dec 1" -----------------------
-function localShort(date: Date): string {
+// "Dec 1"
+function shortDate(d: Date): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: TZ,
     month: "short",
     day: "numeric",
-  }).format(date);
+  }).format(d);
 }
 
-// --- Parse raw "6:15pm" safely --------------------------------
-function parseAkadaTime(str: string) {
+// AM/PM → 24hr
+function to24Hour(str: string): { hour: number; min: number } {
   const m = str.trim().match(/(\d{1,2}):(\d{2})(am|pm)/i);
-  if (!m) return null;
-
+  if (!m) return { hour: 0, min: 0 };
   let [, hh, mm, ap] = m;
   let hour = parseInt(hh, 10);
   const min = parseInt(mm, 10);
@@ -52,97 +92,66 @@ function parseAkadaTime(str: string) {
   return { hour, min };
 }
 
-// --- Build ISO with offset (America/Chicago) -------------------
-function buildLocalISO(date: Date, timeStr: string): string {
-  const t = parseAkadaTime(timeStr);
-  if (!t) return date.toISOString();
+// Build local Nashville ISO for GHL
+function buildISO(date: Date, timeStr: string): string {
+  const { hour, min } = to24Hour(timeStr);
 
-  const isoDate = localISO(date);
-  const [y, m, d] = isoDate.split("-").map(Number);
+  const d = new Date(date);
+  d.setHours(hour, min, 0, 0);
 
-  // Create date in UTC, then format it in America/Chicago with correct offset
-  const utc = new Date(Date.UTC(y, m - 1, d, t.hour, t.min));
-
-  // Format to "2025-12-08T18:15:00-06:00"
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    hour12: false,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-    .formatToParts(utc)
-    .reduce<Record<string, string>>((acc, p) => {
-  acc[p.type] = p.value;
-  return acc;
-}, {});
-
-
-  // Determine the offset for that date & time
-  const offsetMinutes = -(
-    new Date(
-      `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00`
-    ).getTimezoneOffset()
-  );
-  const sign = offsetMinutes >= 0 ? "+" : "-";
-  const oh = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, "0");
-  const om = String(Math.abs(offsetMinutes) % 60).padStart(2, "0");
-
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00${sign}${oh}:${om}`;
+  return d
+    .toLocaleString("en-CA", {
+      timeZone: TZ,
+      hour12: false,
+    })
+    .replace(", ", "T") + ":00";
 }
 
-// --- Next weekday date in CST/CDT ------------------------------
-const WEEKDAY_MAP = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-function nextDateForWeekday(label: string): Date {
-  const today = new Date(new Date().toLocaleString("en-US", { timeZone: TZ }));
-  const dow = today.getDay();
-  const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-  const target = map[label as keyof typeof map];
-
-
-  let delta = target - dow;
-  if (delta <= 0) delta += 7;
-
-  const out = makeLocalDate(today.getFullYear(), today.getMonth() + 1, today.getDate());
-  out.setDate(out.getDate() + delta);
-  return out;
-}
-
-// --- Is a date inside a closure window -------------------------
-function isClosed(date: Date): boolean {
-  const iso = localISO(date);
+// Does YYYY-MM-DD fall inside a closure window?
+function isClosed(d: Date): boolean {
+  const iso = localISO(d);
   return CLOSED_RANGES.some(([start, end]) => iso >= start && iso <= end);
 }
 
-function nextWeek(d: Date): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() + 7);
-  return x;
+// Map Akada booleans → weekday labels
+function extractDays(c: any): Weekday[] {
+  const map: [keyof any, Weekday][] = [
+    ["monday", "Mon"],
+    ["tuesday", "Tue"],
+    ["wednesday", "Wed"],
+    ["thursday", "Thu"],
+    ["friday", "Fri"],
+    ["saturday", "Sat"],
+  ];
+  return map.filter(([k]) => !!c[k]).map(([, lbl]) => lbl);
 }
 
-// ---------------------------------------------------------------
+// ============================================================================
 // MAIN HANDLER
-// ---------------------------------------------------------------
+// ============================================================================
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const age = Number(searchParams.get("age") || NaN);
+    const ageParam = searchParams.get("age");
+    const age = ageParam ? Number(ageParam) : NaN;
 
+    // Fetch from Akada
     const res = await akadaFetch(`/studio/classes`, { method: "GET" });
     const txt = await res.text();
-    if (!res.ok) return NextResponse.json({ error: txt }, { status: res.status });
+
+    if (!res.ok) {
+      return NextResponse.json({ error: txt }, { status: res.status });
+    }
 
     const j = JSON.parse(txt);
     const raw: any[] = j?.returnValue?.currentPageItems || [];
 
-    // Normalize Akada records
-    const norm = raw.map((c: any) => {
-      const start = (c.startTimeDisplay || "").trim(); // "6:15pm"
-      const stop = (c.stopTimeDisplay || "").trim();   // "7:00pm"
+    // Normalize Akada classes
+    const norm = raw.map((c) => {
+      const days = extractDays(c);
+      const start = (c.startTimeDisplay || "").trim();
+      const end = (c.stopTimeDisplay || "").trim();
+      const timeRange = `${start} - ${end}`;
 
       return {
         id: String(c.id),
@@ -150,17 +159,13 @@ export async function GET(req: NextRequest) {
         level: (c.levelDescription || "").trim(),
         ageMin: Number(c.lowerAgeLimit ?? 0),
         ageMax: Number(c.upperAgeLimit ?? 99),
-        days: ["monday","tuesday","wednesday","thursday","friday","saturday"]
-          .filter((d) => c[d])
-          .map((d) => d.charAt(0).toUpperCase() + d.slice(1,3)),
-        start,
-        stop,
-        timeRange: `${start} - ${stop}`,
+        days,
+        timeRange,
         lengthMinutes: Number(c.lengthMinutes ?? 0),
       };
     });
 
-    // Filters
+    // Filter
     let filtered = norm
       .filter((c) => c.days.length > 0)
       .filter((c) => c.ageMin !== c.ageMax)
@@ -187,21 +192,26 @@ export async function GET(req: NextRequest) {
       }
 
       for (const day of c.days) {
-        let first = nextDateForWeekday(day);
+        let first = nextDateForDay(day);
+
         while (isClosed(first)) first = nextWeek(first);
 
         let second = nextWeek(first);
         while (isClosed(second)) second = nextWeek(second);
 
+        const [startStr, endStr] = c.timeRange
+          .split("-")
+          .map((s) => s.trim());
+
         groups[c.description].options.push({
           id: c.id,
           day,
           date: localISO(first),
-          dateFormatted: localShort(first),
-          label: `${day} • ${localShort(first)} @ ${c.timeRange}`,
+          dateFormatted: shortDate(first),
+          label: `${day} • ${shortDate(first)} @ ${c.timeRange}`,
           timeRange: c.timeRange,
-          startISO: buildLocalISO(first, c.start),
-          endISO: buildLocalISO(first, c.stop),
+          startISO: buildISO(first, startStr),
+          endISO: buildISO(first, endStr),
           lengthMinutes: c.lengthMinutes,
         });
 
@@ -209,26 +219,26 @@ export async function GET(req: NextRequest) {
           id: c.id,
           day,
           date: localISO(second),
-          dateFormatted: localShort(second),
-          label: `${day} • ${localShort(second)} @ ${c.timeRange}`,
+          dateFormatted: shortDate(second),
+          label: `${day} • ${shortDate(second)} @ ${c.timeRange}`,
           timeRange: c.timeRange,
-          startISO: buildLocalISO(second, c.start),
-          endISO: buildLocalISO(second, c.stop),
+          startISO: buildISO(second, startStr),
+          endISO: buildISO(second, endStr),
           lengthMinutes: c.lengthMinutes,
         });
       }
     }
 
-    // Only NEXT 2 dates per group
+    // FINAL: Keep next 2 earliest
     const results = Object.values(groups).map((g: any) => {
-      g.options = [...g.options].sort(
+      const sorted = [...g.options].sort(
         (a, b) => new Date(a.startISO).getTime() - new Date(b.startISO).getTime()
-      ).slice(0, 2);
+      );
+      g.options = sorted.slice(0, 2);
       return g;
     });
 
     return NextResponse.json({ classes: results });
-
   } catch (err: any) {
     console.error("CLASS ERROR:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
