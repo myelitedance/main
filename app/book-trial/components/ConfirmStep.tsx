@@ -91,16 +91,22 @@ export default function ConfirmStep({
       // 3️⃣ Schedule Appointment
       //    Adapt to the current sendAppointment signature:
       //    { classId, className, lengthMinutes, dancerFirstName, day, time, contactId, opportunityId }
-      const apptRes = await sendAppointment({
-        classId: selectedClass.option.id,
-        className: selectedClass.className,
-        lengthMinutes: selectedClass.lengthMinutes,
-        dancerFirstName: contactData.dancerFirstName,
-        day: selectedClass.option.day,
-        time: selectedClass.option.timeRange,
-        contactId,
-        opportunityId,
-      });
+const apptRes = await sendAppointment({
+  classId: selectedClass.option.id,
+  className: selectedClass.className,
+  lengthMinutes: selectedClass.lengthMinutes,
+
+  dancerFirstName: contactData.dancerFirstName,
+  day: selectedClass.option.day,
+  date: selectedClass.option.date,
+  timeRange: selectedClass.option.timeRange,
+
+  startISO: selectedClass.option.startISO,
+  endISO: selectedClass.option.endISO,
+
+  contactId,
+  opportunityId,
+});
 
       if (!apptRes?.appointmentId) {
         setError("Unable to schedule appointment.");

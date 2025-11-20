@@ -68,35 +68,30 @@ export async function sendAppointment(data: {
   classId: string;
   className: string;
   lengthMinutes: number;
+
   dancerFirstName: string;
   day: string;
-  time: string;
+  date: string;
+  timeRange: string;
+
+  // NEW – actual date/time endpoints
+  startISO: string;
+  endISO: string;
+
   contactId: string;
   opportunityId: string;
 }) {
   try {
-    const appointmentTitle = buildAppointmentTitle(
-      data.dancerFirstName,
-      data.className,
-      data.day,
-      data.time
-    );
-
-    const payload = {
-      ...data,
-      appointmentTitle,
-    };
-
     const res = await fetch("/api/trial/appointment", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(data),
       headers: { "Content-Type": "application/json" },
     });
 
-    const json = await res.json();
-    return json;
-  } catch (err: any) {
+    return await res.json();
+  } catch (err) {
     console.error("sendAppointment error:", err);
     return null;
   }
 }
+

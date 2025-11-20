@@ -106,11 +106,19 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
         {!loading &&
           groups.length > 0 &&
           groups.map((group) => (
-            <div key={group.groupId} className="border rounded-xl p-4 bg-white">
-              <h2 className="text-lg font-semibold text-dance-blue text-center">
+            <div key={group.groupId} className="border rounded-xl p-4 bg-white space-y-3">
+              
+              {/* CLASS NAME */}
+              <h2 className="text-xl font-bold text-dance-blue text-center">
                 {group.name}
               </h2>
 
+              {/* AGE RANGE */}
+              <p className="text-sm text-center text-gray-600 -mt-2">
+                Ages {group.ageMin}–{group.ageMax}
+              </p>
+
+              {/* DATE OPTIONS */}
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {group.options.slice(0, 2).map((opt) => {
                   const key = `${group.groupId}_${opt.date}_${opt.timeRange}`;
@@ -129,9 +137,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                         }
                       `}
                     >
-                      <div className="text-base font-semibold">
-                        {opt.date}
-                      </div>
+                      <div className="text-base font-bold">{opt.date}</div>
                       <div className="text-sm opacity-90">{opt.label}</div>
                     </button>
                   );
@@ -146,8 +152,6 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           <Button variant="secondary" onClick={onBack}>
             Back
           </Button>
-
-          {/* Hidden Continue button because selecting an option auto-advances */}
           <div></div>
         </div>
       </div>
