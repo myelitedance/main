@@ -8,7 +8,8 @@ import StepWrapper from "./StepWrapper";
 interface ClassOption {
   id: string;
   day: string;
-  date: string;
+  date: string;          // YYYY-MM-DD
+  dateFormatted: string; // "Dec 1"
   label: string;
   timeRange: string;
   startISO: string;
@@ -18,7 +19,7 @@ interface ClassOption {
 
 interface ClassGroup {
   groupId: string;
-  name: string;
+  name: string;        // description
   ageMin: number;
   ageMax: number;
   options: ClassOption[];
@@ -55,7 +56,18 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           return;
         }
 
-        setGroups(data.classes || []);
+        setGroups(
+          (data.classes || []).map((group: ClassGroup) => ({
+            ...group,
+            options: group.options.map((o) => ({
+              ...o,
+              dateFormatted: new Date(o.date).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              }),
+            })),
+          }))
+        );
       } catch (err) {
         setError("Something went wrong while loading classes.");
       } finally {
@@ -88,27 +100,23 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           Choose the best day & time for your trial.
         </p>
 
-        {/* Loading */}
         {loading && (
           <div className="text-center py-8 text-gray-500">
             Loading classes…
           </div>
         )}
 
-        {/* No classes */}
         {!loading && groups.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             No classes available for this age range.
           </div>
         )}
 
-        {/* Class groups */}
         {!loading &&
           groups.length > 0 &&
           groups.map((group) => (
             <div key={group.groupId} className="border rounded-xl p-4 bg-white space-y-3">
-              
-              {/* CLASS NAME */}
+              {/* CLASS DESCRIPTION */}
               <h2 className="text-xl font-bold text-dance-blue text-center">
                 {group.name}
               </h2>
@@ -118,7 +126,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                 Ages {group.ageMin}–{group.ageMax}
               </p>
 
-              {/* DATE OPTIONS */}
+              {/* DATE BUTTONS */}
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {group.options.slice(0, 2).map((opt) => {
                   const key = `${group.groupId}_${opt.date}_${opt.timeRange}`;
@@ -137,8 +145,12 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                         }
                       `}
                     >
-                      <div className="text-base font-bold">{opt.date}</div>
-                      <div className="text-sm opacity-90">{opt.label}</div>
+                      <div className="text-base font-bold">
+                        {opt.dateFormatted}
+                      </div>
+                      <div className="text-sm opacity-90">
+                        {opt.label}
+                      </div>
                     </button>
                   );
                 })}
