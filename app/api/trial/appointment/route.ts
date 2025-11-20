@@ -98,7 +98,7 @@ const payload = {
   appointmentStatus: "confirmed",
 
   description: "Elite Dance Trial Class",
-  address: "7177 Nolensville Rd Suite B3, Nashville, TN 37211",
+  address: "7177 Nolensville Rd Suite B3, Nolensville, TN 37135",
 
   ignoreDateRange: false,
   toNotify: false,
@@ -106,10 +106,13 @@ const payload = {
 
   calendarId: CALENDAR_ID,
   locationId: LOCATION_ID,
-  contactId,
+  contactId: "rFk7ihMifzRtxcpxRXYj",
 
-  startTime: startTimeISO,   // MUST include offset
-  endTime: endTimeISO        // MUST include offset
+   startTime: "2025-11-23T03:30:00+05:30",
+  endTime: "2025-11-23T04:30:00+05:30"
+
+  //startTime: startTimeISO,   // MUST include offset
+  //endTime: endTimeISO        // MUST include offset
 };
 
     const res = await fetch(`${API}/calendars/events/appointments`, {
