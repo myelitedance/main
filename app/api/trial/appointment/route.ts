@@ -11,13 +11,13 @@ const need = (k: string) => {
 
 const GHL_KEY = need("GHL_API_KEY");
 const LOCATION_ID = need("GHL_LOCATION_ID");
-const CALENDAR_ID = "ZQfdk4DMSCu0yhUSjell"; // your trial calendar
+const CALENDAR_ID = "ZQfdk4DMSCu0yhUSjell"; // Trial Calendar
 
 function headers() {
   return {
     Accept: "application/json",
     Authorization: `Bearer ${GHL_KEY}`,
-    Version: "2021-04-15",
+    Version: "2021-07-28",
     "Content-Type": "application/json",
   };
 }
@@ -27,92 +27,61 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     const {
+      classId,
+      className,
+      lengthMinutes,
+      dancerFirstName,
+      day,
+      date,         // "2025-12-01"
+      timeRange,    // "4:45pm - 5:45pm"
+      startISO,     // FULL ISO timestamp w/ offset (we generated earlier)
+      endISO,
       contactId,
-      opportunityId,
-      selectedClass   // { id, name, day, time, lengthMinutes }
+      opportunityId
     } = body;
 
-    if (!contactId) {
+    if (!contactId || !startISO || !endISO) {
       return NextResponse.json(
-        { error: "Missing contactId or selectedClass" },
+        { error: "Missing required appointment fields." },
         { status: 400 }
       );
     }
 
-    // Start/End times must be real ISO datetime stamps.
-    // selectedClass.time is like: "6:00pm - 7:00pm"
+    // ----------------------------
+    // BUILD APPOINTMENT PAYLOAD
+    // ----------------------------
+    const payload = {
+      title: `${className} Trial Class`,
+      appointmentStatus: "confirmed",
+      calendarId: CALENDAR_ID,
+      locationId: LOCATION_ID,
+      contactId,
 
-    const [startStr, endStr] = selectedClass.time
-  .split("-")
-  .map((s: string) => s.trim());
+      // Where appointment happens
+      meetingLocationType: "custom",
+      meetingLocationId: "custom_0",
+      overrideLocationConfig: true,
 
+      // Info for the parent
+      description: `${dancerFirstName}'s trial class for ${className}`,
+      address: "7177 Nolensville Rd Suite B3, Nolensville, TN 37135",
 
-    // We need a date—use the *next upcoming day* for the class
-    function nextClassDate(dayName: string) {
-      const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-      const target = days.indexOf(dayName);
-      const now = new Date();
-      const result = new Date(now);
-      result.setHours(0,0,0,0);
-      let delta = target - now.getDay();
-      if (delta <= 0) delta += 7;
-      result.setDate(now.getDate() + delta);
-      return result;
-    }
+      // Allow booking outside calendar bounds
+      ignoreDateRange: true,
+      ignoreFreeSlotValidation: true,
+      toNotify: true,
 
-    const runDate = nextClassDate(selectedClass.day);
+      // Real scheduling data (the important part)
+      startTime: startISO,
+      endTime: endISO,
 
-    function parseTime(t: string) {
-      const d = new Date(runDate);
-      const [time, period] = t.split(/(am|pm)/i);
-      let [h, m] = time.split(":").map(Number);
-      if (period.toLowerCase() === "pm" && h < 12) h += 12;
-      if (period.toLowerCase() === "am" && h === 12) h = 0;
-      d.setHours(h, m, 0, 0);
-      return d;
-    }
-function toOffsetString(date: Date) {
-  const pad = (n: number) => `${n < 10 ? "0" : ""}${n}`;
-  const offset = -date.getTimezoneOffset();
-  const sign = offset >= 0 ? "+" : "-";
-  const oh = pad(Math.floor(Math.abs(offset) / 60));
-  const om = pad(Math.abs(offset) % 60);
+      // Link to Opportunity
+      opportunityId: opportunityId || undefined
+    };
 
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:${pad(date.getMinutes())}:00${sign}${oh}:${om}`
-  );
-}
-
-const startTimeISO = toOffsetString(parseTime(startStr));
-const endTimeISO = toOffsetString(parseTime(endStr));
-
-
-const payload = {
-  title: `${selectedClass.name} Trial Class`,
-  meetingLocationType: "custom",
-  meetingLocationId: "custom_0",
-  overrideLocationConfig: true,
-  appointmentStatus: "confirmed",
-
-  description: "Elite Dance Trial Class",
-  address: "7177 Nolensville Rd Suite B3, Nolensville, TN 37135",
-
-  ignoreDateRange: false,
-  toNotify: false,
-  ignoreFreeSlotValidation: true,
-
-  calendarId: CALENDAR_ID,
-  locationId: LOCATION_ID,
-  contactId: "rFk7ihMifzRtxcpxRXYj",
-
-   startTime: "2025-11-23T03:30:00+05:30",
-  endTime: "2025-11-23T04:30:00+05:30"
-
-  //startTime: startTimeISO,   // MUST include offset
-  //endTime: endTimeISO        // MUST include offset
-};
-
+    // ----------------------------
+    // SEND TO GHL
+    // ----------------------------
     const res = await fetch(`${API}/calendars/events/appointments`, {
       method: "POST",
       headers: headers(),
@@ -120,34 +89,31 @@ const payload = {
     });
 
     const txt = await res.text();
-    let json: any = null;
-    try { json = JSON.parse(txt); } catch {}
+    let json = null;
+    try {
+      json = JSON.parse(txt);
+    } catch (e) {}
 
     const appointmentId =
       json?.id ||
       json?.appointment?.id ||
       null;
 
-if (!res.ok || !appointmentId) {
-  console.error("Appointment Create Error:");
-  console.error("Status:", res.status);
-  console.error("Raw Text:", txt);
-  console.error("Parsed JSON:", json);
-
-  return NextResponse.json(
-    {
-      error: json || txt || "Unknown error",
-      status: res.status
-    },
-    { status: res.status }
-  );
-}
-
+    if (!res.ok || !appointmentId) {
+      console.error("❌ Appointment Create Error");
+      console.error("Status:", res.status);
+      console.error("Payload Sent:", payload);
+      console.error("Raw Response:", txt);
+      return NextResponse.json(
+        { error: json || txt || "Appointment creation failed", status: res.status },
+        { status: res.status }
+      );
+    }
 
     return NextResponse.json({ appointmentId });
 
   } catch (err: any) {
-    console.error("Appointment API Error:", err);
+    console.error("❌ Appointment API Error:", err);
     return NextResponse.json(
       { error: err?.message || "Server error" },
       { status: 500 }

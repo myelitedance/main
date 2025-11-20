@@ -9,21 +9,24 @@ import { sendContact, sendOpportunity, sendAppointment } from "../utils/api";
 interface ClassOption {
   id: string;
   day: string;
-  date: string;
-  label: string;
-  timeRange: string;
+  date: string;       // YYYY-MM-DD
+  label: string;      // “Mon • Dec 1 @ 4:45pm - 5:45pm”
+  timeRange: string;  // “4:45pm - 5:45pm”
   startISO: string;
   endISO: string;
+  lengthMinutes?: number;
 }
 
 interface ConfirmStepProps {
   age: number;
   years: number;
+
   selectedClass: {
     className: string;
     option: ClassOption;
     lengthMinutes: number;
   };
+
   contactData: {
     parentFirstName: string;
     parentLastName: string;
@@ -32,7 +35,9 @@ interface ConfirmStepProps {
     dancerFirstName: string;
     smsOptIn: boolean;
   };
+
   utms: Record<string, string | null>;
+
   onBack: () => void;
   onComplete: () => void;
 }
@@ -44,18 +49,24 @@ export default function ConfirmStep({
   contactData,
   utms,
   onBack,
-  onComplete,
+  onComplete
 }: ConfirmStepProps) {
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleConfirm = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const opt = selectedClass.option;
 
-      // 1️⃣ Create / Update Contact
-      const contactRes = await sendContact({ ...contactData, utms });
+  const handleConfirm = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      // 1) CONTACT ----------------------------------
+      const contactRes = await sendContact({
+        ...contactData,
+        utms
+      });
 
       if (!contactRes?.contactId) {
         setError("Unable to save contact information.");
@@ -65,20 +76,17 @@ export default function ConfirmStep({
 
       const contactId = contactRes.contactId;
 
-      // 2️⃣ Create Opportunity
-      //    Adapt our richer selectedClass into the shape sendOpportunity expects:
-      //    selectedClass: { id: string; name: string }
+
+      // 2) OPPORTUNITY -------------------------------
       const oppRes = await sendOpportunity({
-        contactId,
-        parentFirstName: contactData.parentFirstName,
-        parentLastName: contactData.parentLastName,
-        dancerFirstName: contactData.dancerFirstName,
-        dancerAge: age,
-        selectedClass: {
-          id: selectedClass.option.id,
-          name: selectedClass.className,
-        },
-      });
+  contactId,
+  parentFirstName: contactData.parentFirstName,
+  parentLastName: contactData.parentLastName,
+  dancerFirstName: contactData.dancerFirstName,
+  dancerAge: age,
+
+  selectedClass: selectedClass
+});
 
       if (!oppRes?.opportunityId) {
         setError("Unable to create opportunity.");
@@ -88,25 +96,26 @@ export default function ConfirmStep({
 
       const opportunityId = oppRes.opportunityId;
 
-      // 3️⃣ Schedule Appointment
-      //    Adapt to the current sendAppointment signature:
-      //    { classId, className, lengthMinutes, dancerFirstName, day, time, contactId, opportunityId }
-const apptRes = await sendAppointment({
-  classId: selectedClass.option.id,
-  className: selectedClass.className,
-  lengthMinutes: selectedClass.lengthMinutes,
 
-  dancerFirstName: contactData.dancerFirstName,
-  day: selectedClass.option.day,
-  date: selectedClass.option.date,
-  timeRange: selectedClass.option.timeRange,
+      // 3) APPOINTMENT -------------------------------
+      const apptRes = await sendAppointment({
+        classId: opt.id,
+        className: selectedClass.className,
+        lengthMinutes: selectedClass.lengthMinutes,
 
-  startISO: selectedClass.option.startISO,
-  endISO: selectedClass.option.endISO,
+        dancerFirstName: contactData.dancerFirstName,
 
-  contactId,
-  opportunityId,
-});
+        // REQUIRED BY APPOINTMENT ROUTE + utils/api
+        day: opt.day,
+        date: opt.date,
+        timeRange: opt.timeRange,
+
+        startISO: opt.startISO,
+        endISO: opt.endISO,
+
+        contactId,
+        opportunityId
+      });
 
       if (!apptRes?.appointmentId) {
         setError("Unable to schedule appointment.");
@@ -116,8 +125,9 @@ const apptRes = await sendAppointment({
 
       setLoading(false);
       onComplete();
+
     } catch (err: any) {
-      console.error(err);
+      console.error("Confirm error:", err);
       setError("Something went wrong completing your booking.");
       setLoading(false);
     }
@@ -126,19 +136,27 @@ const apptRes = await sendAppointment({
   return (
     <StepWrapper>
       <div className="space-y-6 px-4 py-6">
+        
         <h1 className="text-2xl font-bold text-dance-purple text-center">
           Review & Confirm
         </h1>
 
+        <p className="text-center text-gray-600">
+          Make sure everything looks correct before finalizing your trial class.
+        </p>
+
         <div className="bg-gray-50 border rounded-lg p-4 space-y-4">
+
+          {/* CLASS INFO */}
           <div>
             <h2 className="font-semibold text-dance-blue">Class</h2>
-            <p>{selectedClass.className}</p>
+            <p className="font-medium">{selectedClass.className}</p>
             <p className="text-sm text-gray-600">
-              {selectedClass.option.day} • {selectedClass.option.label}
+              {opt.label}
             </p>
           </div>
 
+          {/* DANCER */}
           <div>
             <h2 className="font-semibold text-dance-blue">Dancer</h2>
             <p>{contactData.dancerFirstName}</p>
@@ -147,15 +165,15 @@ const apptRes = await sendAppointment({
             </p>
           </div>
 
+          {/* PARENT */}
           <div>
             <h2 className="font-semibold text-dance-blue">Parent</h2>
-            <p>
-              {contactData.parentFirstName} {contactData.parentLastName}
-            </p>
+            <p>{contactData.parentFirstName} {contactData.parentLastName}</p>
             <p className="text-sm text-gray-600">{contactData.email}</p>
             <p className="text-sm text-gray-600">{contactData.phone}</p>
           </div>
 
+          {/* SMS */}
           <div>
             <h2 className="font-semibold text-dance-blue">SMS</h2>
             <p className="text-sm">
@@ -164,6 +182,7 @@ const apptRes = await sendAppointment({
                 : "No SMS reminders selected."}
             </p>
           </div>
+
         </div>
 
         {error && <ErrorText>{error}</ErrorText>}
@@ -176,6 +195,7 @@ const apptRes = await sendAppointment({
             {loading ? "Booking…" : "Confirm & Book"}
           </Button>
         </div>
+
       </div>
     </StepWrapper>
   );
