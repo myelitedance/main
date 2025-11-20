@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       {
         id: OF.TRIAL_CLASS,
         key: "opportunity.trial_class_name",
-        field_value: selectedClass?.name || "",
+        field_value: selectedClass?.className || "",
       },
     ];
 

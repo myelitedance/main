@@ -77,16 +77,22 @@ export default function ConfirmStep({
       const contactId = contactRes.contactId;
 
 
-      // 2) OPPORTUNITY -------------------------------
-      const oppRes = await sendOpportunity({
+// 2) OPPORTUNITY -------------------------------
+const oppRes = await sendOpportunity({
   contactId,
   parentFirstName: contactData.parentFirstName,
   parentLastName: contactData.parentLastName,
   dancerFirstName: contactData.dancerFirstName,
   dancerAge: age,
 
-  selectedClass: selectedClass
+  selectedClass: {
+    className: selectedClass.className,
+    option: selectedClass.option,
+    lengthMinutes: selectedClass.lengthMinutes
+  }
 });
+
+
 
       if (!oppRes?.opportunityId) {
         setError("Unable to create opportunity.");
