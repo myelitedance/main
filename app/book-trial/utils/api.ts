@@ -38,11 +38,22 @@ export async function sendOpportunity(data: {
   contactId: string;
   parentFirstName: string;
   parentLastName: string;
+
   dancerFirstName: string;
   dancerAge: number;
+
   selectedClass: {
-    id: string;
-    name: string;
+    className: string;
+    option: {
+      id: string;
+      day: string;
+      date: string;
+      label: string;
+      timeRange: string;
+      startISO: string;
+      endISO: string;
+    };
+    lengthMinutes: number;
   };
 }) {
   try {
