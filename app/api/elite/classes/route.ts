@@ -1,5 +1,5 @@
 // app/api/elite/classes/route.ts
-console.log("🔥🔥🔥 LOADED ELITE ROUTE FROM APP/API/ELITE/CLASSES/ROUTE.TS 🔥🔥🔥");
+console.log("🔥 Elite Route Loaded");
 
 import { NextResponse, NextRequest } from "next/server";
 import { akadaFetch } from "@/lib/akada";
@@ -13,7 +13,6 @@ export const revalidate = 0;
 // ============================================================================
 const TZ = "America/Chicago";
 
-// Closure windows (inclusive)
 const CLOSED_RANGES: [string, string][] = [
   ["2025-11-24", "2025-11-30"],
   ["2025-12-22", "2026-01-04"],
@@ -40,6 +39,8 @@ interface ClassOption {
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+// Weekday mapping (Mon=1,...)
 const WEEKDAY_MAP: Record<Weekday, number> = {
   Mon: 1,
   Tue: 2,
@@ -49,52 +50,57 @@ const WEEKDAY_MAP: Record<Weekday, number> = {
   Sat: 6,
 };
 
-function nextDateForDay(day: Weekday): Date {
+// Get current date in CST (no UTC shift)
+function nowInCST(): Date {
   const now = new Date();
-
-  // Convert real-time UTC → CST using Intl
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  });
+  }).formatToParts(now);
 
-  const parts = formatter.formatToParts(now);
-  const y = Number(parts.find(p => p.type === "year")?.value);
-  const m = Number(parts.find(p => p.type === "month")?.value);
-  const d = Number(parts.find(p => p.type === "day")?.value);
+  const y = Number(parts.find(p => p.type === "year")!.value);
+  const m = Number(parts.find(p => p.type === "month")!.value);
+  const d = Number(parts.find(p => p.type === "day")!.value);
 
-  const cstToday = new Date(y, m - 1, d);
-
-  const todayDow = cstToday.getDay(); 
-  const target = WEEKDAY_MAP[day];
-  const todayFixed = todayDow === 0 ? 7 : todayDow;
-
-  let delta = target - todayFixed;
-  if (delta <= 0) delta += 7;
-
-  cstToday.setDate(cstToday.getDate() + delta);
-  return cstToday;
+  return new Date(y, m - 1, d);
 }
 
+// Next weekday (in CST)
+function nextDateForDay(day: Weekday): Date {
+  const today = nowInCST();
+
+  const todayDow = today.getDay() === 0 ? 7 : today.getDay(); // Sun→7
+  const target = WEEKDAY_MAP[day];
+
+  let delta = target - todayDow;
+  if (delta <= 0) delta += 7;
+
+  const next = new Date(today);
+  next.setDate(today.getDate() + delta);
+  next.setHours(0, 0, 0, 0);
+
+  return next;
+}
 
 function nextWeek(d: Date): Date {
   const n = new Date(d);
-  n.setDate(n.getDate() + 7);
+  n.setDate(d.getDate() + 7);
   return n;
 }
 
-// Convert Date → "YYYY-MM-DD" in CST
+// YYYY-MM-DD (CST)
 function localISO(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
     month: "2-digit",
-    day: "numeric",
+    day: "2-digit",
   }).format(d);
 }
 
+// "Dec 1"
 function shortDate(d: Date): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: TZ,
@@ -103,13 +109,14 @@ function shortDate(d: Date): string {
   }).format(d);
 }
 
-// Convert AM/PM to 24hr
+// Convert 9:15am → 24hr
 function to24Hour(str: string): { hour: number; min: number } {
-  const m = str.trim().match(/(\d{1,2}):(\d{2})(am|pm)/i);
+  const m = str.match(/(\d{1,2}):(\d{2})(am|pm)/i);
   if (!m) return { hour: 0, min: 0 };
+
   let [, hh, mm, ap] = m;
-  let hour = parseInt(hh, 10);
-  const min = parseInt(mm, 10);
+  let hour = Number(hh);
+  const min = Number(mm);
 
   ap = ap.toLowerCase();
   if (ap === "pm" && hour < 12) hour += 12;
@@ -118,18 +125,21 @@ function to24Hour(str: string): { hour: number; min: number } {
   return { hour, min };
 }
 
-// Build proper ISO-8601 with offset (e.g. 2021-06-23T03:30:00+05:30)
+// ISO with offset: 2025-12-01T18:15:00-06:00
 function buildISO(date: Date, timeStr: string): string {
   const { hour, min } = to24Hour(timeStr);
 
-  const localDate = new Date(
-    new Date(date.toLocaleString("en-US", { timeZone: TZ }))
+  // Build CST datetime
+  const local = new Date(
+    date.toLocaleString("en-US", { timeZone: TZ })
   );
-  localDate.setHours(hour, min, 0, 0);
 
-  const pad = (n: number) => n.toString().padStart(2, "0");
+  local.setHours(hour, min, 0, 0);
 
-  const offsetMin = localDate.getTimezoneOffset() * -1;
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  // Offset (negative minutes = CST)
+  const offsetMin = local.getTimezoneOffset() * -1;
   const offHr = Math.floor(offsetMin / 60);
   const offMin = Math.abs(offsetMin % 60);
 
@@ -137,8 +147,8 @@ function buildISO(date: Date, timeStr: string): string {
     `${offHr >= 0 ? "+" : "-"}${pad(Math.abs(offHr))}:${pad(offMin)}`;
 
   return (
-    `${localDate.getFullYear()}-${pad(localDate.getMonth() + 1)}-${pad(localDate.getDate())}` +
-    `T${pad(localDate.getHours())}:${pad(localDate.getMinutes())}:00${offset}`
+    `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}` +
+    `T${pad(local.getHours())}:${pad(local.getMinutes())}:00${offset}`
   );
 }
 
@@ -156,12 +166,14 @@ function extractDays(c: any): Weekday[] {
     ["friday", "Fri"],
     ["saturday", "Sat"],
   ];
-  return map.filter(([k]) => !!c[k]).map(([, lbl]) => lbl);
+
+  return map.filter(([k]) => c[k]).map(([, lbl]) => lbl);
 }
 
 // ============================================================================
-// ROUTE HANDLER
+// ROUTE
 // ============================================================================
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -178,24 +190,19 @@ export async function GET(req: NextRequest) {
     const j = JSON.parse(txt);
     const raw: any[] = j?.returnValue?.currentPageItems || [];
 
-    const norm = raw.map((c) => {
-      const days = extractDays(c);
-      const start = (c.startTimeDisplay || "").trim();
-      const end = (c.stopTimeDisplay || "").trim();
-      const timeRange = `${start} - ${end}`;
+    // Normalize raw classes
+    const norm = raw.map((c) => ({
+      id: String(c.id),
+      description: (c.description || "").trim(),
+      level: (c.levelDescription || "").trim(),
+      ageMin: Number(c.lowerAgeLimit ?? 0),
+      ageMax: Number(c.upperAgeLimit ?? 99),
+      days: extractDays(c),
+      timeRange: `${(c.startTimeDisplay || "").trim()} - ${(c.stopTimeDisplay || "").trim()}`,
+      lengthMinutes: Number(c.lengthMinutes ?? 0),
+    }));
 
-      return {
-        id: String(c.id),
-        description: (c.description || "").trim(),
-        level: (c.levelDescription || "").trim(),
-        ageMin: Number(c.lowerAgeLimit ?? 0),
-        ageMax: Number(c.upperAgeLimit ?? 99),
-        days,
-        timeRange,
-        lengthMinutes: Number(c.lengthMinutes ?? 0),
-      };
-    });
-
+    // Filter invalid classes
     let filtered = norm
       .filter((c) => c.days.length > 0)
       .filter((c) => c.ageMin !== c.ageMax)
@@ -205,6 +212,7 @@ export async function GET(req: NextRequest) {
       filtered = filtered.filter((c) => age >= c.ageMin && age <= c.ageMax);
     }
 
+    // Grouping
     const groups: Record<string, any> = {};
 
     for (const c of filtered) {
@@ -255,7 +263,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // FINAL SORT
+    // Keep next 2 dates
     const results = Object.values(groups).map((g: any) => {
       g.options = (g.options as ClassOption[])
         .sort(
@@ -264,13 +272,15 @@ export async function GET(req: NextRequest) {
             new Date(b.startISO).getTime()
         )
         .slice(0, 2);
-
       return g;
     });
 
     return NextResponse.json({ classes: results });
   } catch (err: any) {
     console.error("CLASS ERROR:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || "Server Error" },
+      { status: 500 }
+    );
   }
 }
