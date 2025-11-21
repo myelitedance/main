@@ -18,7 +18,7 @@ interface ClassOption {
 }
 
 interface ClassGroup {
-  id: string;          // THE REAL AKADA CLASS ID
+  id: string;          // Akada numeric ID as string
   name: string;        // description
   ageMin: number;
   ageMax: number;
@@ -55,16 +55,13 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
   const [error, setError] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  // loaded class descriptions
-  const [descriptions, setDescriptions] = useState<Record<
-    string,
-    { shortDescription: string }
-  > | null>(null);
+  const [descriptions, setDescriptions] = useState<
+    Record<string, { shortDescription: string }> | null
+  >(null);
 
-  // which accordion is open?
   const [openDesc, setOpenDesc] = useState<string | null>(null);
 
-  // Load descriptions JSON
+  // Load descriptions JSON ONCE
   useEffect(() => {
     async function loadDescriptions() {
       try {
@@ -74,18 +71,19 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
         const json = await res.json();
         setDescriptions(json);
       } catch {
-        console.warn("Could not load class descriptions JSON.");
+        console.warn("⚠️ Could not load classDescriptions.json");
       }
     }
 
     loadDescriptions();
   }, []);
 
-  // Load classes from your internal API
+  // Load class groups
   useEffect(() => {
     async function load() {
       try {
         setLoading(true);
+
         const res = await fetch(`/api/elite/classes?age=${age}`, {
           cache: "no-store",
         });
@@ -96,10 +94,10 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           return;
         }
 
-        // IMPORTANT: convert API result into your ClassGroup format
-        const mapped = (data.classes || []).map((cls: any) => ({
-          id: String(cls.id),              // REAL AKADA ID
-          name: cls.name,                  // class description/name
+        // 🔥 Correct mapping: Convert Akada → ClassGroup shape
+        const mapped: ClassGroup[] = (data.classes || []).map((cls: any) => ({
+          id: String(cls.id),          // REAL Akada ID
+          name: cls.name,              // description
           ageMin: cls.ageMin,
           ageMax: cls.ageMax,
           options: cls.options.map((o: any) => ({
@@ -160,7 +158,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
         {!loading &&
           groups.length > 0 &&
           groups.map((group) => {
-            const desc = descriptions?.[group.id]?.shortDescription || null;
+            const desc = descriptions?.[group.id]?.shortDescription ?? null;
 
             return (
               <div
@@ -170,7 +168,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                   space-y-4
                 "
               >
-                {/* CLASS NAME - CLICK TO TOGGLE DESCRIPTION */}
+                {/* CLASS NAME - CLICK TO EXPAND */}
                 <h2
                   className="text-xl font-bold text-dance-blue text-center cursor-pointer hover:text-dance-pink transition"
                   onClick={() => toggleDescription(group.id)}
@@ -178,19 +176,17 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                   {group.name}
                 </h2>
 
-                {/* INLINE ACCORDION DESCRIPTION */}
+                {/* DESCRIPTION ACCORDION */}
                 {desc && openDesc === group.id && (
                   <p className="text-sm text-gray-700 text-center px-2">
                     {desc}
                   </p>
                 )}
 
-                {/* AGE RANGE */}
                 <p className="text-sm text-center text-gray-600 -mt-2">
                   Ages {group.ageMin}–{group.ageMax}
                 </p>
 
-                {/* DATE BUTTONS */}
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {group.options.slice(0, 2).map((opt) => {
                     const key = `${group.id}_${opt.date}_${opt.timeRange}`;
@@ -227,7 +223,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           <Button variant="secondary" onClick={onBack}>
             Back
           </Button>
-          <div></div>
+          <div />
         </div>
       </div>
     </StepWrapper>
