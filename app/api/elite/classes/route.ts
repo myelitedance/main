@@ -133,6 +133,10 @@ export async function GET(req: NextRequest) {
     const ageParam = new URL(req.url).searchParams.get("age");
     const age = ageParam ? Number(ageParam) : NaN;
 
+    const yearsParam = new URL(req.url).searchParams.get("years");
+    const years = yearsParam ? Number(yearsParam) : NaN;
+
+
     const res = await akadaFetch(`/studio/classes`, { method: "GET" });
     const txt = await res.text();
 
@@ -164,17 +168,34 @@ export async function GET(req: NextRequest) {
       lengthMinutes: c.lengthMinutes ?? 0,
     }));
 
-    // Filter
-    let filtered = norm
-      .filter((c) => c.days.length > 0)
-      .filter((c) => c.ageMin !== c.ageMax)
-      .filter((c) => !["FLX", "PRE", "DT"].includes(c.level.toUpperCase()));
+  // Filter
+let filtered = norm
+  .filter((c) => c.days.length > 0)
+  .filter((c) => c.ageMin !== c.ageMax)
+  .filter((c) => !["FLX", "PRE", "DT"].includes(c.level.toUpperCase()));
 
-    if (!isNaN(age)) {
-      filtered = filtered.filter(
-        (c) => age >= c.ageMin && age <= c.ageMax
-      );
-    }
+if (!isNaN(age)) {
+  filtered = filtered.filter(
+    (c) => age >= c.ageMin && age <= c.ageMax
+  );
+}
+
+// Experience filtering
+function extractLevel(level: string): number {
+  const m = level.match(/(\d+)/);
+  return m ? Number(m[1]) : 0;
+}
+
+if (!isNaN(years)) {
+  filtered = filtered.filter((c) => {
+    const level = extractLevel(c.level);
+
+    if (years < 3) return level <= 1;
+    if (years < 5) return level <= 2;
+    return true;
+  });
+}
+
 
     // Grouping
     const groups: Record<string, any> = {};
