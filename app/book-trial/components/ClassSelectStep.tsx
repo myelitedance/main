@@ -88,6 +88,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           cache: "no-store",
         });
         const data = await res.json();
+        console.log("RAW API RESPONSE:", data);  // <----- ADD THIS
 
         if (!res.ok) {
           setError("Unable to load available classes.");
