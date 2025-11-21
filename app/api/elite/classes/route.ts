@@ -104,17 +104,19 @@ function to24Hour(str: string) {
 function buildISO(date: Temporal.ZonedDateTime, time: string): string {
   const { hour, min } = to24Hour(time);
 
-  // Build the full ZonedDateTime with the correct local clock time
-  const dt = date.with({ hour, minute: min, second: 0, millisecond: 0 });
+  // Build CST/CDT datetime
+  let dt = date.with({ hour, minute: min, second: 0, millisecond: 0 });
 
-  // Extract date/time "as seen in CST/CDT"
-  const pdt = dt.toPlainDateTime();
+  // Get full ISO string WITHOUT time zone annotation
+  let iso = dt.toString(); // includes fractional + zone, e.g. 2025-12-01T18:15:00.000123456-06:00[America/Chicago]
 
-  // Extract offset e.g. "-06:00"
-  const offset = dt.offset.toString(); // already formatted ±HH:MM
+  // Strip time zone region
+  iso = iso.replace(/\[.*?\]$/, "");
 
-  // Build ISO WITHOUT time-zone annotation
-  return `${pdt.toString()}${offset}`;
+  // Strip fractional seconds
+  iso = iso.replace(/\.\d+/, "");
+
+  return iso;
 }
 
 
