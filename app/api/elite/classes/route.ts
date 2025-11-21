@@ -1,269 +1,86 @@
-// app/api/elite/classes/route.ts
-import { Temporal } from "@js-temporal/polyfill";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { akadaFetch } from "@/lib/akada";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
-// ===============================================
-// CONFIG
-// ===============================================
-const TZ = "America/Chicago";
+// Simple in-memory cache (per server instance)
+let classesCache: { key: string; data: any[]; exp: number } | null = null;
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 
-const CLOSED_RANGES: [string, string][] = [
-  ["2025-11-24", "2025-11-30"],
-  ["2025-12-22", "2026-01-04"],
-  ["2026-03-02", "2026-03-08"],
-];
-
-// ===============================================
-// TYPES
-// ===============================================
-type Weekday = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
-
-interface AkadaClass {
-  id: number | string;
-  description: string;
-  levelDescription: string;
-  lowerAgeLimit: number;
-  upperAgeLimit: number;
-  monday?: boolean;
-  tuesday?: boolean;
-  wednesday?: boolean;
-  thursday?: boolean;
-  friday?: boolean;
-  saturday?: boolean;
-  startTimeDisplay: string;
-  stopTimeDisplay: string;
-  lengthMinutes: number;
+function firstDayString(c: any): string {
+  const map: [keyof any, string][] = [
+    ["monday", "Mon"], ["tuesday", "Tue"], ["wednesday", "Wed"],
+    ["thursday", "Thu"], ["friday", "Fri"], ["saturday", "Sat"], ["sunday", "Sun"],
+  ];
+  const found = map.find(([k]) => !!c[k]);
+  return found?.[1] || "";
 }
 
-interface NormClass {
-  id: string;
-  description: string;
-  level: string;
-  ageMin: number;
-  ageMax: number;
-  days: Weekday[];
-  timeRange: string;
-  lengthMinutes: number;
-}
-
-// ===============================================
-// TEMPORAL HELPERS — DST SAFE
-// ===============================================
-function todayCST(): Temporal.ZonedDateTime {
-  return Temporal.Now.zonedDateTimeISO(TZ).with({
-    hour: 0,
-    minute: 0,
-    second: 0,
-    millisecond: 0,
-  });
-}
-
-function nextDateForDay(day: Weekday): Temporal.ZonedDateTime {
-  const index = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day) + 1;
-  const today = todayCST();
-  const dow = today.dayOfWeek; // Mon=1..Sun=7
-
-  let delta = index - dow;
-  if (delta <= 0) delta += 7;
-
-  return today.add({ days: delta });
-}
-
-function nextWeek(d: Temporal.ZonedDateTime) {
-  return d.add({ days: 7 });
-}
-
-function localISO(d: Temporal.ZonedDateTime): string {
-  return d.toPlainDate().toString(); // YYYY-MM-DD
-}
-
-function shortDate(d: Temporal.ZonedDateTime): string {
-  return d.toLocaleString("en-US", { month: "short", day: "numeric" });
-}
-
-
-function to24Hour(str: string) {
-  const m = str.match(/(\d\d?):(\d\d)(am|pm)/i);
-  if (!m) return { hour: 0, min: 0 };
-
-  let hour = Number(m[1]);
-  const min = Number(m[2]);
-  const ap = m[3].toLowerCase();
-
-  if (ap === "pm" && hour < 12) hour += 12;
-  if (ap === "am" && hour === 12) hour = 0;
-
-  return { hour, min };
-}
-
-function buildISO(date: Temporal.ZonedDateTime, time: string): string {
-  const { hour, min } = to24Hour(time);
-
-  // Build CST/CDT datetime
-  let dt = date.with({ hour, minute: min, second: 0, millisecond: 0 });
-
-  // Get full ISO string WITHOUT time zone annotation
-  let iso = dt.toString(); // includes fractional + zone, e.g. 2025-12-01T18:15:00.000123456-06:00[America/Chicago]
-
-  // Strip time zone region
-  iso = iso.replace(/\[.*?\]$/, "");
-
-  // Strip fractional seconds
-  iso = iso.replace(/\.\d+/, "");
-
-  return iso;
-}
-
-
-function isClosed(d: Temporal.ZonedDateTime): boolean {
-  const iso = d.toPlainDate().toString();
-  return CLOSED_RANGES.some(([start, end]) => iso >= start && iso <= end);
-}
-
-// ===============================================
-// ROUTE HANDLER
-// ===============================================
 export async function GET(req: NextRequest) {
   try {
-    const ageParam = new URL(req.url).searchParams.get("age");
-    const age = ageParam ? Number(ageParam) : NaN;
+    const { searchParams } = new URL(req.url);
+    const ageParam = searchParams.get("age");
 
-    const yearsParam = new URL(req.url).searchParams.get("years");
-    const years = yearsParam ? Number(yearsParam) : NaN;
+    // cache key based on filters that affect results
+    const key = `classes:${ageParam || ""}`;
+    if (classesCache && classesCache.key === key && Date.now() < classesCache.exp) {
+      return NextResponse.json({ classes: classesCache.data, cached: true });
+    }
 
-
+    // NOTE: BASE is .../api/v3; include /studio here
     const res = await akadaFetch(`/studio/classes`, { method: "GET" });
-    const txt = await res.text();
-
+    const text = await res.text();
     if (!res.ok) {
-      return NextResponse.json({ error: txt }, { status: res.status });
+      // helpful surface of Akada error
+      return NextResponse.json({ error: `Akada classes ${res.status}: ${text}` }, { status: res.status });
     }
 
-    const j = JSON.parse(txt);
-    const raw: AkadaClass[] = j?.returnValue?.currentPageItems ?? [];
+    // Akada wraps in returnValue.currentPageItems
+    const j = JSON.parse(text);
+    const raw: any[] = j?.returnValue?.currentPageItems || j?.returnValue || [];
 
-    // Normalize Akada classes
-    const norm: NormClass[] = raw.map((c) => ({
-      id: String(c.id),
-      description: (c.description || "").trim(),
-      level: (c.levelDescription || "").trim(),
-      ageMin: c.lowerAgeLimit ?? 0,
-      ageMax: c.upperAgeLimit ?? 99,
-      days: [
-        ["monday", "Mon"],
-        ["tuesday", "Tue"],
-        ["wednesday", "Wed"],
-        ["thursday", "Thu"],
-        ["friday", "Fri"],
-        ["saturday", "Sat"],
-      ]
-        .filter(([k]) => (c as any)[k])
-        .map(([, lbl]) => lbl as Weekday),
-      timeRange: `${c.startTimeDisplay.trim()} - ${c.stopTimeDisplay.trim()}`,
-      lengthMinutes: c.lengthMinutes ?? 0,
-    }));
-
-  // Filter
-let filtered = norm
-  .filter((c) => c.days.length > 0)
-  .filter((c) => c.ageMin !== c.ageMax)
-  .filter((c) => !["FLX", "PRE", "DT"].includes(c.level.toUpperCase()));
-
-if (!isNaN(age)) {
-  filtered = filtered.filter(
-    (c) => age >= c.ageMin && age <= c.ageMax
-  );
-}
-
-// Experience filtering
-function extractLevel(level: string): number {
-  const m = level.match(/(\d+)/);
-  return m ? Number(m[1]) : 0;
-}
-
-if (!isNaN(years)) {
-  filtered = filtered.filter((c) => {
-    const level = extractLevel(c.level);
-
-    if (years < 3) return level <= 1;
-    if (years < 5) return level <= 2;
-    return true;
-  });
-}
-
-
-    // Grouping
-    const groups: Record<string, any> = {};
-
-    for (const c of filtered) {
-      if (!groups[c.description]) {
-        groups[c.description] = {
-          id: c.id,
-          groupId: c.description,
-          name: c.description,
-          className: c.description,
-          ageMin: c.ageMin,
-          ageMax: c.ageMax,
-          lengthMinutes: c.lengthMinutes,
-          options: [],
-        };
-      }
-
-      for (const day of c.days) {
-        let first = nextDateForDay(day);
-        while (isClosed(first)) first = nextWeek(first);
-
-        let second = nextWeek(first);
-        while (isClosed(second)) second = nextWeek(second);
-
-        const [startStr, endStr] = c.timeRange.split("-").map((s) => s.trim());
-
-        groups[c.description].options.push({
-          id: c.id,
-          day,
-          date: localISO(first),
-          dateFormatted: shortDate(first),
-          label: `${day} • ${shortDate(first)} @ ${c.timeRange}`,
-          timeRange: c.timeRange,
-          startISO: buildISO(first, startStr),
-          endISO: buildISO(first, endStr),
-          lengthMinutes: c.lengthMinutes,
-        });
-
-        groups[c.description].options.push({
-          id: c.id,
-          day,
-          date: localISO(second),
-          dateFormatted: shortDate(second),
-          label: `${day} • ${shortDate(second)} @ ${c.timeRange}`,
-          timeRange: c.timeRange,
-          startISO: buildISO(second, startStr),
-          endISO: buildISO(second, endStr),
-          lengthMinutes: c.lengthMinutes,
-        });
-      }
-    }
-
-    // Sort and limit to 2
-    const results = Object.values(groups).map((g) => {
-      g.options = g.options
-        .sort(
-          (a: any, b: any) =>
-            new Date(a.startISO).getTime() -
-            new Date(b.startISO).getTime()
-        )
-        .slice(0, 2);
-      return g;
+    const normalized = raw.map((c) => {
+      const day = firstDayString(c);
+      const time = `${(c.startTimeDisplay || "").trim()} - ${(c.stopTimeDisplay || "").trim()}`;
+      return {
+        id: String(c.id),
+        name: String(c.description || "").trim(),
+        level: String(c.levelDescription || "").trim(),
+        type: String(c.typeDescription || "").trim(),
+        ageMin: Number(c.lowerAgeLimit ?? 0),
+        ageMax: Number(c.upperAgeLimit ?? 99),
+        day,
+        time,
+        sunday: !!c.sunday,
+        currentEnrollment: c.currentEnrollment,
+        maxEnrollment: c.maxEnrollment,
+        lengthMinutes: Number(c.lengthMinutes ?? 0)
+      };
     });
 
-    return NextResponse.json({ classes: results });
+    // Filters
+    let filtered = normalized;
+
+    const age = ageParam ? Number(ageParam) : NaN;
+    if (!Number.isNaN(age)) {
+      filtered = filtered.filter((c) => {
+        const lower = Number.isFinite(c.ageMin) ? c.ageMin : 0;
+        const upper = Number.isFinite(c.ageMax) ? c.ageMax : 99;
+        return age >= lower && age <= upper;
+      });
+    }
+
+    filtered = filtered
+      .filter((c) => c.sunday !== true)                                  // drop Sundays
+      //.filter((c) => (c.level || "").trim().toUpperCase() !== "N/A")     // drop N/A
+      .filter((c) => c.day || c.time.trim() !== "-");                     // ensure has schedule
+
+    // Cache it
+    classesCache = { key, data: filtered, exp: Date.now() + CACHE_TTL_MS };
+
+    return NextResponse.json({ classes: filtered });
   } catch (err: any) {
-    console.error("CLASS ERROR:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("classes API error:", err);
+    return NextResponse.json({ error: String(err?.message || err) }, { status: 500 });
   }
 }

@@ -84,7 +84,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
       try {
         setLoading(true);
 
-        const res = await fetch(`/api/elite/classes?age=${age}`, {
+        const res = await fetch(`/api/trial/classes?age=${age}`, {
           cache: "no-store",
         });
         const data = await res.json();
