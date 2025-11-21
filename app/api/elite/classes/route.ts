@@ -3,6 +3,9 @@ import { NextResponse, NextRequest } from "next/server";
 import { akadaFetch } from "@/lib/akada";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 
 // ============================================================================
 // CONFIG
