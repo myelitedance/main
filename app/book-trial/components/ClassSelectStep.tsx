@@ -170,31 +170,26 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                   space-y-4
                 "
               >
-                {/* CLASS NAME - CLICK TO EXPAND */}
+                {/* CLASS NAME (tight spacing) */}
                 <h2
-                  className="text-xl font-bold text-dance-blue text-center cursor-pointer hover:text-dance-pink transition"
+                  className="text-xl font-bold text-dance-blue text-center cursor-pointer hover:text-dance-pink transition mb-1"
                   onClick={() => toggleDescription(group.id)}
                 >
                   {group.name}
-                </h2>
-
-                {/* DESCRIPTION ACCORDION */}
+                </h2>     
+                {/* DESCRIPTION AREA — also tight */}
                 {desc && (
-  <div
-    className="text-center cursor-pointer"
-    onClick={() => toggleDescription(group.id)}
+                  <div
+                        className="text-center cursor-pointer mb-1"
+                        onClick={() => toggleDescription(group.id)}
   >
-    {openDesc === group.id ? (
-      <p className="text-sm text-gray-700 px-2">
-        {desc}
-      </p>
-    ) : (
-      <p className="text-xs text-dance-pink mt-1">
-        Click for a description
-      </p>
-    )}
-  </div>
-)}
+                {openDesc === group.id ? (
+                    <p className="text-sm text-gray-700 px-2">{desc}</p>
+                   ) : (
+                 <p className="text-xs text-dance-pink">Click for a description</p>
+                  )}
+                  </div>
+                )}
 
                 <p className="text-sm text-center text-gray-600 -mt-2">
                   Ages {group.ageMin}–{group.ageMax}
