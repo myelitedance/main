@@ -83,7 +83,7 @@ export default function ContactStep({
         <div className="text-center text-gray-600">
           <p className="font-medium">{selectedClass.className}</p>
           <p className="text-sm">
-            {selectedClass.option.day} • {selectedClass.option.label}
+            {selectedClass.option.label}
           </p>
         </div>
 

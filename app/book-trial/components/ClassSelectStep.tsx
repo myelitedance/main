@@ -6,10 +6,10 @@ import ErrorText from "./ui/ErrorText";
 import StepWrapper from "./StepWrapper";
 
 interface ClassOption {
-  id: string;
+  id: string; 
   day: string;
-  date: string;          // YYYY-MM-DD
-  dateFormatted: string; // "Dec 1"
+  date: string;
+  dateFormatted: string;
   label: string;
   timeRange: string;
   startISO: string;
@@ -18,8 +18,8 @@ interface ClassOption {
 }
 
 interface ClassGroup {
-  groupId: string;
-  name: string; // description
+  groupId: string;   // This is the Akada class "id"
+  name: string; 
   ageMin: number;
   ageMax: number;
   options: ClassOption[];
@@ -36,19 +36,12 @@ interface Props {
   }) => void;
 }
 
-// ================================================
-// FIX: DATE DISPLAY USING AMERICA/CHICAGO CORRECTLY
-// ================================================
+// ============================
+// DATE FORMATTER
+// ============================
 function formatCSTDate(isoDate: string): string {
-  // isoDate is "YYYY-MM-DD"
   const [y, m, d] = isoDate.split("-").map(Number);
-
-  // Create a date at midnight *local*, not UTC-shifted.
-  // We use Date.UTC only to safely construct the date parts,
-  // and then force the formatter to interpret it in CST.
-  const dt = new Date(Date.UTC(y, m - 1, d, 12)); 
-  // Using noon UTC prevents DST day-shifts.
-
+  const dt = new Date(Date.UTC(y, m - 1, d, 12));
   return dt.toLocaleDateString("en-US", {
     timeZone: "America/Chicago",
     month: "short",
@@ -61,6 +54,33 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  // NEW: store class descriptions loaded from JSON
+  const [descriptions, setDescriptions] = useState<Record<
+    string,
+    { shortDescription: string }
+  > | null>(null);
+
+  // NEW: Track which group description is open
+  const [openDesc, setOpenDesc] = useState<string | null>(null);
+
+  // Load descriptions JSON ONCE
+  useEffect(() => {
+    async function loadDescriptions() {
+      try {
+        const res = await fetch("/data/classDescriptions.json", {
+          cache: "no-store",
+        });
+
+        const json = await res.json();
+        setDescriptions(json);
+      } catch {
+        console.warn("Could not load class descriptions JSON.");
+      }
+    }
+
+    loadDescriptions();
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -76,11 +96,6 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           return;
         }
 
-        // ================================================
-        // FIX APPLIED HERE:
-        // Convert the raw YYYY-MM-DD date into a CST display date
-        // without affecting backend logic or ISO timestamps.
-        // ================================================
         setGroups(
           (data.classes || []).map((group: ClassGroup) => ({
             ...group,
@@ -111,6 +126,11 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
     });
   };
 
+  // Toggle description accordion
+  const toggleDescription = (groupId: string) => {
+    setOpenDesc((prev) => (prev === groupId ? null : groupId));
+  };
+
   return (
     <StepWrapper>
       <div className="space-y-6 px-4 py-6">
@@ -136,50 +156,68 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
 
         {!loading &&
           groups.length > 0 &&
-          groups.map((group) => (
-            <div
-              key={group.groupId}
-              className="border rounded-xl p-4 bg-white space-y-3"
-            >
-              {/* CLASS DESCRIPTION */}
-              <h2 className="text-xl font-bold text-dance-blue text-center">
-                {group.name}
-              </h2>
+          groups.map((group) => {
+            const desc =
+              descriptions?.[group.groupId]?.shortDescription || null;
 
-              {/* AGE RANGE */}
-              <p className="text-sm text-center text-gray-600 -mt-2">
-                Ages {group.ageMin}–{group.ageMax}
-              </p>
+            return (
+              <div
+                key={group.groupId}
+                className="
+                  border-2 border-dance-purple rounded-2xl p-5 bg-white shadow-md
+                  space-y-4
+                "
+              >
+                {/* CLASS NAME - CLICK TO TOGGLE DESCRIPTION */}
+                <h2
+                  className="text-xl font-bold text-dance-blue text-center cursor-pointer hover:text-dance-pink transition"
+                  onClick={() => toggleDescription(group.groupId)}
+                >
+                  {group.name}
+                </h2>
 
-              {/* DATE BUTTONS */}
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {group.options.slice(0, 2).map((opt) => {
-                  const key = `${group.groupId}_${opt.date}_${opt.timeRange}`;
-                  const isSelected = selectedKey === key;
+                {/* INLINE ACCORDION DESCRIPTION */}
+                {desc && openDesc === group.groupId && (
+                  <p className="text-sm text-gray-700 text-center px-2">
+                    {desc}
+                  </p>
+                )}
 
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => handleSelect(group, opt)}
-                      className={`
-                        border rounded-lg p-3 text-center transition-all
-                        ${
-                          isSelected
-                            ? "bg-dance-purple text-white border-dance-purple scale-[1.02]"
-                            : "bg-gray-50 border-gray-300 hover:bg-gray-100"
-                        }
-                      `}
-                    >
-                      <div className="text-base font-bold">
-                        {opt.dateFormatted}
-                      </div>
-                      <div className="text-sm opacity-90">{opt.label}</div>
-                    </button>
-                  );
-                })}
+                {/* AGE RANGE */}
+                <p className="text-sm text-center text-gray-600 -mt-2">
+                  Ages {group.ageMin}–{group.ageMax}
+                </p>
+
+                {/* DATE BUTTONS */}
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {group.options.slice(0, 2).map((opt) => {
+                    const key = `${group.groupId}_${opt.date}_${opt.timeRange}`;
+                    const isSelected = selectedKey === key;
+
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleSelect(group, opt)}
+                        className={`
+                          border rounded-lg p-3 text-center transition-all
+                          ${
+                            isSelected
+                              ? "bg-dance-purple text-white border-dance-purple scale-[1.02]"
+                              : "bg-gray-50 border-gray-300 hover:bg-gray-100"
+                          }
+                        `}
+                      >
+                        <div className="text-base font-bold">
+                          {opt.dateFormatted}
+                        </div>
+                        <div className="text-sm opacity-90">{opt.label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
         {error && <ErrorText>{error}</ErrorText>}
 
