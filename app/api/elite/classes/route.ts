@@ -83,12 +83,9 @@ function localISO(d: Temporal.ZonedDateTime): string {
 }
 
 function shortDate(d: Temporal.ZonedDateTime): string {
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: TZ,
-  });
+  return d.toLocaleString("en-US", { month: "short", day: "numeric" });
 }
+
 
 function to24Hour(str: string) {
   const m = str.match(/(\d\d?):(\d\d)(am|pm)/i);
