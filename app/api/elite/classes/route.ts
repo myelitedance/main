@@ -1,19 +1,15 @@
 // app/api/elite/classes/route.ts
-console.log("🔥 Elite Route Loaded");
-console.log("SERVER NOW:", new Date().toString());
-console.log("OFFSET (min):", new Date().getTimezoneOffset());
-
-
-import { NextResponse, NextRequest } from "next/server";
+import { Temporal } from "@js-temporal/polyfill";
+import { NextRequest, NextResponse } from "next/server";
 import { akadaFetch } from "@/lib/akada";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// ============================================================================
+// ===============================================
 // CONFIG
-// ============================================================================
+// ===============================================
 const TZ = "America/Chicago";
 
 const CLOSED_RANGES: [string, string][] = [
@@ -22,167 +18,110 @@ const CLOSED_RANGES: [string, string][] = [
   ["2026-03-02", "2026-03-08"],
 ];
 
-// ============================================================================
+// ===============================================
 // TYPES
-// ============================================================================
+// ===============================================
 type Weekday = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 
-interface ClassOption {
-  id: string;
-  day: Weekday;
-  date: string;
-  dateFormatted: string;
-  label: string;
-  timeRange: string;
-  startISO: string;
-  endISO: string;
+interface AkadaClass {
+  id: number | string;
+  description: string;
+  levelDescription: string;
+  lowerAgeLimit: number;
+  upperAgeLimit: number;
+  monday?: boolean;
+  tuesday?: boolean;
+  wednesday?: boolean;
+  thursday?: boolean;
+  friday?: boolean;
+  saturday?: boolean;
+  startTimeDisplay: string;
+  stopTimeDisplay: string;
   lengthMinutes: number;
 }
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-// Weekday mapping (Mon=1,...)
-const WEEKDAY_MAP: Record<Weekday, number> = {
-  Mon: 1,
-  Tue: 2,
-  Wed: 3,
-  Thu: 4,
-  Fri: 5,
-  Sat: 6,
-};
-
-// Get current date in CST (no UTC shift)
-function nowInCST(): Date {
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-
-  const y = Number(parts.find(p => p.type === "year")!.value);
-  const m = Number(parts.find(p => p.type === "month")!.value);
-  const d = Number(parts.find(p => p.type === "day")!.value);
-
-  return new Date(y, m - 1, d);
+interface NormClass {
+  id: string;
+  description: string;
+  level: string;
+  ageMin: number;
+  ageMax: number;
+  days: Weekday[];
+  timeRange: string;
+  lengthMinutes: number;
 }
 
-// Next weekday (in CST)
-function nextDateForDay(day: Weekday): Date {
-  const today = nowInCST();
+// ===============================================
+// TEMPORAL HELPERS — DST SAFE
+// ===============================================
+function todayCST(): Temporal.ZonedDateTime {
+  return Temporal.Now.zonedDateTimeISO(TZ).with({
+    hour: 0,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+}
 
-  const todayDow = today.getDay() === 0 ? 7 : today.getDay(); // Sun→7
-  const target = WEEKDAY_MAP[day];
+function nextDateForDay(day: Weekday): Temporal.ZonedDateTime {
+  const index = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day) + 1;
+  const today = todayCST();
+  const dow = today.dayOfWeek; // Mon=1..Sun=7
 
-  let delta = target - todayDow;
+  let delta = index - dow;
   if (delta <= 0) delta += 7;
 
-  const next = new Date(today);
-  next.setDate(today.getDate() + delta);
-  next.setHours(0, 0, 0, 0);
-
-  return next;
+  return today.add({ days: delta });
 }
 
-function nextWeek(d: Date): Date {
-  const n = new Date(d);
-  n.setDate(d.getDate() + 7);
-  return n;
+function nextWeek(d: Temporal.ZonedDateTime) {
+  return d.add({ days: 7 });
 }
 
-// YYYY-MM-DD (CST)
-function localISO(d: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
+function localISO(d: Temporal.ZonedDateTime): string {
+  return d.toPlainDate().toString(); // YYYY-MM-DD
 }
 
-// "Dec 1"
-function shortDate(d: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: TZ,
+function shortDate(d: Temporal.ZonedDateTime): string {
+  return d.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
-  }).format(d);
+    timeZone: TZ,
+  });
 }
 
-// Convert 9:15am → 24hr
-function to24Hour(str: string): { hour: number; min: number } {
-  const m = str.match(/(\d{1,2}):(\d{2})(am|pm)/i);
+function to24Hour(str: string) {
+  const m = str.match(/(\d\d?):(\d\d)(am|pm)/i);
   if (!m) return { hour: 0, min: 0 };
 
-  let [, hh, mm, ap] = m;
-  let hour = Number(hh);
-  const min = Number(mm);
+  let hour = Number(m[1]);
+  const min = Number(m[2]);
+  const ap = m[3].toLowerCase();
 
-  ap = ap.toLowerCase();
   if (ap === "pm" && hour < 12) hour += 12;
   if (ap === "am" && hour === 12) hour = 0;
 
   return { hour, min };
 }
 
-// ISO with offset: 2025-12-01T18:15:00-06:00
-function buildISO(date: Date, timeStr: string): string {
-  const { hour, min } = to24Hour(timeStr);
+function buildISO(date: Temporal.ZonedDateTime, time: string): string {
+  const { hour, min } = to24Hour(time);
+  const dt = date.with({ hour, minute: min, second: 0 });
 
-  // Build CST datetime
-  const local = new Date(
-    date.toLocaleString("en-US", { timeZone: TZ })
-  );
-
-  local.setHours(hour, min, 0, 0);
-
-  const pad = (n: number) => n.toString().padStart(2, "0");
-
-  // Offset (negative minutes = CST/CDT)
-  const offsetMin = local.getTimezoneOffset() * -1; 
-  const offHr = Math.floor(offsetMin / 60);
-  const offMin = Math.abs(offsetMin % 60);
-
-  // FIXED: Proper ISO 8601 offset
-  const offset =
-    `${offHr >= 0 ? "+" : "-"}${pad(Math.abs(offHr))}:${pad(offMin)}`;
-
-  return (
-    `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}` +
-    `T${pad(local.getHours())}:${pad(local.getMinutes())}:00${offset}`
-  );
+  return dt.toString(); // ISO with automatic -06:00/-05:00
 }
 
-
-function isClosed(d: Date): boolean {
-  const iso = localISO(d);
+function isClosed(d: Temporal.ZonedDateTime): boolean {
+  const iso = d.toPlainDate().toString();
   return CLOSED_RANGES.some(([start, end]) => iso >= start && iso <= end);
 }
 
-function extractDays(c: any): Weekday[] {
-  const map: [keyof any, Weekday][] = [
-    ["monday", "Mon"],
-    ["tuesday", "Tue"],
-    ["wednesday", "Wed"],
-    ["thursday", "Thu"],
-    ["friday", "Fri"],
-    ["saturday", "Sat"],
-  ];
-
-  return map.filter(([k]) => c[k]).map(([, lbl]) => lbl);
-}
-
-// ============================================================================
-// ROUTE
-// ============================================================================
-
+// ===============================================
+// ROUTE HANDLER
+// ===============================================
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const ageParam = searchParams.get("age");
+    const ageParam = new URL(req.url).searchParams.get("age");
     const age = ageParam ? Number(ageParam) : NaN;
 
     const res = await akadaFetch(`/studio/classes`, { method: "GET" });
@@ -193,28 +132,39 @@ export async function GET(req: NextRequest) {
     }
 
     const j = JSON.parse(txt);
-    const raw: any[] = j?.returnValue?.currentPageItems || [];
+    const raw: AkadaClass[] = j?.returnValue?.currentPageItems ?? [];
 
-    // Normalize raw classes
-    const norm = raw.map((c) => ({
+    // Normalize Akada classes
+    const norm: NormClass[] = raw.map((c) => ({
       id: String(c.id),
       description: (c.description || "").trim(),
       level: (c.levelDescription || "").trim(),
-      ageMin: Number(c.lowerAgeLimit ?? 0),
-      ageMax: Number(c.upperAgeLimit ?? 99),
-      days: extractDays(c),
-      timeRange: `${(c.startTimeDisplay || "").trim()} - ${(c.stopTimeDisplay || "").trim()}`,
-      lengthMinutes: Number(c.lengthMinutes ?? 0),
+      ageMin: c.lowerAgeLimit ?? 0,
+      ageMax: c.upperAgeLimit ?? 99,
+      days: [
+        ["monday", "Mon"],
+        ["tuesday", "Tue"],
+        ["wednesday", "Wed"],
+        ["thursday", "Thu"],
+        ["friday", "Fri"],
+        ["saturday", "Sat"],
+      ]
+        .filter(([k]) => (c as any)[k])
+        .map(([, lbl]) => lbl as Weekday),
+      timeRange: `${c.startTimeDisplay.trim()} - ${c.stopTimeDisplay.trim()}`,
+      lengthMinutes: c.lengthMinutes ?? 0,
     }));
 
-    // Filter invalid classes
+    // Filter
     let filtered = norm
       .filter((c) => c.days.length > 0)
       .filter((c) => c.ageMin !== c.ageMax)
       .filter((c) => !["FLX", "PRE", "DT"].includes(c.level.toUpperCase()));
 
     if (!isNaN(age)) {
-      filtered = filtered.filter((c) => age >= c.ageMin && age <= c.ageMax);
+      filtered = filtered.filter(
+        (c) => age >= c.ageMin && age <= c.ageMax
+      );
     }
 
     // Grouping
@@ -268,11 +218,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Keep next 2 dates
-    const results = Object.values(groups).map((g: any) => {
-      g.options = (g.options as ClassOption[])
+    // Sort and limit to 2
+    const results = Object.values(groups).map((g) => {
+      g.options = g.options
         .sort(
-          (a: ClassOption, b: ClassOption) =>
+          (a: any, b: any) =>
             new Date(a.startISO).getTime() -
             new Date(b.startISO).getTime()
         )
@@ -283,9 +233,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ classes: results });
   } catch (err: any) {
     console.error("CLASS ERROR:", err);
-    return NextResponse.json(
-      { error: err.message || "Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
