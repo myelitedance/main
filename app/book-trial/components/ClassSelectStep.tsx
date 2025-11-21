@@ -88,7 +88,6 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           cache: "no-store",
         });
         const data = await res.json();
-        console.log("RAW API RESPONSE:", data);  // <----- ADD THIS
 
         if (!res.ok) {
           setError("Unable to load available classes.");
@@ -159,7 +158,6 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
         {!loading &&
           groups.length > 0 &&
           groups.map((group) => {
-            console.log("GROUP RECEIVED:", group);   // <--- ADD THIS
             const desc = descriptions?.[group.id]?.shortDescription ?? null;
 
             return (

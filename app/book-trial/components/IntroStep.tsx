@@ -54,7 +54,7 @@ export default function IntroStep({ onNext }: IntroStepProps) {
           />
 
           <Input
-            label="Years of Dance Experience"
+            label="Years of Dance Lessons"
             type="number"
             value={years}
             placeholder="e.g. 0, 1, 2..."
