@@ -6,7 +6,7 @@ import ErrorText from "./ui/ErrorText";
 import StepWrapper from "./StepWrapper";
 
 interface ClassOption {
-  id: string; 
+  id: string;
   day: string;
   date: string;
   dateFormatted: string;
@@ -18,9 +18,8 @@ interface ClassOption {
 }
 
 interface ClassGroup {
-  id: string;         // This is the Akada class "description"
-  groupId: string;   // This is the Akada class "id"
-  name: string; 
+  id: string;          // THE REAL AKADA CLASS ID
+  name: string;        // description
   ageMin: number;
   ageMax: number;
   options: ClassOption[];
@@ -56,23 +55,22 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
   const [error, setError] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  // NEW: store class descriptions loaded from JSON
+  // loaded class descriptions
   const [descriptions, setDescriptions] = useState<Record<
     string,
     { shortDescription: string }
   > | null>(null);
 
-  // NEW: Track which group description is open
+  // which accordion is open?
   const [openDesc, setOpenDesc] = useState<string | null>(null);
 
-  // Load descriptions JSON ONCE
+  // Load descriptions JSON
   useEffect(() => {
     async function loadDescriptions() {
       try {
         const res = await fetch("/data/classDescriptions.json", {
           cache: "no-store",
         });
-
         const json = await res.json();
         setDescriptions(json);
       } catch {
@@ -83,6 +81,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
     loadDescriptions();
   }, []);
 
+  // Load classes from your internal API
   useEffect(() => {
     async function load() {
       try {
@@ -97,15 +96,19 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           return;
         }
 
-        setGroups(
-          (data.classes || []).map((group: ClassGroup) => ({
-            ...group,
-            options: group.options.map((o) => ({
-              ...o,
-              dateFormatted: formatCSTDate(o.date),
-            })),
-          }))
-        );
+        // IMPORTANT: convert API result into your ClassGroup format
+        const mapped = (data.classes || []).map((cls: any) => ({
+          id: String(cls.id),              // REAL AKADA ID
+          name: cls.name,                  // class description/name
+          ageMin: cls.ageMin,
+          ageMax: cls.ageMax,
+          options: cls.options.map((o: any) => ({
+            ...o,
+            dateFormatted: formatCSTDate(o.date),
+          })),
+        }));
+
+        setGroups(mapped);
       } catch (err) {
         setError("Something went wrong while loading classes.");
       } finally {
@@ -117,7 +120,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
   }, [age]);
 
   const handleSelect = (group: ClassGroup, option: ClassOption) => {
-    const key = `${group.groupId}_${option.date}_${option.timeRange}`;
+    const key = `${group.id}_${option.date}_${option.timeRange}`;
     setSelectedKey(key);
 
     onNext({
@@ -127,7 +130,6 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
     });
   };
 
-  // Toggle description accordion
   const toggleDescription = (groupId: string) => {
     setOpenDesc((prev) => (prev === groupId ? null : groupId));
   };
@@ -158,12 +160,11 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
         {!loading &&
           groups.length > 0 &&
           groups.map((group) => {
-            const desc =
-              descriptions?.[group.groupId]?.shortDescription || null;
+            const desc = descriptions?.[group.id]?.shortDescription || null;
 
             return (
               <div
-                key={group.groupId}
+                key={group.id}
                 className="
                   border-2 border-dance-purple rounded-2xl p-5 bg-white shadow-md
                   space-y-4
@@ -192,7 +193,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                 {/* DATE BUTTONS */}
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {group.options.slice(0, 2).map((opt) => {
-                    const key = `${group.groupId}_${opt.date}_${opt.timeRange}`;
+                    const key = `${group.id}_${opt.date}_${opt.timeRange}`;
                     const isSelected = selectedKey === key;
 
                     return (
