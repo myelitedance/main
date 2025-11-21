@@ -1,3 +1,6 @@
+// app/api/elite/classes/route.ts
+console.log("🔥🔥🔥 LOADED ELITE ROUTE FROM APP/API/ELITE/CLASSES/ROUTE.TS 🔥🔥🔥");
+
 import { NextResponse, NextRequest } from "next/server";
 import { akadaFetch } from "@/lib/akada";
 
