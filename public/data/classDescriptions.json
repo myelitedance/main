@@ -1,140 +1,101 @@
 {
-  "1119698": {
-    "shortDescription": "Aasha Solo"
-  },
   "1088197": {
-    "shortDescription": "ACROBATICS"
+    "shortDescription": "This Acrobatic class blends athletic tumbling skills with dance technique—students will work on strength, balance, flexibility and fluid transitions between dance and acro moves in a supportive environment."
   },
   "1088223": {
-    "shortDescription": "BALLET (2-3yrs)"
+    "shortDescription": "Introduces young children to movement, music and basic ballet positions in a joyful, nurturing setting while building coordination and confidence."
   },
   "1101833": {
-    "shortDescription": "BALLET LEVEL 1&2"
+    "shortDescription": "A foundational classical ballet technique, focusing on posture, alignment, barre work and beginning jumps and turns to develop a strong base for all dance styles."
   },
   "1122064": {
-    "shortDescription": "BALLET LEVEL 1&2"
+    "shortDescription": "A foundational classical ballet technique, focusing on posture, alignment, barre work and beginning jumps and turns to develop a strong base for all dance styles."
   },
   "1088190": {
-    "shortDescription": "BALLET LEVEL 2"
+    "shortDescription": "Builds on foundational technique with more complex jumps, turns and combinations while emphasizing artistry, musicality and disciplined movement."
   },
   "1088184": {
-    "shortDescription": "BALLET LEVEL 3"
+    "shortDescription": "Enhances technical proficiency with advanced barre and center work, increased allegro and adagio, and greater performance quality as students prepare for serious training."
   },
   "1101829": {
-    "shortDescription": "BALLET LEVEL 3"
+    "shortDescription": "Enhances technical proficiency with advanced barre and center work, increased allegro and adagio, and greater performance quality as students prepare for serious training."
   },
   "1088031": {
-    "shortDescription": "BALLET/TAP LEVEL 1"
-  },
-  "1119751": {
-    "shortDescription": "Charlotte-Piano"
+    "shortDescription": "This lively combined class where dancers explore both classical ballet and rhythmic tap—learning ballet positions, tap technique and simple routines in a fun introductory format."
   },
   "1088207": {
-    "shortDescription": "CONTEMPORARY LEVEL 1"
+    "shortDescription": "Introduces modern movement alongside ballet fundamentals—students explore fluid movement, expressive pathways and basic contemporary techniques in a supportive setting."
   },
   "1088205": {
-    "shortDescription": "CONTEMPORARY LEVEL 3"
-  },
-  "1112480": {
-    "shortDescription": "Dance Team Rehearsal"
-  },
-  "1119536": {
-    "shortDescription": "Elise 11/11, 12/9+"
+    "shortDescription": "An advanced contemporary class where dancers refine technique, expressive movement quality, floor work and artistic interpretation alongside dynamic choreography."
   },
   "1088208": {
-    "shortDescription": "FLEXIBILITY/CORE"
+    "shortDescription": "Focused conditioning class designed to lengthen muscles, improve core strength, increase range of motion and support better performance in all dance styles."
   },
   "1088218": {
-    "shortDescription": "FLEXIBILITY/CORE"
+    "shortDescription": "Focused conditioning class designed to lengthen muscles, improve core strength, increase range of motion and support better performance in all dance styles."
   },
   "1088203": {
-    "shortDescription": "INT. HIP HOP"
+    "shortDescription": "Students go past basics into more complex grooves, combinations, rhythm development and performance-driven choreography in a high-energy urban style."
   },
   "1088036": {
-    "shortDescription": "JAZZ/LYRICAL LEVEL 1"
+    "shortDescription": "Gives dancers the chance to learn strong jazz technique—kicks, turns and leaps—alongside lyrical movement that emphasizes musicality, expression and fluidity."
   },
   "1088216": {
-    "shortDescription": "JAZZ/LYRICAL LEVEL 2"
+    "shortDescription": "Advances students into more technical jazz combinations, greater leaps and turns, and lyrical choreography that explores emotion and musical response in movement."
   },
   "1088217": {
-    "shortDescription": "JAZZ/LYRICAL LEVEL 3"
-  },
-  "1119514": {
-    "shortDescription": "Kate & Juliet"
-  },
-  "1122976": {
-    "shortDescription": "Laila-Contemporary"
-  },
-  "1116603": {
-    "shortDescription": "Leon Garrett-Piano L"
+    "shortDescription": "Challenges dancers with sophisticated jazz technique and expressive lyrical routines that demand control, artistry and performance presence."
   },
   "1121457": {
-    "shortDescription": "MINI HIP HOP"
+    "shortDescription": "A fun introductory hip-hop class designed for younger dancers, combining age-appropriate urban dance moves, rhythm, teamwork and creative expression."
   },
   "1088226": {
-    "shortDescription": "MINI MOVERS"
+    "shortDescription": "A joyful, recreational enrichment class for our youngest dancers—blending music learning numbers and letters, dance games, basic steps and imaginative play to spark confidence and a love of movement."
   },
   "1088228": {
-    "shortDescription": "MINI MOVERS"
+    "shortDescription": "A joyful, recreational enrichment class for our youngest dancers—blending music learning numbers and letters, dance games, basic steps and imaginative play to spark confidence and a love of movement."
   },
   "1088230": {
-    "shortDescription": "MINI MOVERS"
-  },
-  "1111641": {
-    "shortDescription": "Mus Room Rental- Mat"
+    "shortDescription": "A joyful, recreational enrichment class for our youngest dancers—blending music learning numbers and letters, dance games, basic steps and imaginative play to spark confidence and a love of movement."
   },
   "1101824": {
-    "shortDescription": "PEEWEE ACROBATICS"
+    "shortDescription": "Peewee Acrobatics introduces younger dancers to tumbling skills integrated with dance—cartwheels, handstands, basic backbends and beginning acro technique in a positive group setting."
   },
   "1088186": {
-    "shortDescription": "PEEWEE HIP HOP"
+    "shortDescription": "A high-energy, age-appropriate hip-hop class where little dancers learn fun urban moves, rhythm, coordination and confidence in a creative and inclusive environment."
   },
   "1101831": {
-    "shortDescription": "POINTE"
+    "shortDescription": "MUST BE PRE-QUALIFIED: Provides targeted training for advanced ballet dancers ready to work on pointe shoes—building strength, alignment, ankle/foot preparation and artistry to dance ‘en pointe’ safely and confidently."
   },
   "1088048": {
-    "shortDescription": "POINTE"
+    "shortDescription": "MUST BE PRE-QUALIFIED: Provides targeted training for advanced ballet dancers ready to work on pointe shoes—building strength, alignment, ankle/foot preparation and artistry to dance ‘en pointe’ safely and confidently."
   },
   "1088191": {
-    "shortDescription": "PRE-POINTE"
-  },
-  "1118729": {
-    "shortDescription": "Solo Rehearsals"
-  },
-  "1111640": {
-    "shortDescription": "Studio Rental- Irish"
-  },
-  "1118728": {
-    "shortDescription": "Sydney Solo"
+    "shortDescription": "A preparatory class for dancers readying for pointe—enhancing foot and ankle strength, refining classical ballet technique and ensuring proper readiness for pointe work."
   },
   "1121458": {
-    "shortDescription": "TAP ADULT"
+    "shortDescription": "Welcomes adult dancers of all levels to learn tap technique, rhythm, coordination and fun, offering a welcoming environment to explore tap dance and make movement connections."
   },
   "1088211": {
-    "shortDescription": "TAP LEVEL 2"
+    "shortDescription": "Gives dancers a chance to refine their rhythm tap vocabulary, build coordination and musicality and perform routines with increased technical and performance demands."
   },
   "1088220": {
-    "shortDescription": "TAP/BALLET/JAZZ"
-  },
-  "1088225": {
-    "shortDescription": "TAP/BALLET/JAZZ (Sat"
+    "shortDescription": "A hybrid class where dancers rotate through tap, ballet and jazz technique—building versatility, coordination and foundational skills across multiple dance genres."
   },
   "1088224": {
-    "shortDescription": "TAP/BALLET/TUMBLING"
+    "shortDescription": "Combines three disciplines—tap dance, classical ballet and tumbling skills—giving motivated students the chance to build coordination, strength and multi-style versatility."
   },
   "1088033": {
-    "shortDescription": "TAP/BALLET/TUMBLING"
+    "shortDescription": "Combines three disciplines—tap dance, classical ballet and tumbling skills—giving motivated students the chance to build coordination, strength and multi-style versatility."
   },
   "1088204": {
-    "shortDescription": "TAP/BALLET/TUMBLING"
-  },
-  "1088213": {
-    "shortDescription": "TAP/BALLET/TUMB-Thur"
+    "shortDescription": "Combines three disciplines—tap dance, classical ballet and tumbling skills—giving motivated students the chance to build coordination, strength and multi-style versatility."
   },
   "1088199": {
-    "shortDescription": "Team- TECH/LEAPS/TUR"
+    "shortDescription": "A performance-oriented class aimed at dancers focused on jumps, leaps, turns and advanced technique that support competitive teams and choreography demands."
   },
   "1088187": {
-    "shortDescription": "TECH/LEAPS/TURNS LEVEL 2"
+    "shortDescription": "Pushes dancers to refine advanced jumps, turns and technical transitions, building the dynamic movement quality needed for higher-level performance and team work."
   }
 }
