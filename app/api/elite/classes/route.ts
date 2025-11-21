@@ -182,6 +182,7 @@ export async function GET(req: NextRequest) {
     for (const c of filtered) {
       if (!groups[c.description]) {
         groups[c.description] = {
+          id: c.id,
           groupId: c.description,
           name: c.description,
           className: c.description,
