@@ -18,6 +18,7 @@ interface ClassOption {
 }
 
 interface ClassGroup {
+  id: string;         // This is the Akada class "description"
   groupId: string;   // This is the Akada class "id"
   name: string; 
   ageMin: number;
@@ -171,7 +172,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                 {/* CLASS NAME - CLICK TO TOGGLE DESCRIPTION */}
                 <h2
                   className="text-xl font-bold text-dance-blue text-center cursor-pointer hover:text-dance-pink transition"
-                  onClick={() => toggleDescription(group.groupId)}
+                  onClick={() => toggleDescription(group.id)}
                 >
                   {group.name}
                 </h2>
