@@ -50,22 +50,34 @@ const WEEKDAY_MAP: Record<Weekday, number> = {
 };
 
 function nextDateForDay(day: Weekday): Date {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: TZ })
-  );
+  const now = new Date();
 
-  const todayDow = now.getDay(); // 0=Sun
+  // Convert real-time UTC → CST using Intl
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(now);
+  const y = Number(parts.find(p => p.type === "year")?.value);
+  const m = Number(parts.find(p => p.type === "month")?.value);
+  const d = Number(parts.find(p => p.type === "day")?.value);
+
+  const cstToday = new Date(y, m - 1, d);
+
+  const todayDow = cstToday.getDay(); 
   const target = WEEKDAY_MAP[day];
   const todayFixed = todayDow === 0 ? 7 : todayDow;
 
   let delta = target - todayFixed;
   if (delta <= 0) delta += 7;
 
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + delta);
-  return d;
+  cstToday.setDate(cstToday.getDate() + delta);
+  return cstToday;
 }
+
 
 function nextWeek(d: Date): Date {
   const n = new Date(d);
