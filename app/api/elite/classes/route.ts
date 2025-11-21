@@ -1,7 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { akadaFetch } from "@/lib/akada";
 
-// REQUIRED TO FORCE VERCEL TO EXECUTE THIS FILE FRESH
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,23 +18,41 @@ const CLOSED_RANGES: [string, string][] = [
 ];
 
 // ============================================================================
-// HELPERS
+// TYPES
 // ============================================================================
-
 type Weekday = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 
+interface ClassOption {
+  id: string;
+  day: Weekday;
+  date: string;
+  dateFormatted: string;
+  label: string;
+  timeRange: string;
+  startISO: string;
+  endISO: string;
+  lengthMinutes: number;
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
 const WEEKDAY_MAP: Record<Weekday, number> = {
-  Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
 };
 
-// Correct weekday finder
 function nextDateForDay(day: Weekday): Date {
   const now = new Date(
     new Date().toLocaleString("en-US", { timeZone: TZ })
   );
 
-  const todayDow = now.getDay();        // 0=Sun
-  const target = WEEKDAY_MAP[day];      // 1–6
+  const todayDow = now.getDay(); // 0=Sun
+  const target = WEEKDAY_MAP[day];
   const todayFixed = todayDow === 0 ? 7 : todayDow;
 
   let delta = target - todayFixed;
@@ -53,12 +70,13 @@ function nextWeek(d: Date): Date {
   return n;
 }
 
+// Convert Date → "YYYY-MM-DD" in CST
 function localISO(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
     month: "2-digit",
-    day: "2-digit",
+    day: "numeric",
   }).format(d);
 }
 
@@ -70,12 +88,13 @@ function shortDate(d: Date): string {
   }).format(d);
 }
 
+// Convert AM/PM to 24hr
 function to24Hour(str: string): { hour: number; min: number } {
   const m = str.trim().match(/(\d{1,2}):(\d{2})(am|pm)/i);
   if (!m) return { hour: 0, min: 0 };
   let [, hh, mm, ap] = m;
-  let hour = +hh;
-  const min = +mm;
+  let hour = parseInt(hh, 10);
+  const min = parseInt(mm, 10);
 
   ap = ap.toLowerCase();
   if (ap === "pm" && hour < 12) hour += 12;
@@ -84,25 +103,23 @@ function to24Hour(str: string): { hour: number; min: number } {
   return { hour, min };
 }
 
-// ============================================================================
-// CORRECT ISO BUILDER (100% CST, NEVER UTC)
-// ============================================================================
+// Build proper ISO-8601 with offset (e.g. 2021-06-23T03:30:00+05:30)
 function buildISO(date: Date, timeStr: string): string {
   const { hour, min } = to24Hour(timeStr);
 
-  // Create CST-local date
   const localDate = new Date(
     new Date(date.toLocaleString("en-US", { timeZone: TZ }))
   );
   localDate.setHours(hour, min, 0, 0);
 
-  // Offset
-  const offsetMin = localDate.getTimezoneOffset() * -1;
   const pad = (n: number) => n.toString().padStart(2, "0");
+
+  const offsetMin = localDate.getTimezoneOffset() * -1;
   const offHr = Math.floor(offsetMin / 60);
   const offMin = Math.abs(offsetMin % 60);
 
-  const offset = `${offHr >= 0 ? "+" : "-"}${pad(Math.abs(offHr))}:${pad(offMin)}`;
+  const offset =
+    `${offHr >= 0 ? "+" : "-"}${pad(Math.abs(offHr))}:${pad(offMin)}`;
 
   return (
     `${localDate.getFullYear()}-${pad(localDate.getMonth() + 1)}-${pad(localDate.getDate())}` +
@@ -128,11 +145,12 @@ function extractDays(c: any): Weekday[] {
 }
 
 // ============================================================================
-// MAIN HANDLER
+// ROUTE HANDLER
 // ============================================================================
 export async function GET(req: NextRequest) {
   try {
-    const ageParam = req.nextUrl.searchParams.get("age");
+    const { searchParams } = new URL(req.url);
+    const ageParam = searchParams.get("age");
     const age = ageParam ? Number(ageParam) : NaN;
 
     const res = await akadaFetch(`/studio/classes`, { method: "GET" });
@@ -145,19 +163,24 @@ export async function GET(req: NextRequest) {
     const j = JSON.parse(txt);
     const raw: any[] = j?.returnValue?.currentPageItems || [];
 
-    // Normalize
-    const norm = raw.map((c) => ({
-      id: String(c.id),
-      description: (c.description || "").trim(),
-      level: (c.levelDescription || "").trim(),
-      ageMin: Number(c.lowerAgeLimit ?? 0),
-      ageMax: Number(c.upperAgeLimit ?? 99),
-      days: extractDays(c),
-      timeRange: `${(c.startTimeDisplay || "").trim()} - ${(c.stopTimeDisplay || "").trim()}`,
-      lengthMinutes: Number(c.lengthMinutes ?? 0),
-    }));
+    const norm = raw.map((c) => {
+      const days = extractDays(c);
+      const start = (c.startTimeDisplay || "").trim();
+      const end = (c.stopTimeDisplay || "").trim();
+      const timeRange = `${start} - ${end}`;
 
-    // Filter
+      return {
+        id: String(c.id),
+        description: (c.description || "").trim(),
+        level: (c.levelDescription || "").trim(),
+        ageMin: Number(c.lowerAgeLimit ?? 0),
+        ageMax: Number(c.upperAgeLimit ?? 99),
+        days,
+        timeRange,
+        lengthMinutes: Number(c.lengthMinutes ?? 0),
+      };
+    });
+
     let filtered = norm
       .filter((c) => c.days.length > 0)
       .filter((c) => c.ageMin !== c.ageMax)
@@ -167,7 +190,6 @@ export async function GET(req: NextRequest) {
       filtered = filtered.filter((c) => age >= c.ageMin && age <= c.ageMax);
     }
 
-    // Grouping
     const groups: Record<string, any> = {};
 
     for (const c of filtered) {
@@ -192,9 +214,7 @@ export async function GET(req: NextRequest) {
 
         const [startStr, endStr] = c.timeRange.split("-").map((s) => s.trim());
 
-        const group = groups[c.description];
-
-        group.options.push({
+        groups[c.description].options.push({
           id: c.id,
           day,
           date: localISO(first),
@@ -206,7 +226,7 @@ export async function GET(req: NextRequest) {
           lengthMinutes: c.lengthMinutes,
         });
 
-        group.options.push({
+        groups[c.description].options.push({
           id: c.id,
           day,
           date: localISO(second),
@@ -220,21 +240,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
- const results = Object.values(groups).map((g: any) => {
-  g.options = g.options
-    .sort(
-      (a: { startISO: string }, b: { startISO: string }) =>
-        new Date(a.startISO).getTime() - new Date(b.startISO).getTime()
-    )
-    .slice(0, 2);
+    // FINAL SORT
+    const results = Object.values(groups).map((g: any) => {
+      g.options = (g.options as ClassOption[])
+        .sort(
+          (a: ClassOption, b: ClassOption) =>
+            new Date(a.startISO).getTime() -
+            new Date(b.startISO).getTime()
+        )
+        .slice(0, 2);
 
-  return g;
-});
-
+      return g;
+    });
 
     return NextResponse.json({ classes: results });
   } catch (err: any) {
-    console.error("ELITE CLASS ERROR:", err);
+    console.error("CLASS ERROR:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
