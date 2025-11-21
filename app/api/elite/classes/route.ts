@@ -1,12 +1,10 @@
-"use server";
+import { NextResponse, NextRequest } from "next/server";
+import { akadaFetch } from "@/lib/akada";
 
 // REQUIRED TO FORCE VERCEL TO EXECUTE THIS FILE FRESH
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-import { NextResponse, NextRequest } from "next/server";
-import { akadaFetch } from "@/lib/akada";
 
 // ============================================================================
 // CONFIG
