@@ -132,41 +132,30 @@ function to24Hour(str: string): { hour: number; min: number } {
 function buildISO(date: Date, timeStr: string): string {
   const { hour, min } = to24Hour(timeStr);
 
-  // Build the base time as if in CST
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
+  // Build CST datetime
+  const local = new Date(
+    date.toLocaleString("en-US", { timeZone: TZ })
+  );
 
-  const y = Number(parts.find(p => p.type === "year")!.value);
-  const m = Number(parts.find(p => p.type === "month")!.value);
-  const d = Number(parts.find(p => p.type === "day")!.value);
+  local.setHours(hour, min, 0, 0);
 
-  // Build a local CST datetime (floating)
-  const local = new Date(y, m - 1, d, hour, min, 0);
+  const pad = (n: number) => n.toString().padStart(2, "0");
 
-  // Get the CST offset FOR THAT EXACT MOMENT
-  const offsetParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TZ,
-    hour: "2-digit",
-    hour12: false,
-    timeZoneName: "shortOffset" // ⭐ gives -06:00 or -05:00
-  }).formatToParts(local);
+  // Offset (negative minutes = CST/CDT)
+  const offsetMin = local.getTimezoneOffset() * -1; 
+  const offHr = Math.floor(offsetMin / 60);
+  const offMin = Math.abs(offsetMin % 60);
 
-  const tzPart = offsetParts.find(p => p.type === "timeZoneName")!.value;
-  // tzPart example: "GMT-06:00"
-
-  const offset = tzPart.replace("GMT", ""); // → "-06:00"
-
-  const pad = (n: number) => String(n).padStart(2, "0");
+  // FIXED: Proper ISO 8601 offset
+  const offset =
+    `${offHr >= 0 ? "+" : "-"}${pad(Math.abs(offHr))}:${pad(offMin)}`;
 
   return (
     `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}` +
     `T${pad(local.getHours())}:${pad(local.getMinutes())}:00${offset}`
   );
 }
+
 
 function isClosed(d: Date): boolean {
   const iso = localISO(d);
