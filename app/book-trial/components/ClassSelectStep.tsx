@@ -179,11 +179,22 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                 </h2>
 
                 {/* DESCRIPTION ACCORDION */}
-                {desc && openDesc === group.id && (
-                  <p className="text-sm text-gray-700 text-center px-2">
-                    {desc}
-                  </p>
-                )}
+                {desc && (
+  <div
+    className="text-center cursor-pointer"
+    onClick={() => toggleDescription(group.id)}
+  >
+    {openDesc === group.id ? (
+      <p className="text-sm text-gray-700 px-2">
+        {desc}
+      </p>
+    ) : (
+      <p className="text-xs text-dance-pink mt-1">
+        Click for a description
+      </p>
+    )}
+  </div>
+)}
 
                 <p className="text-sm text-center text-gray-600 -mt-2">
                   Ages {group.ageMin}–{group.ageMax}
