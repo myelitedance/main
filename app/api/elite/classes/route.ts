@@ -1,10 +1,11 @@
 // app/api/elite/classes/route.ts
-import { NextResponse, NextRequest } from "next/server";
-import { akadaFetch } from "@/lib/akada";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+import { NextResponse, NextRequest } from "next/server";
+import { akadaFetch } from "@/lib/akada";
 
 
 // ============================================================================
