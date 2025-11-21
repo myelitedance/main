@@ -178,7 +178,7 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
                 </h2>
 
                 {/* INLINE ACCORDION DESCRIPTION */}
-                {desc && openDesc === group.groupId && (
+                {desc && openDesc === group.id && (
                   <p className="text-sm text-gray-700 text-center px-2">
                     {desc}
                   </p>
