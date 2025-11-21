@@ -1,5 +1,8 @@
 // app/api/elite/classes/route.ts
 console.log("🔥 Elite Route Loaded");
+console.log("SERVER NOW:", new Date().toString());
+console.log("OFFSET (min):", new Date().getTimezoneOffset());
+
 
 import { NextResponse, NextRequest } from "next/server";
 import { akadaFetch } from "@/lib/akada";
