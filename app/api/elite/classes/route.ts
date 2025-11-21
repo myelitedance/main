@@ -103,10 +103,20 @@ function to24Hour(str: string) {
 
 function buildISO(date: Temporal.ZonedDateTime, time: string): string {
   const { hour, min } = to24Hour(time);
-  const dt = date.with({ hour, minute: min, second: 0 });
 
-  return dt.toString(); // ISO with automatic -06:00/-05:00
+  // Build the full ZonedDateTime with the correct local clock time
+  const dt = date.with({ hour, minute: min, second: 0, millisecond: 0 });
+
+  // Extract date/time "as seen in CST/CDT"
+  const pdt = dt.toPlainDateTime();
+
+  // Extract offset e.g. "-06:00"
+  const offset = dt.offset.toString(); // already formatted ±HH:MM
+
+  // Build ISO WITHOUT time-zone annotation
+  return `${pdt.toString()}${offset}`;
 }
+
 
 function isClosed(d: Temporal.ZonedDateTime): boolean {
   const iso = d.toPlainDate().toString();
