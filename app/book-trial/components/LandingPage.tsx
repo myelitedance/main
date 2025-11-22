@@ -13,10 +13,9 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up border border-gray-100">
       
       {/* --- HERO SECTION --- */}
-      {/* "Nolensville Parents" Hook & Transformation Headline */}
       <div className="relative w-full h-80 md:h-96 bg-dance-purple">
         <Image 
-          src="/assets/mini-movers.jpg" // Or use a recital photo if available for "Performer" vibe
+          src="/assets/mini-movers.jpg" 
           alt="Confident dancer on stage" 
           fill
           className="object-cover opacity-40 mix-blend-overlay"
@@ -39,7 +38,7 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
       <div className="p-6 md:p-10">
         <div className="flex flex-col md:flex-row gap-10 items-stretch">
           
-          {/* LEFT: The "Outcomes" (Ad Copy Points) */}
+          {/* LEFT: The "Outcomes" */}
           <div className="w-full md:w-1/2 space-y-8">
             <div className="text-center md:text-left">
               <h2 className="text-2xl font-bold text-gray-900">
@@ -66,7 +65,7 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
             </div>
           </div>
 
-          {/* RIGHT: The Call to Action (Keep the layout you liked) */}
+          {/* RIGHT: The Call to Action */}
           <div className="w-full md:w-1/2 bg-gray-50 p-6 rounded-xl border border-gray-200 flex flex-col justify-center h-auto shadow-inner">
             <div className="space-y-5 text-center">
               <h3 className="text-xl font-bold text-dance-purple">
@@ -76,9 +75,12 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
                 Come experience the energy, meet the teachers, and see the smiles for yourself.
               </p>
               
-              {/* The Big Button */}
+              {/* UPDATED CTA: 
+                 1. "Find" = Low Friction (Discovery)
+                 2. "Your Free Trial" = Matches Ad Offer + Ownership
+              */}
               <Button onClick={onStart} className="w-full text-lg py-4 shadow-lg hover:shadow-xl transform transition hover:-translate-y-1 animate-pulse-slow">
-                Find My Trial Class →
+                Find Your Free Trial Class →
               </Button>
               
               <p className="text-xs text-gray-400">
@@ -100,7 +102,7 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
           </div>
         </div>
 
-        {/* --- FAQ SECTION (Remains largely the same) --- */}
+        {/* --- FAQ SECTION --- */}
         <div className="mt-16 max-w-3xl mx-auto border-t border-gray-100 pt-10">
           <h3 className="text-2xl font-bold text-center text-gray-900 mb-2">
             Common Questions
