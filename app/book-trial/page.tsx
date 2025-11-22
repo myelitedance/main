@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import LandingStep from "./components/LandingPage";
 import IntroStep from "./components/IntroStep";
 import ClassSelectStep from "./components/ClassSelectStep";
 import ContactStep from "./components/ContactStep";
@@ -8,7 +9,7 @@ import ConfirmStep from "./components/ConfirmStep";
 import { captureUTMs, getUTMs, UTMValues } from "./utils/utm";
 
 export default function BookTrialPage() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
 
   // Step 1 data
   const [age, setAge] = useState<number | null>(null);
@@ -51,7 +52,14 @@ export default function BookTrialPage() {
   };
 
   return (
-    <div className="max-w-lg mx-auto min-h-screen py-10">
+    // Change max-w-lg to max-w-5xl to accommodate the wider landing step
+    // You might want to condition the width based on the step
+    <div className={`min-h-screen py-10 px-4 mx-auto ${step === 0 ? 'max-w-5xl' : 'max-w-lg'}`}>
+      
+      {/* STEP 0: The Marketing Landing Page */}
+      {step === 0 && (
+        <LandingStep onStart={() => setStep(1)} />
+      )}
       {step === 1 && <IntroStep onNext={handleIntroNext} />}
 
       {step === 2 && age !== null && years !== null && (
