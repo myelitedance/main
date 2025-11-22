@@ -4,118 +4,106 @@ import { useState } from "react";
 import Image from "next/image";
 import Button from "./ui/Button";
 
-/* MARKETING TACTICS APPLIED:
-  1. Value Stacking: We list "Tour", "Consult", "Gift" as line items with value.
-  2. Risk Reversal: "No Credit Card Required" & "100% Beginner Friendly".
-  3. Future Pacing: "Imagine your child..." copy.
-  4. FAQ Accordion: Handles objections immediately (dress code, watching, etc).
-*/
-
 export default function LandingStep({ onStart }: { onStart: () => void }) {
   // FAQ State
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-
   const toggleFaq = (i: number) => setOpenFaq(openFaq === i ? null : i);
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up border border-gray-100">
       
       {/* --- HERO SECTION --- */}
-      <div className="relative w-full h-72 md:h-80 bg-dance-purple">
+      {/* "Nolensville Parents" Hook & Transformation Headline */}
+      <div className="relative w-full h-80 md:h-96 bg-dance-purple">
         <Image 
-          src="/assets/mini-movers.jpg" 
-          alt="Happy dancer at Elite Dance" 
+          src="/assets/mini-movers.jpg" // Or use a recital photo if available for "Performer" vibe
+          alt="Confident dancer on stage" 
           fill
           className="object-cover opacity-40 mix-blend-overlay"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-dance-purple/90 via-dance-purple/60 to-transparent flex flex-col justify-end p-6 md:p-10 text-center md:text-left">
-          <span className="inline-block bg-dance-pink text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide mb-3 self-center md:self-start shadow-sm">
-            Limited Time Offer
+        <div className="absolute inset-0 bg-gradient-to-t from-dance-purple/95 via-dance-purple/70 to-transparent flex flex-col justify-end p-6 md:p-10 text-center md:text-left">
+          <span className="inline-block bg-white text-dance-purple text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide mb-3 self-center md:self-start shadow-sm">
+            Nolensville Parents
           </span>
-          <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-2 drop-shadow-md">
-            Give Your Child the Gift of Confidence
+          <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-3 drop-shadow-md">
+            Transform Your Child Into a <span className="text-dance-gold">Confident Performer</span>
           </h1>
-          <p className="text-white/90 text-lg md:text-xl max-w-2xl font-medium">
-            Claim your <span className="text-dance-gold font-bold">VIP Trial Experience</span> at Nolensville’s favorite family studio.
+          <p className="text-white/90 text-lg md:text-xl max-w-2xl font-medium leading-relaxed">
+            Building character, creativity, and genuine friendships right here in our community.
           </p>
         </div>
       </div>
 
-      {/* --- THE OFFER / VALUE STACK --- */}
+      {/* --- THE TRANSFORMATION STACK --- */}
       <div className="p-6 md:p-10">
-        <div className="flex flex-col md:flex-row gap-10 items-start">
+        <div className="flex flex-col md:flex-row gap-10 items-stretch">
           
-          {/* LEFT: The "What You Get" Stack */}
-          <div className="w-full md:w-1/2 space-y-6">
+          {/* LEFT: The "Outcomes" (Ad Copy Points) */}
+          <div className="w-full md:w-1/2 space-y-8">
             <div className="text-center md:text-left">
               <h2 className="text-2xl font-bold text-gray-900">
-                What's Included in Your Visit?
+                See The Difference Dance Makes
               </h2>
-              <p className="text-gray-500 text-sm mt-1">
-                (Total Value: <span className="line-through">$75.00</span> — <span className="text-dance-purple font-bold">Yours FREE</span>)
+              <p className="text-gray-500 text-sm mt-2">
+                It’s about so much more than just steps on a stage.
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <BenefitItem 
-                title="Full 45-60 Minute Class" 
-                value="$25 Value"
-                desc="Your dancer will jump right in, make friends, and learn real steps from day one."
+                title="Confidence That Soars" 
+                desc="Watch them develop new abilities with teachers who genuinely care about their individual growth."
               />
               <BenefitItem 
-                title="1-on-1 Parent Consultation" 
-                value="$30 Value"
-                desc="We’ll sit down to discuss your child's goals and find the perfect schedule for your family."
+                title="Character & Discipline" 
+                desc="We use age-appropriate challenges to teach the perseverance and dedication that lasts a lifetime."
               />
               <BenefitItem 
-                title="Official Welcome Gift Bag" 
-                value="$10 Value"
-                desc="A special treat just for your dancer to celebrate their first day!"
-              />
-              <BenefitItem 
-                title="Studio Tour & Dress Code Guide" 
-                value="$10 Value"
-                desc="Get acclimated with our facility and learn exactly what they need to shine."
+                title="Give Them 'Their People'" 
+                desc="Real friendships bloom here. Join an encouraging community where your child truly belongs."
               />
             </div>
           </div>
 
-          {/* RIGHT: The Call to Action & Urgency */}
-          <div className="w-full md:w-1/2 bg-gray-50 p-6 rounded-xl border border-gray-200 flex flex-col justify-between h-full">
-            <div className="space-y-4">
-              <h3 className="text-xl font-bold text-dance-purple text-center">
-                Secure Your Spot Today
+          {/* RIGHT: The Call to Action (Keep the layout you liked) */}
+          <div className="w-full md:w-1/2 bg-gray-50 p-6 rounded-xl border border-gray-200 flex flex-col justify-center h-auto shadow-inner">
+            <div className="space-y-5 text-center">
+              <h3 className="text-xl font-bold text-dance-purple">
+                Book Your Free Trial Class
               </h3>
-              <p className="text-gray-600 text-center text-sm">
-                Classes are kept small for personal attention. Spots fill up on a first-come, first-served basis!
+              <p className="text-gray-600 text-sm px-2">
+                Come experience the energy, meet the teachers, and see the smiles for yourself.
               </p>
               
               {/* The Big Button */}
               <Button onClick={onStart} className="w-full text-lg py-4 shadow-lg hover:shadow-xl transform transition hover:-translate-y-1 animate-pulse-slow">
-                Claim My Free Trial Pass →
+                Find My Trial Class →
               </Button>
               
-              <p className="text-center text-xs text-gray-400">
-                No credit card required • 100% Risk Free
+              <p className="text-xs text-gray-400">
+                100% Risk Free • Beginner Friendly
               </p>
-            </div>
 
-            {/* Mini Testimonial */}
-            <div className="mt-8 pt-6 border-t border-gray-200 text-center">
-              <div className="flex justify-center text-dance-gold mb-2 text-lg">★★★★★</div>
-              <p className="text-gray-600 italic text-sm">
-                "We tried other studios, but Elite feels like home. My daughter walked out of her trial class beaming!"
-              </p>
-              <p className="text-gray-900 font-bold text-xs mt-2">— Sarah J., Nolensville Mom</p>
+              {/* Divider */}
+              <div className="w-1/2 mx-auto border-t border-gray-200"></div>
+
+              {/* Mini Testimonial */}
+              <div>
+                <div className="flex justify-center text-dance-gold mb-1 text-lg">★★★★★</div>
+                <p className="text-gray-600 italic text-sm">
+                  "My daughter walks out of every class beaming with confidence."
+                </p>
+                <p className="text-gray-900 font-bold text-xs mt-1">— Sarah M., Nolensville Mom</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* --- FAQ SECTION (New) --- */}
-        <div className="mt-16 max-w-3xl mx-auto">
+        {/* --- FAQ SECTION (Remains largely the same) --- */}
+        <div className="mt-16 max-w-3xl mx-auto border-t border-gray-100 pt-10">
           <h3 className="text-2xl font-bold text-center text-gray-900 mb-2">
-            Common Questions for New Families
+            Common Questions
           </h3>
           <p className="text-center text-gray-500 mb-8">
             (a.k.a. The part where we read your mind)
@@ -131,34 +119,34 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
             <FaqItem 
               isOpen={openFaq === 1} 
               onClick={() => toggleFaq(1)}
-              q="Do I need to stay during the class?"
-              a="For young dancers (ages 2-6), we ask parents to stay in our comfortable lobby. You'll be able to peek in on the fun! Ideally, we want them to focus on the teacher, but we know new places can be scary."
+              q="My child has never danced before. Is that okay?"
+              a="Absolutely! We specialize in beginners. Our teachers are experts at breaking down steps and making new dancers feel confident from minute one."
             />
             <FaqItem 
               isOpen={openFaq === 2} 
               onClick={() => toggleFaq(2)}
-              q="Is there any obligation to join?"
-              a="None at all! We believe you should experience our culture before committing. If it's not the right fit, no hard feelings (but we think you'll love it!)."
+              q="Do I need to stay during the class?"
+              a="For young dancers (ages 2-6), we ask parents to stay in our lobby. You'll be able to see them, but it helps them focus on the teacher and make new friends!"
             />
             <FaqItem 
               isOpen={openFaq === 3} 
               onClick={() => toggleFaq(3)}
-              q="My child is shy. Is that okay?"
-              a="Absolutely. Our teachers are experts at welcoming shy dancers. We never force them to participate; sometimes 'watching' is the first step to 'doing'!"
+              q="Is there any obligation to join?"
+              a="None at all. We want you to experience our studio culture first. If it's a fit, we'd love to have you, but there is zero pressure."
             />
           </div>
         </div>
 
-        {/* --- FINAL CTA --- */}
+        {/* --- FOOTER LINK --- */}
         <div className="mt-12 text-center">
-          <p className="text-gray-600 mb-4">
-            Ready to see your child shine?
+          <p className="text-gray-600 mb-2 text-sm">
+            Ready to join the Elite family?
           </p>
           <button 
             onClick={onStart}
-            className="text-dance-purple font-bold hover:underline text-lg"
+            className="text-dance-purple font-bold hover:underline"
           >
-            Click here to start booking now
+            Let's find your class
           </button>
         </div>
 
@@ -167,24 +155,20 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
   );
 }
 
-// --- SUB-COMPONENTS FOR CLEANLINESS ---
+// --- SUB-COMPONENTS ---
 
-function BenefitItem({ title, value, desc }: { title: string, value: string, desc: string }) {
+function BenefitItem({ title, desc }: { title: string, desc: string }) {
   return (
     <div className="flex gap-4">
-      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-1">
-        <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-dance-purple/10 flex items-center justify-center mt-1">
+        <svg className="w-5 h-5 text-dance-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          {/* Heart Icon for "Care/Love/Passion" vibe */}
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
       </div>
       <div>
-        <div className="flex items-center gap-2">
-          <h4 className="font-bold text-gray-900">{title}</h4>
-          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md border border-gray-200">
-            {value}
-          </span>
-        </div>
-        <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+        <h4 className="font-bold text-gray-900 text-lg">{title}</h4>
+        <p className="text-gray-600 mt-1 leading-relaxed">
           {desc}
         </p>
       </div>
