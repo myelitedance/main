@@ -1,4 +1,3 @@
-// app/layout.tsx (server component)
 import "./globals.css";
 import type { Metadata } from "next";
 import Script from "next/script";
@@ -6,11 +5,16 @@ import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
+import { Poppins } from "next/font/google"; // ← ADD THIS
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
 import SiteHeaderWC from "@/components/SiteHeaderWC";
 import HeaderIslands from "./HeaderIslands";
-
-// 👇 add this: small client component that re-fires PageView on route changes
 import MetaPixel from "./MetaPixel";
+
 
 export const metadata: Metadata = {
   icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }] },
@@ -42,9 +46,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
   return (
-    <html lang="en">
+    <html lang="en" className={poppins.className}>
       <head>
-        <link rel="stylesheet" href="/fonts.css" />
 
         {/* GA4 (unchanged) */}
         {isProd && GA_ID && (
