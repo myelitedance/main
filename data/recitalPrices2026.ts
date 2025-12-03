@@ -4,6 +4,7 @@ export const recitalPricesByClassId: Record<
   string,
   { price: number; allowMultiDiscount: boolean }
 > = {
+  "1088197": { price: 150, allowMultiDiscount: true }, // ACRO LEVEL 1
   "1088223": { price: 150, allowMultiDiscount: true }, // BALLET (2-3yrs)
   "1101833": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 1&2
   "1122064": { price: 150, allowMultiDiscount: true }, // BALLET LEVEL 1&2
