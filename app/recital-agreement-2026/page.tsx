@@ -6,7 +6,7 @@ export default function RecitalAgreement2026Page() {
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem" }}>
       <h1 style={{ color: "#8B5CF6", textAlign: "center", marginBottom: "2rem" }}>
-        Elite Dance 2026 Recital Information & Agreement
+        <strong>Elite Dance 2026 Recital Information & Agreement</strong>
       </h1>
 
       <section style={{ marginBottom: "2rem" }}>
