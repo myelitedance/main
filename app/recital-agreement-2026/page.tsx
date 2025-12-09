@@ -22,7 +22,7 @@ export default function RecitalAgreement2026Page() {
       <section style={{ marginBottom: "2rem" }}>
         <h2 style={{ color: "#3B82F6" }}>Recital Details</h2>
         <ul>
-          <li><strong>Tentative Date:</strong> Saturday, May 16, 2026 (1pm–4pm, show begins at 2pm)</li>
+          <li><strong>OFFICIAL Date:</strong> Saturday, May 16, 2026 (1pm–4pm, show begins at 2pm)</li>
           <li><strong>Dress Rehearsal:</strong> Friday, May 15, 2026 (4pm–8pm)</li>
           <li><strong>Location:</strong> Nolensville High School (awaiting final confirmation)</li>
         </ul>
