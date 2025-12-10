@@ -171,6 +171,8 @@ export async function POST(req: Request) {
 
     // Accept either { form } or a flat form object:
     const form = body.form ?? body;
+    const ghlError = body.ghlError || null;  
+
     const studentName =
       `${form.studentFirstName || ""} ${form.studentLastName || ""}`.trim() || "New Student";
     const subject = `NEW STUDENT Form - ${studentName}`;
@@ -196,11 +198,18 @@ export async function POST(req: Request) {
     // Raw JSON attachment (optional)
     attachments.push({
       filename: "submission.json",
-      content: Buffer.from(JSON.stringify(form, null, 2)),
+      content: Buffer.from(JSON.stringify({...form, ghlError}, null, 2)),
       contentType: "application/json",
     });
-
-    const html = renderHtml(form);
+    const ghlErrorHtml = ghlError
+      ? `<h3 style="margin:18px 0 8px;color:#b91c1c;">GHL ERROR</h3>
+         <div style="white-space:pre-wrap;color:#b91c1c;border:1px solid #fca5a5;padding:10px;background:#fee2e2;">
+           ${htmlEscape(ghlError)}
+         </div>`
+      : "";
+    const html = 
+    `${renderHtml(form)}
+    ${ghlErrorHtml}`;
 
     const { error, data } = await resend.emails.send({
       from: NOTIFY_FROM,

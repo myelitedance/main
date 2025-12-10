@@ -336,47 +336,48 @@ function validateStep1(form: NewStudentForm) {
     } as const;
 
 try {
+  // --- Call GHL API (will never throw because server always returns ok: true) ---
   const resp = await fetch("/api/ghl/new-student", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(ghlPayload),
   });
 
-  const j = await resp.json().catch(() => null);
+  const j = await resp.json().catch(() => ({}));
+  const ghlError = j.ghlError || null;
 
-  if (!resp.ok || !j?.ok) {
-    console.error("GHL submit failed", j);
-    alert(`GHL error (HTTP ${resp.status}): ${typeof j === "string" ? j : JSON.stringify(j)}`);
-    return;
-  }
-
-  // Success UI first
+  // --- ALWAYS show submitted UI ---
   setSubmitted(true);
 
-  // Fire-and-forget email; failure shouldn't affect UX
-  (async () => {
-    try {
-      await fetch("/api/notify/new-student", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        keepalive: true,
-        body: JSON.stringify({
-          form: { ...form, signatureDataUrl },     // full form for the email
-          meta: { contactId: foundContactId || null },
-        }),
-      });
-    } catch (e) {
-      console.warn("Notify email failed:", e);
-      // optional: toast/log only—no alert
-    }
-  })();
+  // --- Send email and include GHLError so the front desk sees it ---
+  const emailResp = await fetch("/api/notify/new-student", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+    body: JSON.stringify({
+      form: { ...form, signatureDataUrl },
+      meta: { contactId: foundContactId || null },
+      ghlError,
+    }),
+  });
+
+  const emailJSON = await emailResp.json().catch(() => null);
+
+  if (!emailResp.ok || !emailJSON?.ok) {
+    alert(
+      "Your form was received, but the email to the studio failed. Please notify the front desk."
+    );
+  }
 
 } catch (err) {
   console.error(err);
-  alert("Something went wrong while submitting. Please try again.");
+  alert(
+    "Your form was received, but an unexpected network error occurred. Please notify the front desk."
+  );
 } finally {
   setSubmitting(false);
 }
+
 }
   // ---------- Options ----------
   const benefitsOptions = [
