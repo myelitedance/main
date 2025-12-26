@@ -140,10 +140,10 @@ const Navigation = () => {
           Elite Dance & Music
         </div>
 
-        <div className="hidden md:flex item-center gap-8">
+        <div className="hidden md:flex items-center gap-8">
           <a href="#classes" className="text-white hover:text-[#ff00ff]">Classes</a>
           <a href="#about" className="text-white hover:text-[#ff00ff]">About</a>
-          <a href="#contact" className="bg-[#8032ff] px-6 py-2 rounded-full text-white font-bold hover:bg-[#ff00ff]">
+          <a href="#contact" className="bg-[#ff00ff] px-6 py-2 rounded-full text-white font-bold hover:bg-[#8032ff]">
             Get Stared
           </a>
         </div>
