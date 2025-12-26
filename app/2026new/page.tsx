@@ -144,7 +144,7 @@ const Navigation = () => {
           <a href="#classes" className="text-white hover:text-[#ff00ff]">Classes</a>
           <a href="#about" className="text-white hover:text-[#ff00ff]">About</a>
           <a href="#contact" className="bg-[#8032ff] px-6 py-2 rounded-full text-white font-bold hover:bg-[#ff00ff]">
-            Free Trial
+            Get Stared
           </a>
         </div>
 
@@ -157,7 +157,7 @@ const Navigation = () => {
         <div className="md:hidden bg-black px-6 pb-4 space-y-2">
           <a href="#classes" className="block text-white">Classes</a>
           <a href="#about" className="block text-white">About</a>
-          <a href="#contact" className="block text-[#ff00ff] font-bold">Free Trial</a>
+          <a href="#contact" className="block text-[#ff00ff] font-bold">Get Started</a>
         </div>
       )}
     </nav>
@@ -169,7 +169,7 @@ const Navigation = () => {
 // ===============================================
 const Hero = () => (
   <section className="h-screen bg-black flex items-center justify-center text-center relative">
-    <div className="absolute inset-0 bg-gradient-to-tr from-[#8032ff]/30 to-[#ff00ff]/30 blur-3xl"></div>
+    {/*<div className="absolute inset-0 bg-gradient-to-tr from-[#8032ff]/30 to-[#ff00ff]/30 blur-3xl"></div>*/}
     <div className="relative z-10 max-w-4xl">
       <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
         <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#ff00ff] via-white to-[#8032ff] drop-shadow-[0_0_25px_rgba(255,0,255,0.4)]">
@@ -182,6 +182,14 @@ const Hero = () => (
         <br />
         <span className="text-[#ff00ff] font-semibold">Find your place at Elite Dance.</span>
       </p>
+       <div className="flex flex-col sm:flex-row justify-center gap-4">
+        <button className="px-8 py-4 bg-[#ff00ff] text-white font-bold rounded-full hover:bg-[#d900d9] transition-all shadow-[0_0_20px_rgba(255,0,255,0.4)]">
+            Start Your Journey
+        </button>
+         <button className="px-8 py-4 border border-[#8032ff] text-white font-bold rounded-full hover:bg-[#8032ff]/20 transition-all">
+            View Schedule
+        </button>
+      </div>
     </div>
   </section>
 );
