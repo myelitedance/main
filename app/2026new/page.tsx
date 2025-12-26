@@ -140,7 +140,7 @@ const Navigation = () => {
           Elite Dance & Music
         </div>
 
-        <div className="hidden md:flex gap-8">
+        <div className="hidden md:flex item-center gap-8">
           <a href="#classes" className="text-white hover:text-[#ff00ff]">Classes</a>
           <a href="#about" className="text-white hover:text-[#ff00ff]">About</a>
           <a href="#contact" className="bg-[#8032ff] px-6 py-2 rounded-full text-white font-bold hover:bg-[#ff00ff]">
@@ -182,12 +182,9 @@ const Hero = () => (
         <br />
         <span className="text-[#ff00ff] font-semibold">Find your place at Elite Dance.</span>
       </p>
-       <div className="flex flex-col sm:flex-row justify-center gap-4">
+       <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
         <button className="px-8 py-4 bg-[#ff00ff] text-white font-bold rounded-full hover:bg-[#d900d9] transition-all shadow-[0_0_20px_rgba(255,0,255,0.4)]">
-            Start Your Journey
-        </button>
-         <button className="px-8 py-4 border border-[#8032ff] text-white font-bold rounded-full hover:bg-[#8032ff]/20 transition-all">
-            View Schedule
+            Get Started Now
         </button>
       </div>
     </div>
