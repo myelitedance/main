@@ -137,7 +137,7 @@ const Navigation = () => {
     <nav className="fixed w-full z-50 bg-black/90 backdrop-blur-md border-b border-[#8032ff]/30">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <div className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#ff00ff] to-[#8032ff] uppercase italic">
-          Elite Dance
+          Elite Dance & Music
         </div>
 
         <div className="hidden md:flex gap-8">
@@ -170,7 +170,7 @@ const Navigation = () => {
 const Hero = () => (
   <section className="h-screen bg-black flex items-center justify-center text-center relative">
     {/*<div className="absolute inset-0 bg-gradient-to-tr from-[#8032ff]/30 to-[#ff00ff]/30 blur-3xl"></div>*/}
-    <div className="relative z-10 max-w-4xl">
+    <div className="relative z-10 max-w-4xl px-4">
       <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
         <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#ff00ff] via-white to-[#8032ff] drop-shadow-[0_0_25px_rgba(255,0,255,0.4)]">
         EXPRESSION
