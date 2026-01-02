@@ -12,7 +12,7 @@ type Props = {
   label?: string;
 };
 
-export default function TrialButton({ variant = "small", label = "Book Your Free Trial" }: Props) {
+export default function TrialButton({ variant = "small", label = "Book Your Trial" }: Props) {
   const [open, setOpen] = useState(false);
 
   const base = "font-semibold transition-all transform hover:scale-105";
@@ -27,7 +27,7 @@ export default function TrialButton({ variant = "small", label = "Book Your Free
         {label}
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Book Your Free Trial">
+      <Modal open={open} onClose={() => setOpen(false)} title="Book Your ßTrial">
   <BookTrialForm
     key={open ? "form-open" : "form-closed"} // 👈 this forces a remount
     onClose={() => setOpen(false)}

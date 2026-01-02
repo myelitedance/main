@@ -183,7 +183,7 @@ const Hero = () => (
         <span className="text-[#ff00ff] font-semibold">Find your place at Elite Dance.</span>
       </p>
        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
-        <button className="px-8 py-4 bg-[#ff00ff] text-white font-bold rounded-full hover:bg-[#d900d9] transition-all shadow-[0_0_20px_rgba(255,0,255,0.4)]">
+        <button className="px-8 py-4 bg-[#ff00ff] text-white font-bold rounded-full hover:bg-[#8032ff] transition-all shadow-[0_0_20px_rgba(255,0,255,0.4)]">
             Get Started Now
         </button>
       </div>

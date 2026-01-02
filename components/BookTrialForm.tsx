@@ -163,7 +163,7 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
         <div className="space-y-6">
           <div>
             <h2 className="text-2xl font-bold mb-2">
-              Looking to book your free trial class? <span className="text-dance-pink">GREAT!</span>
+              Looking to book your trial class? <span className="text-dance-pink">GREAT!</span>
             </h2>
             <p className="text-gray-700">
               Let’s gather a little information about you and your dancer, and our front desk team will get you scheduled.

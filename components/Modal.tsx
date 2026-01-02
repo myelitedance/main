@@ -6,7 +6,7 @@ export default function Modal({
   open,
   onClose,
   children,
-  title = "Book Your Free Trial",
+  title = "Book Your Trial",
 }: {
   open: boolean;
   onClose: () => void;
