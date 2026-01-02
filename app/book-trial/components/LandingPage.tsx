@@ -69,7 +69,7 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
           <div className="w-full md:w-1/2 bg-gray-50 p-6 rounded-xl border border-gray-200 flex flex-col justify-center h-auto shadow-inner">
             <div className="space-y-5 text-center">
               <h3 className="text-xl font-bold text-dance-purple">
-                Book Your Free Trial Class
+                Book Your Trial Class
               </h3>
               <p className="text-gray-600 text-sm px-2">
                 Come experience the energy, meet the teachers, and see the smiles for yourself.
@@ -80,7 +80,7 @@ export default function LandingStep({ onStart }: { onStart: () => void }) {
                  2. "Your Free Trial" = Matches Ad Offer + Ownership
               */}
               <Button onClick={onStart} className="w-full text-lg py-4 shadow-lg hover:shadow-xl transform transition hover:-translate-y-1 animate-pulse-slow">
-                Find Your Free Trial Class →
+                Find Your Trial Class →
               </Button>
               
               <p className="text-xs text-gray-400">
