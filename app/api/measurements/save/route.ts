@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     if (
       !studentId ||
       !measurements ||
+      measurements.height == null ||
       measurements.girth == null ||
       measurements.hips == null ||
       measurements.shoeSize == null
@@ -81,11 +82,11 @@ const performanceId = performanceRes.rows[0].id;
     const eventRes = await client.query(
       `
       INSERT INTO measurement_events
-        (student_id, performance_id, recorded_by)
+        (student_id, performance_id, recorded_by, height_in)
       VALUES ($1, $2, $3)
       RETURNING id
       `,
-      [internalStudentId, performanceId, recordedBy]
+      [internalStudentId, performanceId, recordedBy, measurements.height]
     );
 
     const eventId = eventRes.rows[0].id;

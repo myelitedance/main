@@ -14,6 +14,7 @@ interface Student {
 }
 
 type MeasurementFormState = {
+    height: number | ''
   girth: number | ''
   hips: number | ''
   shoeSize: number | ''
@@ -32,6 +33,7 @@ export default function MeasurementEntryPage() {
   const [error, setError] = useState<string | null>(null)
 
 const [measurements, setMeasurements] = useState<MeasurementFormState>({
+    height: '',
   girth: '',
   hips: '',
   shoeSize: '',
@@ -54,6 +56,7 @@ async function handleSave() {
   const payload = {
     studentId,
     measurements: {
+        height: measurements.height as number,
       girth: measurements.girth as number,
       hips: measurements.hips as number,
       shoeSize: measurements.shoeSize as number,
@@ -82,7 +85,6 @@ async function handleSave() {
     alert("Failed to save measurements");
   }
 }
-
   useEffect(() => {
     async function loadStudent() {
       try {
@@ -107,6 +109,7 @@ async function handleSave() {
   }, [studentId])
 
   const isFormValid =
+  measurements.height !== '' &&
   measurements.girth !== '' &&
   measurements.hips !== '' &&
   measurements.shoeSize !== ''
@@ -146,6 +149,19 @@ async function handleSave() {
 
   <CardContent className="space-y-4">
     {/* REQUIRED */}
+    <div>
+  <label className="block text-sm font-medium">
+    Height (in) <span className="text-red-500">*</span>
+  </label>
+  <input
+    type="number"
+    step="0.1"
+    value={measurements.height}
+    onChange={(e) => updateMeasurement('height', e.target.value)}
+    className="w-full border rounded px-3 py-2"
+    placeholder="e.g. 52.5"
+  />
+</div>
     <div>
       <label className="block text-sm font-medium">
         Girth (in) <span className="text-red-500">*</span>
