@@ -4,6 +4,8 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
+
+
 interface Student {
   id: string
   external_id: string
@@ -11,13 +13,75 @@ interface Student {
   last_name: string
 }
 
+type MeasurementFormState = {
+  girth: number | ''
+  hips: number | ''
+  shoeSize: number | ''
+  waist: number | ''
+  bust: number | ''
+}
+
 export default function MeasurementEntryPage() {
   const params = useParams()
-  const studentId = params.studentId as string
+  const studentId = Array.isArray(params.studentId)
+    ? params.studentId[0]
+    : params.studentId
 
   const [student, setStudent] = useState<Student | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+const [measurements, setMeasurements] = useState<MeasurementFormState>({
+  girth: '',
+  hips: '',
+  shoeSize: '',
+  waist: '',
+  bust: '',
+})
+
+function updateMeasurement(
+  field: keyof MeasurementFormState,
+  value: string
+) {
+  setMeasurements((prev) => ({
+    ...prev,
+    [field]: value === '' ? '' : Number(value),
+  }))
+}
+async function handleSave() {
+  if (!isFormValid || !studentId) return;
+
+  const payload = {
+    studentId,
+    measurements: {
+      girth: measurements.girth as number,
+      hips: measurements.hips as number,
+      shoeSize: measurements.shoeSize as number,
+      ...(measurements.waist !== '' && { waist: measurements.waist }),
+      ...(measurements.bust !== '' && { bust: measurements.bust }),
+    },
+  };
+
+  try {
+    const res = await fetch("/api/measurements/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error("Save failed");
+    }
+
+    // TEMP success handling
+    alert("Measurements saved successfully");
+
+    // Reset form or redirect later
+  } catch (err) {
+    console.error(err);
+    alert("Failed to save measurements");
+  }
+}
 
   useEffect(() => {
     async function loadStudent() {
@@ -37,10 +101,16 @@ export default function MeasurementEntryPage() {
       }
     }
 
-    if (studentId) {
-      loadStudent()
-    }
+    if (typeof studentId === 'string' && studentId.length > 0) {
+  loadStudent()
+}
   }, [studentId])
+
+  const isFormValid =
+  measurements.girth !== '' &&
+  measurements.hips !== '' &&
+  measurements.shoeSize !== ''
+
 
   if (loading) {
     return <p className="text-center mt-10">Loading student…</p>
@@ -81,11 +151,14 @@ export default function MeasurementEntryPage() {
         Girth (in) <span className="text-red-500">*</span>
       </label>
       <input
-        type="number"
-        step="0.1"
-        className="w-full border rounded px-3 py-2"
-        placeholder="e.g. 32.5"
-      />
+  type="number"
+  step="0.1"
+  value={measurements.girth}
+  onChange={(e) => updateMeasurement('girth', e.target.value)}
+  className="w-full border rounded px-3 py-2"
+  placeholder="e.g. 32.5"
+/>
+
     </div>
 
     <div>
@@ -93,11 +166,14 @@ export default function MeasurementEntryPage() {
         Hips (in) <span className="text-red-500">*</span>
       </label>
       <input
-        type="number"
-        step="0.1"
-        className="w-full border rounded px-3 py-2"
-        placeholder="e.g. 30.0"
-      />
+  type="number"
+  step="0.1"
+  value={measurements.hips}
+  onChange={(e) => updateMeasurement('hips', e.target.value)}
+  className="w-full border rounded px-3 py-2"
+  placeholder="e.g. 30.0"
+/>
+
     </div>
 
     <div>
@@ -105,11 +181,14 @@ export default function MeasurementEntryPage() {
         Shoe Size (cm) <span className="text-red-500">*</span>
       </label>
       <input
-        type="number"
-        step="0.1"
-        className="w-full border rounded px-3 py-2"
-        placeholder="e.g. 21.5"
-      />
+  type="number"
+  step="0.1"
+  value={measurements.shoeSize}
+  onChange={(e) => updateMeasurement('shoeSize', e.target.value)}
+  className="w-full border rounded px-3 py-2"
+  placeholder="e.g. 21.5"
+/>
+
     </div>
 
     {/* OPTIONAL */}
@@ -124,11 +203,14 @@ export default function MeasurementEntryPage() {
             Waist (in)
           </label>
           <input
-            type="number"
-            step="0.1"
-            className="w-full border rounded px-3 py-2"
-            placeholder="e.g. 24.0"
-          />
+  type="number"
+  step="0.1"
+  value={measurements.waist}
+  onChange={(e) => updateMeasurement('waist', e.target.value)}
+  className="w-full border rounded px-3 py-2"
+  placeholder="e.g. 24.0"
+/>
+
         </div>
 
         <div>
@@ -136,14 +218,28 @@ export default function MeasurementEntryPage() {
             Bust (in)
           </label>
           <input
-            type="number"
-            step="0.1"
-            className="w-full border rounded px-3 py-2"
-            placeholder="e.g. 28.0"
-          />
+  type="number"
+  step="0.1"
+  value={measurements.bust}
+  onChange={(e) => updateMeasurement('bust', e.target.value)}
+  className="w-full border rounded px-3 py-2"
+  placeholder="e.g. 28.0"
+/>
         </div>
       </div>
     </div>
+    <button
+  disabled={!isFormValid}
+  onClick={handleSave}
+  className={`w-full mt-6 py-3 rounded font-semibold ${
+    isFormValid
+      ? 'bg-purple-600 text-white'
+      : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+  }`}
+>
+  Save Measurements
+</button>
+
   </CardContent>
 </Card>
 
