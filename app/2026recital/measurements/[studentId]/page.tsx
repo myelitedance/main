@@ -41,8 +41,13 @@ const [measurements, setMeasurements] = useState<MeasurementFormState>({
   waist: '',
   bust: '',
 })
+
 const [saving, setSaving] = useState(false)
 const [saveSuccess, setSaveSuccess] = useState(false)
+
+const [photoFile, setPhotoFile] = useState<File | null>(null)
+const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+
 
 
 function updateMeasurement(
@@ -59,23 +64,33 @@ async function handleSave() {
 
   setSaving(true)
 
-  const payload = {
-    studentId,
-    measurements: {
-      height: measurements.height as number,
-      girth: measurements.girth as number,
-      hips: measurements.hips as number,
-      shoeSize: measurements.shoeSize as number,
-      ...(measurements.waist !== '' && { waist: measurements.waist }),
-      ...(measurements.bust !== '' && { bust: measurements.bust }),
-    },
-  }
-
   try {
+    const formData = new FormData()
+
+    // Required identifiers
+    formData.append('studentId', studentId)
+
+    // Measurements payload (JSON string)
+    formData.append(
+      'measurements',
+      JSON.stringify({
+        height: measurements.height as number,
+        girth: measurements.girth as number,
+        hips: measurements.hips as number,
+        shoeSize: measurements.shoeSize as number,
+        ...(measurements.waist !== '' && { waist: measurements.waist }),
+        ...(measurements.bust !== '' && { bust: measurements.bust }),
+      })
+    )
+
+    // Optional photo
+    if (photoFile) {
+      formData.append('photo', photoFile)
+    }
+
     const res = await fetch('/api/measurements/save', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: formData, // ⚠️ DO NOT set Content-Type
     })
 
     if (!res.ok) {
@@ -90,6 +105,7 @@ async function handleSave() {
     setSaving(false)
   }
 }
+
 
   useEffect(() => {
     async function loadStudent() {
@@ -204,6 +220,37 @@ if (saveSuccess && student) {
     placeholder="e.g. 52.5"
   />
 </div>
+<div className="space-y-2">
+  <label className="block text-sm font-medium">
+    Height Confirmation Photo (optional)
+  </label>
+
+  <input
+    type="file"
+    accept="image/*"
+    capture="environment"
+    onChange={(e) => {
+      const file = e.target.files?.[0] ?? null
+      setPhotoFile(file)
+
+      if (file) {
+        const url = URL.createObjectURL(file)
+        setPhotoPreviewUrl(url)
+      } else {
+        setPhotoPreviewUrl(null)
+      }
+    }}
+  />
+
+  {photoPreviewUrl && (
+    <img
+      src={photoPreviewUrl}
+      alt="Height confirmation preview"
+      className="mt-2 rounded border max-h-64 object-contain"
+    />
+  )}
+</div>
+
     <div>
       <label className="block text-sm font-medium">
         Girth (in) <span className="text-red-500">*</span>
