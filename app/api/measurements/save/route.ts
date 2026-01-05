@@ -10,8 +10,10 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { studentId, measurements } = body;
 
+    // 0️⃣ Validate payload shape
     if (
       !studentId ||
+      !measurements ||
       measurements.girth == null ||
       measurements.hips == null ||
       measurements.shoeSize == null
@@ -24,7 +26,43 @@ export async function POST(req: Request) {
 
     await client.query("BEGIN");
 
-    // 1️⃣ Create measurement event
+    // 1️⃣ Resolve internal student UUID from external (Akada) ID
+    const studentRes = await client.query(
+      `
+      SELECT id
+      FROM students
+      WHERE external_id = $1
+      `,
+      [studentId]
+    );
+
+    if (studentRes.rows.length === 0) {
+      throw new Error("Student not found in local database");
+    }
+
+    const internalStudentId = studentRes.rows[0].id;
+
+    // TEMP: single active performance
+    const performanceId = "2026";
+    const recordedBy = "admin";
+
+    // 2️⃣ Prevent duplicate measurements for same student + performance
+    const existingEvent = await client.query(
+      `
+      SELECT id
+      FROM measurement_events
+      WHERE student_id = $1
+        AND performance_id = $2
+      LIMIT 1
+      `,
+      [internalStudentId, performanceId]
+    );
+
+    if (existingEvent.rows.length > 0) {
+      throw new Error("Measurements already recorded for this student");
+    }
+
+    // 3️⃣ Create measurement event
     const eventRes = await client.query(
       `
       INSERT INTO measurement_events
@@ -32,12 +70,12 @@ export async function POST(req: Request) {
       VALUES ($1, $2, $3)
       RETURNING id
       `,
-      [studentId, "2026", "admin"]
+      [internalStudentId, performanceId, recordedBy]
     );
 
     const eventId = eventRes.rows[0].id;
 
-    // 2️⃣ Load measurement types
+    // 4️⃣ Load measurement types
     const typesRes = await client.query(`
       SELECT id, code FROM measurement_types
     `);
@@ -47,28 +85,43 @@ export async function POST(req: Request) {
       typeMap[row.code] = row.id;
     }
 
-    // 3️⃣ Build values
-    const values = [
+    // 5️⃣ Ensure required measurement types exist
+    const requiredCodes = ["GIRTH", "HIPS", "SHOE_SIZE"];
+    for (const code of requiredCodes) {
+      if (!typeMap[code]) {
+        throw new Error(`Missing measurement type: ${code}`);
+      }
+    }
+
+    // 6️⃣ Build measurement values (required + optional)
+    const values: { code: string; value: number }[] = [
       { code: "GIRTH", value: measurements.girth },
       { code: "HIPS", value: measurements.hips },
       { code: "SHOE_SIZE", value: measurements.shoeSize },
-      ...(measurements.waist != null
-        ? [{ code: "WAIST", value: measurements.waist }]
-        : []),
-      ...(measurements.bust != null
-        ? [{ code: "BUST", value: measurements.bust }]
-        : []),
     ];
 
-    // 4️⃣ Insert values
+    if (measurements.waist != null) {
+      values.push({ code: "WAIST", value: measurements.waist });
+    }
+
+    if (measurements.bust != null) {
+      values.push({ code: "BUST", value: measurements.bust });
+    }
+
+    // 7️⃣ Insert measurement values
     for (const v of values) {
+      const typeId = typeMap[v.code];
+      if (!typeId) {
+        throw new Error(`Unknown measurement type: ${v.code}`);
+      }
+
       await client.query(
         `
         INSERT INTO measurement_values
           (measurement_event_id, measurement_type_id, value)
         VALUES ($1, $2, $3)
         `,
-        [eventId, typeMap[v.code], v.value]
+        [eventId, typeId, v.value]
       );
     }
 
