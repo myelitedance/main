@@ -13,9 +13,9 @@ type StudentRow = {
 
 export async function GET(
   req: Request,
-  { params }: { params: { externalId: string } }
+  context: { params: Promise<{ externalId: string }> }
 ) {
-  const externalId = params.externalId;
+  const { externalId } = await context.params;
 
   if (!externalId) {
     return NextResponse.json(
