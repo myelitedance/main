@@ -83,7 +83,7 @@ const performanceId = performanceRes.rows[0].id;
       `
       INSERT INTO measurement_events
         (student_id, performance_id, recorded_by, height_in)
-      VALUES ($1, $2, $3)
+      VALUES ($1, $2, $3, $4)
       RETURNING id
       `,
       [internalStudentId, performanceId, recordedBy, measurements.height]
