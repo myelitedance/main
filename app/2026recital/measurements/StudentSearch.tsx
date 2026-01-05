@@ -29,7 +29,7 @@ export default function StudentSearch({ onSelect }: StudentSearchProps) {
     setResults([])
 
     try {
-      const res = await fetch('/api/akada/students/search', {
+      const res = await fetch('/api/akada/students/search-wildcard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
