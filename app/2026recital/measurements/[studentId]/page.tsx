@@ -32,6 +32,7 @@ export default function MeasurementEntryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+
 const [measurements, setMeasurements] = useState<MeasurementFormState>({
     height: '',
   girth: '',
@@ -40,6 +41,9 @@ const [measurements, setMeasurements] = useState<MeasurementFormState>({
   waist: '',
   bust: '',
 })
+const [saving, setSaving] = useState(false)
+const [saveSuccess, setSaveSuccess] = useState(false)
+
 
 function updateMeasurement(
   field: keyof MeasurementFormState,
@@ -51,40 +55,42 @@ function updateMeasurement(
   }))
 }
 async function handleSave() {
-  if (!isFormValid || !studentId) return;
+  if (!isFormValid || !studentId) return
+
+  setSaving(true)
 
   const payload = {
     studentId,
     measurements: {
-        height: measurements.height as number,
+      height: measurements.height as number,
       girth: measurements.girth as number,
       hips: measurements.hips as number,
       shoeSize: measurements.shoeSize as number,
       ...(measurements.waist !== '' && { waist: measurements.waist }),
       ...(measurements.bust !== '' && { bust: measurements.bust }),
     },
-  };
+  }
 
   try {
-    const res = await fetch("/api/measurements/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/measurements/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    });
+    })
 
     if (!res.ok) {
-      throw new Error("Save failed");
+      throw new Error('Save failed')
     }
 
-    // TEMP success handling
-    alert("Measurements saved successfully");
-
-    // Reset form or redirect later
+    setSaveSuccess(true)
   } catch (err) {
-    console.error(err);
-    alert("Failed to save measurements");
+    console.error(err)
+    alert('Failed to save measurements')
+  } finally {
+    setSaving(false)
   }
 }
+
   useEffect(() => {
     async function loadStudent() {
       try {
@@ -126,6 +132,42 @@ async function handleSave() {
       </p>
     )
   }
+if (saveSuccess && student) {
+  return (
+    <div className="max-w-xl mx-auto mt-10 space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Measurements Saved</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Measurements for{' '}
+            <strong>
+              {student.first_name} {student.last_name}
+            </strong>{' '}
+            have been saved.
+          </p>
+
+          <div className="space-y-3">
+            <a
+              href="/2026recital/measurements"
+              className="block w-full text-center py-3 rounded font-semibold bg-purple-600 text-white"
+            >
+              Measure Another Student
+            </a>
+
+            <button
+              onClick={() => setSaveSuccess(false)}
+              className="block w-full py-3 rounded font-semibold bg-gray-200 text-gray-800"
+            >
+              Re-measure This Student
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
   return (
     <div className="max-w-xl mx-auto mt-10 space-y-6">
@@ -245,16 +287,17 @@ async function handleSave() {
       </div>
     </div>
     <button
-  disabled={!isFormValid}
+  disabled={!isFormValid || saving}
   onClick={handleSave}
   className={`w-full mt-6 py-3 rounded font-semibold ${
-    isFormValid
+    isFormValid && !saving
       ? 'bg-purple-600 text-white'
       : 'bg-gray-300 text-gray-600 cursor-not-allowed'
   }`}
 >
-  Save Measurements
+  {saving ? 'Saving…' : 'Save Measurements'}
 </button>
+
 
   </CardContent>
 </Card>
