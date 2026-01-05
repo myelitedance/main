@@ -98,6 +98,7 @@ async function handleSave() {
     }
 
     setSaveSuccess(true)
+    window.dispatchEvent(new Event('measurement-saved'))
   } catch (err) {
     console.error(err)
     alert('Failed to save measurements')
