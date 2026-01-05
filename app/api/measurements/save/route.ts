@@ -41,9 +41,24 @@ export async function POST(req: Request) {
     }
 
     const internalStudentId = studentRes.rows[0].id;
+// Resolve internal performance UUID
+// Resolve active performance (must be in measuring state)
+const performanceRes = await client.query(
+  `
+  SELECT id
+  FROM performances
+  WHERE status = 'measuring'
+  LIMIT 1
+  `
+);
 
-    // TEMP: single active performance
-    const performanceId = "2026";
+if (performanceRes.rows.length === 0) {
+  throw new Error("No active performance in measuring state");
+}
+
+const performanceId = performanceRes.rows[0].id;
+
+
     const recordedBy = "admin";
 
     // 2️⃣ Prevent duplicate measurements for same student + performance
