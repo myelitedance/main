@@ -22,7 +22,10 @@ export default function StudentSearch({ onSelect }: StudentSearchProps) {
   const [error, setError] = useState<string | null>(null)
 
   async function search() {
-    if (!query.trim()) return
+    if (query.trim().length < 2) {
+      setError('Enter at least 2 characters.')
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -32,21 +35,20 @@ export default function StudentSearch({ onSelect }: StudentSearchProps) {
       const res = await fetch('/api/akada/students/search-wildcard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: query.trim(), // wildcard / partial search
-        }),
+        body: JSON.stringify({ query: query.trim() }),
       })
 
       if (!res.ok) throw new Error('Search failed')
 
       const data = await res.json()
 
-      // Normalize only what measurements need
-      const mapped: MeasurementStudent[] = data.map((s: any) => ({
-        studentId: s.studentId,
-        firstName: s.studentFirstName,
-        lastName: s.studentLastName,
-      }))
+      const mapped: MeasurementStudent[] = Array.isArray(data)
+        ? data.map((s: any) => ({
+            studentId: String(s.studentId),
+            firstName: String(s.studentFirstName || ''),
+            lastName: String(s.studentLastName || ''),
+          }))
+        : []
 
       if (!mapped.length) {
         setError('No students found.')
@@ -75,7 +77,7 @@ export default function StudentSearch({ onSelect }: StudentSearchProps) {
           onKeyDown={(e) => e.key === 'Enter' && search()}
         />
 
-        <Button onClick={search} disabled={loading || !query.trim()}>
+        <Button onClick={search} disabled={loading}>
           {loading ? 'Searching…' : 'Search'}
         </Button>
 
