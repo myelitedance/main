@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const q = query.toLowerCase().trim();
 
     // Fetch full student list (Akada has no wildcard support)
-    const res = await akadaFetch("/studio/students", { method: "GET" });
+    const res = await akadaFetch("/studio/performances/recitals/22431/students", { method: "GET" });
     const text = await res.text();
 
     if (!res.ok) {
