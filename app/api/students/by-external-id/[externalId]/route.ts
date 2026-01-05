@@ -15,6 +15,7 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ externalId: string }> }
 ) {
+  console.log("🔥 by-external-id route HIT");
   const { externalId } = await context.params;
 
   if (!externalId) {
