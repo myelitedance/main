@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { akadaFetch } from "@/lib/akada";
-import { db } from "@/lib/db"; // adjust to your db helper
+import { sql } from "@/lib/db";
 
 export const runtime = "nodejs";
+
+type StudentRow = {
+  id: string;
+  external_id: string;
+  first_name: string;
+  last_name: string;
+};
 
 export async function GET(
   req: Request,
@@ -17,18 +24,19 @@ export async function GET(
     );
   }
 
-  // 1️⃣ Try local DB first
-  const existing = await db
-    .selectFrom("students")
-    .selectAll()
-    .where("external_id", "=", externalId)
-    .executeTakeFirst();
+  // 1️⃣ Check local DB
+  const existing = (await sql`
+    SELECT id, external_id, first_name, last_name
+    FROM students
+    WHERE external_id = ${externalId}
+    LIMIT 1
+  `) as StudentRow[];
 
-  if (existing) {
-    return NextResponse.json(existing);
+  if (existing.length > 0) {
+    return NextResponse.json(existing[0]);
   }
 
-  // 2️⃣ Not found locally → fetch from Akada
+  // 2️⃣ Fetch from Akada
   const res = await akadaFetch("/studio/students", { method: "GET" });
   const text = await res.text();
 
@@ -67,12 +75,12 @@ export async function GET(
     ).trim(),
   };
 
-  // 3️⃣ Insert into local DB
-  const inserted = await db
-    .insertInto("students")
-    .values(student)
-    .returningAll()
-    .executeTakeFirst();
+  // 3️⃣ Insert into DB
+  const inserted = (await sql`
+    INSERT INTO students (external_id, first_name, last_name)
+    VALUES (${student.external_id}, ${student.first_name}, ${student.last_name})
+    RETURNING id, external_id, first_name, last_name
+  `) as StudentRow[];
 
-  return NextResponse.json(inserted);
+  return NextResponse.json(inserted[0]);
 }
