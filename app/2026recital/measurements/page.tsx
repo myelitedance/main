@@ -7,7 +7,7 @@ export default function MeasurementsHomePage() {
   const router = useRouter()
 
   function handleSelect(student: MeasurementStudent) {
-    router.push(`/app/2026recital/measurements/${student.studentId}`)
+    router.push(`/2026recital/measurements/${student.studentId}`)
   }
 
   return (
