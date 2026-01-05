@@ -64,19 +64,89 @@ export default function MeasurementEntryPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-gray-600">
-            Student ID: {student.external_id}
+            Akada ID: {student.external_id}
           </p>
         </CardContent>
       </Card>
 
-      {/* Measurement form will go here next */}
       <Card>
-        <CardContent className="p-6">
-          <p className="text-gray-500 text-sm">
-            Measurement form coming next…
-          </p>
-        </CardContent>
-      </Card>
+  <CardHeader>
+    <CardTitle>Measurements</CardTitle>
+  </CardHeader>
+
+  <CardContent className="space-y-4">
+    {/* REQUIRED */}
+    <div>
+      <label className="block text-sm font-medium">
+        Girth (in) <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="number"
+        step="0.1"
+        className="w-full border rounded px-3 py-2"
+        placeholder="e.g. 32.5"
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium">
+        Hips (in) <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="number"
+        step="0.1"
+        className="w-full border rounded px-3 py-2"
+        placeholder="e.g. 30.0"
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium">
+        Shoe Size (cm) <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="number"
+        step="0.1"
+        className="w-full border rounded px-3 py-2"
+        placeholder="e.g. 21.5"
+      />
+    </div>
+
+    {/* OPTIONAL */}
+    <div className="pt-4 border-t">
+      <p className="text-sm text-gray-500 mb-2">
+        Optional (only if required for costume fit)
+      </p>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium">
+            Waist (in)
+          </label>
+          <input
+            type="number"
+            step="0.1"
+            className="w-full border rounded px-3 py-2"
+            placeholder="e.g. 24.0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">
+            Bust (in)
+          </label>
+          <input
+            type="number"
+            step="0.1"
+            className="w-full border rounded px-3 py-2"
+            placeholder="e.g. 28.0"
+          />
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>
+
     </div>
   )
 }
