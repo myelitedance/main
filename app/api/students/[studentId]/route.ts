@@ -4,15 +4,13 @@ import { pool } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
-// DB → UI key normalization
-const MEASUREMENT_KEY_MAP: Record<string, string> = {
-  height: 'heightIn',
-  girth: 'girth',
-  hips: 'hips',
-  shoe_size: 'shoeSize',
-  waist: 'waist',
-  bust: 'bust',
+function normalizeMeasurementKey(dbKey: string) {
+  const key = dbKey.toLowerCase()
+
+  if (key === 'shoe_size') return 'shoeSize'
+  return key
 }
+
 
 export async function GET(
   _req: NextRequest,
@@ -67,6 +65,7 @@ export async function GET(
         me.id                AS event_id,
         me.recorded_at,
         me.photo_url,
+        me.height_in,
         mt.code              AS measurement_key,
         mv.value
       FROM measurement_events me
@@ -94,16 +93,18 @@ export async function GET(
     /* 4️⃣ Collapse rows → single measurement object */
     const base = measurementRes.rows[0]
 
-    const values: Record<string, number> = {}
+   const values: Record<string, number> = {}
 
-    for (const row of measurementRes.rows) {
-      if (!row.measurement_key) continue
+for (const row of measurementRes.rows) {
+  if (!row.measurement_key) continue
 
-      const mappedKey = MEASUREMENT_KEY_MAP[row.measurement_key]
-      if (mappedKey) {
-        values[mappedKey] = Number(row.value)
-      }
-    }
+  const normalizedKey = normalizeMeasurementKey(row.measurement_key)
+  values[normalizedKey] = Number(row.value)
+}
+
+if (base.height_in !== null) {
+  values.height = Number(base.height_in)
+}
 
     return NextResponse.json({
       student: {
