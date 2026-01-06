@@ -29,55 +29,73 @@ function toNullableString(v: unknown): string | null {
 export default async function DashboardPage() {
   const rows = await sql`
     WITH registered AS (
-      SELECT
-        pr.student_id,
-        s.external_id,
-        s.first_name,
-        s.last_name
-      FROM performance_registrations pr
-      JOIN students s ON s.id = pr.student_id
-      WHERE pr.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
-    ),
-    measurements AS (
-      SELECT
-        me.id AS measurement_event_id,
-        me.student_id,
-        me.height_in,
-        me.photo_url
-      FROM measurement_events me
-      WHERE me.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
-    ),
-    required AS (
-      SELECT
-        mv.measurement_event_id,
-        MAX(CASE WHEN mt.code = 'SHOE_SIZE' THEN 1 ELSE 0 END) AS has_shoe_size,
-        MAX(CASE WHEN mt.code = 'GIRTH' THEN 1 ELSE 0 END)     AS has_girth
-      FROM measurement_values mv
-      JOIN measurement_types mt ON mt.id = mv.measurement_type_id
-      GROUP BY mv.measurement_event_id
-    )
-    SELECT
-      r.student_id,
-      r.external_id,
-      r.first_name,
-      r.last_name,
-      m.measurement_event_id,
+  SELECT
+    pr.student_id,
+    s.external_id,
+    s.first_name,
+    s.last_name
+  FROM performance_registrations pr
+  JOIN students s ON s.id = pr.student_id
+  WHERE pr.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
+),
 
-      m.height_in IS NOT NULL                    AS has_height,
-      COALESCE(req.has_shoe_size, 0) = 1         AS has_shoe_size,
-      COALESCE(req.has_girth, 0) = 1             AS has_girth,
-      m.photo_url IS NOT NULL                    AS has_photo,
+measurement_base AS (
+  SELECT
+    me.id                AS measurement_event_id,
+    me.student_id,
+    me.height_in,
+    me.photo_url
+  FROM measurement_events me
+  WHERE me.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
+),
 
-      (
-        m.height_in IS NOT NULL
-        AND COALESCE(req.has_shoe_size, 0) = 1
-        AND COALESCE(req.has_girth, 0) = 1
-        AND m.photo_url IS NOT NULL
-      ) AS is_complete
-    FROM registered r
-    LEFT JOIN measurements m ON m.student_id = r.student_id
-    LEFT JOIN required req ON req.measurement_event_id = m.measurement_event_id
-    ORDER BY r.last_name, r.first_name;
+measurement_flags AS (
+  SELECT
+    me.student_id,
+
+    -- height + photo live on measurement_events
+    MAX(me.height_in IS NOT NULL)::boolean AS has_height,
+    MAX(me.photo_url IS NOT NULL)::boolean AS has_photo,
+
+    -- values live in measurement_values
+    MAX(mt.code = 'SHOE_SIZE') AS has_shoe_size,
+    MAX(mt.code = 'GIRTH')     AS has_girth
+  FROM measurement_events me
+  LEFT JOIN measurement_values mv
+    ON mv.measurement_event_id = me.id
+  LEFT JOIN measurement_types mt
+    ON mt.id = mv.measurement_type_id
+  WHERE me.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
+  GROUP BY me.student_id
+)
+
+SELECT
+  r.student_id,
+  r.external_id,
+  r.first_name,
+  r.last_name,
+
+  mb.measurement_event_id,
+
+  COALESCE(mf.has_height, false)     AS has_height,
+  COALESCE(mf.has_shoe_size, false)  AS has_shoe_size,
+  COALESCE(mf.has_girth, false)      AS has_girth,
+  COALESCE(mf.has_photo, false)      AS has_photo,
+
+  (
+    COALESCE(mf.has_height, false)
+    AND COALESCE(mf.has_shoe_size, false)
+    AND COALESCE(mf.has_girth, false)
+    AND COALESCE(mf.has_photo, false)
+  ) AS is_complete
+
+FROM registered r
+LEFT JOIN measurement_base mb
+  ON mb.student_id = r.student_id
+LEFT JOIN measurement_flags mf
+  ON mf.student_id = r.student_id
+ORDER BY r.last_name, r.first_name;
+
   `;
 
   const data: DashboardRow[] = rows.map((r) => ({
