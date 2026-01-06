@@ -29,12 +29,12 @@ export async function GET() {
       ORDER BY last_name, first_name
     `)
 
-    // 3️⃣ Get completed students + completion timestamp
+    // 3️⃣ Get completed students + recorded_at timestamp
     const completedRes = await client.query(
       `
       SELECT
         mec.student_id,
-        me.created_at
+        me.recorded_at
       FROM measurement_event_completeness mec
       JOIN measurement_events me
         ON me.id = mec.measurement_event_id
@@ -44,21 +44,21 @@ export async function GET() {
     )
 
     const completedMap = new Map(
-      completedRes.rows.map((r) => [r.student_id, r.created_at])
+      completedRes.rows.map((r) => [r.student_id, r.recorded_at])
     )
 
     const measured: any[] = []
     const unmeasured: any[] = []
 
     for (const s of studentsRes.rows) {
-      const completedAt = completedMap.get(s.id)
+      const recordedAt = completedMap.get(s.id)
 
-      if (completedAt) {
+      if (recordedAt) {
         measured.push({
           studentId: s.external_id,
           firstName: s.first_name,
           lastName: s.last_name,
-          measuredAt: completedAt,
+          measuredAt: recordedAt,
         })
       } else {
         unmeasured.push({
