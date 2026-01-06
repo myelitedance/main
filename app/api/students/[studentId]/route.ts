@@ -89,7 +89,7 @@ export async function GET(
         measurement: null,
       })
     }
-
+ 
     /* 4️⃣ Collapse rows → single measurement object */
     const base = measurementRes.rows[0]
 
@@ -103,7 +103,7 @@ for (const row of measurementRes.rows) {
 }
 
 if (base.height_in !== null) {
-  values.height = Number(base.height_in)
+  values.heightIn = Number(base.height_in)
 }
 
     return NextResponse.json({
