@@ -52,7 +52,7 @@ const measurementRes = await client.query(
     me.id AS event_id,
     me.recorded_at,
     me.photo_url,
-    mt.key AS measurement_key,
+    mt.code AS measurement_key,
     mv.value
   FROM measurement_events me
   JOIN measurement_values mv
