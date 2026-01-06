@@ -124,7 +124,7 @@ export default function MeasurementsDashboardPage() {
 
         <button
           onClick={() =>
-            router.push(`/2026recital/measurements/${s.studentId}`)
+            router.push(`/2026recital/measurements/${s.studentId}/view`)
           }
           className="text-gray-600 font-semibold"
         >
