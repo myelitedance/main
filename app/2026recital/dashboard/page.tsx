@@ -115,5 +115,15 @@ ORDER BY r.last_name, r.first_name;
     is_complete: toBool(r.is_complete),
   }));
 
-  return <DashboardClient data={data} />;
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <h1 className="mb-6 text-2xl font-semibold text-gray-900">
+          2026 Recital Measurements
+        </h1>
+
+        <DashboardClient data={data} />
+      </div>
+    </main>
+  );
 }

@@ -71,9 +71,9 @@ export default function DashboardClient({ data }: DashboardClientProps) {
   }, [filter, data]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3>">
         <Stat
           label="Registered"
           value={counts.total}
@@ -95,7 +95,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
       </div>
 
       {/* Table */}
-      <table className="w-full border-collapse">
+      <table className="rounded-lg border bg-white shadow-sm">
         <thead>
           <tr className="border-b text-sm text-gray-600">
             <th className="py-2 text-left">Student</th>
