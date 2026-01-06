@@ -8,6 +8,11 @@ type Measurement = {
   heightIn: number | null
   hasPhoto: boolean | null
   recordedAt: string | null
+  girth?: number | null
+  hips?: number | null
+  shoeSize?: number | null
+  waist?: number | null
+  bust?: number | null
 }
 
 export default function MeasurementViewPage() {
@@ -30,7 +35,8 @@ export default function MeasurementViewPage() {
         setStudentName(
           `${data.student.firstName} ${data.student.lastName}`
         )
-        setMeasurement(data.measurement)
+
+        setMeasurement(data.measurement ?? null)
       } catch (err) {
         console.error(err)
         setError('Unable to load measurement data')
@@ -54,8 +60,13 @@ export default function MeasurementViewPage() {
     )
   }
 
+  const cell = (value: any, suffix = '') =>
+    value !== null && value !== undefined && value !== ''
+      ? `${value}${suffix}`
+      : 'NM'
+
   return (
-    <div className="max-w-3xl mx-auto mt-10 space-y-6">
+    <div className="max-w-5xl mx-auto mt-10 space-y-6">
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">{studentName}</h1>
@@ -72,43 +83,52 @@ export default function MeasurementViewPage() {
 
       {/* TABLE */}
       <Card>
-        <CardContent className="p-6">
-          <table className="w-full border-collapse">
+        <CardContent className="p-6 overflow-x-auto">
+          <table className="min-w-full border-collapse">
             <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Measurement</th>
-                <th className="text-left py-2">Value</th>
+              <tr className="border-b text-left">
+                <th className="py-2 px-3">Height</th>
+                <th className="py-2 px-3">Girth</th>
+                <th className="py-2 px-3">Hips</th>
+                <th className="py-2 px-3">Shoe Size</th>
+                <th className="py-2 px-3">Waist</th>
+                <th className="py-2 px-3">Bust</th>
+                <th className="py-2 px-3">Photo</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b">
-                <td className="py-2">Height</td>
-                <td className="py-2">
-                  {measurement?.heightIn
-                    ? `${measurement.heightIn} in`
-                    : 'NM'}
-                </td>
-              </tr>
-
-              <tr className="border-b">
-                <td className="py-2">Photo</td>
-                <td className="py-2">
-                  {measurement?.hasPhoto ? 'Yes' : 'NM'}
-                </td>
-              </tr>
-
               <tr>
-                <td className="py-2">Recorded</td>
-                <td className="py-2">
-                  {measurement?.recordedAt
-                    ? new Date(
-                        measurement.recordedAt
-                      ).toLocaleString()
-                    : 'NM'}
+                <td className="py-2 px-3">
+                  {cell(measurement?.heightIn, ' in')}
+                </td>
+                <td className="py-2 px-3">
+                  {cell(measurement?.girth, ' in')}
+                </td>
+                <td className="py-2 px-3">
+                  {cell(measurement?.hips, ' in')}
+                </td>
+                <td className="py-2 px-3">
+                  {cell(measurement?.shoeSize)}
+                </td>
+                <td className="py-2 px-3">
+                  {cell(measurement?.waist, ' in')}
+                </td>
+                <td className="py-2 px-3">
+                  {cell(measurement?.bust, ' in')}
+                </td>
+                <td className="py-2 px-3">
+                  {measurement?.hasPhoto ? 'Yes' : 'NM'}
                 </td>
               </tr>
             </tbody>
           </table>
+
+          {measurement?.recordedAt && (
+            <p className="mt-4 text-sm text-gray-500">
+              Recorded on{' '}
+              {new Date(measurement.recordedAt).toLocaleString()}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
