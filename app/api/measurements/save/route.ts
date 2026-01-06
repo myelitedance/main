@@ -70,6 +70,29 @@ export async function POST(req: Request) {
 
     const performanceId = performanceRes.rows[0].id
 
+    // 🔒 Guard: prevent duplicate measurements for same student + performance
+const existingEventRes = await client.query(
+  `
+  SELECT id
+  FROM measurement_events
+  WHERE student_id = $1
+    AND performance_id = $2
+  LIMIT 1
+  `,
+  [internalStudentId, performanceId]
+)
+
+if (existingEventRes.rows.length > 0) {
+  await client.query('ROLLBACK')
+
+  return NextResponse.json(
+    {
+      error: 'Measurements already exist for this student. Use re-measure flow.',
+    },
+    { status: 409 }
+  )
+}
+
     // 3️⃣ Upload photo (optional)
     let photoUrl: string | null = null
 

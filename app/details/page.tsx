@@ -190,8 +190,8 @@ function priceFromDurationExact(mins: number, rows: TuitionRow[]): number {
 
 /** Registration fee tiers based on dancer index (0=first, 1=second, 2+=free) */
 function regFeeForIndex(i: number) {
-  if (i === 0) return 75;
-  if (i === 1) return 30;
+  if (i === 0) return 35;
+  if (i === 1) return 35;
   return 0;
 }
 
