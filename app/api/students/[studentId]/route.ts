@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { pool } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
 export async function GET(
-  _req: Request,
-  { params }: { params: { studentId: string } }
+  _req: NextRequest,
+  { params }: { params: Promise<{ studentId: string }> }
 ) {
+  const { studentId } = await params
+
   const client = await pool.connect()
 
   try {
-    const { studentId } = params
 
     // 1️⃣ Get active performance
     const perfRes = await client.query(`
