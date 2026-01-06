@@ -1,22 +1,11 @@
 import { sql } from "@/lib/db";
 import DashboardClient from "./DashboardClient";
+import type { DashboardRow } from "@/lib/types/dashboard";
 
-type DashboardRow = {
-  measurement_event_id: string;
-  student_id: string;
-  first_name: string;
-  last_name: string;
-
-  has_height: boolean;
-  has_shoe_size: boolean;
-  has_girth: boolean;
-  has_photo: boolean;
-
-  is_complete: boolean;
-};
-
+// ----------------------------
+// Helpers
+// ----------------------------
 function toBool(v: unknown): boolean {
-  // neon/postgres typically returns boolean as boolean, but guard anyway
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return v !== 0;
   if (typeof v === "string") return v === "true" || v === "t" || v === "1";
@@ -28,19 +17,33 @@ function toString(v: unknown, fieldName: string): string {
   throw new Error(`Dashboard query missing/invalid field: ${fieldName}`);
 }
 
+function toNullableString(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") return v;
+  throw new Error("Expected string or null");
+}
+
+// ----------------------------
+// Page
+// ----------------------------
 export default async function DashboardPage() {
   const rows = await sql`
-    WITH base AS (
+    WITH registered AS (
       SELECT
-        me.id                  AS measurement_event_id,
-        me.student_id,
-        me.performance_id,
-        me.height_in,
-        me.photo_url,
+        pr.student_id,
         s.first_name,
         s.last_name
+      FROM performance_registrations pr
+      JOIN students s ON s.id = pr.student_id
+      WHERE pr.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
+    ),
+    measurements AS (
+      SELECT
+        me.id AS measurement_event_id,
+        me.student_id,
+        me.height_in,
+        me.photo_url
       FROM measurement_events me
-      JOIN students s ON s.id = me.student_id
       WHERE me.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
     ),
     required AS (
@@ -53,30 +56,30 @@ export default async function DashboardPage() {
       GROUP BY mv.measurement_event_id
     )
     SELECT
-      b.measurement_event_id,
-      b.student_id,
-      b.first_name,
-      b.last_name,
+      r.student_id,
+      r.first_name,
+      r.last_name,
+      m.measurement_event_id,
 
-      b.height_in IS NOT NULL                    AS has_height,
-      COALESCE(r.has_shoe_size, 0) = 1           AS has_shoe_size,
-      COALESCE(r.has_girth, 0) = 1               AS has_girth,
-      b.photo_url IS NOT NULL                    AS has_photo,
+      m.height_in IS NOT NULL                    AS has_height,
+      COALESCE(req.has_shoe_size, 0) = 1         AS has_shoe_size,
+      COALESCE(req.has_girth, 0) = 1             AS has_girth,
+      m.photo_url IS NOT NULL                    AS has_photo,
 
       (
-        b.height_in IS NOT NULL
-        AND COALESCE(r.has_shoe_size, 0) = 1
-        AND COALESCE(r.has_girth, 0) = 1
-        AND b.photo_url IS NOT NULL
+        m.height_in IS NOT NULL
+        AND COALESCE(req.has_shoe_size, 0) = 1
+        AND COALESCE(req.has_girth, 0) = 1
+        AND m.photo_url IS NOT NULL
       ) AS is_complete
-    FROM base b
-    LEFT JOIN required r ON r.measurement_event_id = b.measurement_event_id
-    ORDER BY b.last_name, b.first_name;
+    FROM registered r
+    LEFT JOIN measurements m ON m.student_id = r.student_id
+    LEFT JOIN required req ON req.measurement_event_id = m.measurement_event_id
+    ORDER BY r.last_name, r.first_name;
   `;
 
-  // Convert unknown DB rows -> strongly typed DashboardRow[]
   const data: DashboardRow[] = rows.map((r) => ({
-    measurement_event_id: toString(r.measurement_event_id, "measurement_event_id"),
+    measurement_event_id: toNullableString(r.measurement_event_id),
     student_id: toString(r.student_id, "student_id"),
     first_name: toString(r.first_name, "first_name"),
     last_name: toString(r.last_name, "last_name"),

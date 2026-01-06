@@ -2,23 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import type { DashboardRow } from "@/lib/types/dashboard";
+
 
 // ----------------------------
 // Types
 // ----------------------------
-type DashboardRow = {
-  measurement_event_id: string;
-  student_id: string;
-  first_name: string;
-  last_name: string;
-
-  has_height: boolean;
-  has_shoe_size: boolean;
-  has_girth: boolean;
-  has_photo: boolean;
-
-  is_complete: boolean;
-};
 
 type DashboardClientProps = {
   data: DashboardRow[];
@@ -129,7 +118,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
               <td className="text-center">{row.has_photo ? "✅" : "❌"}</td>
               <td className="text-right">
                 <Link
-                  href={`/2026recital/measurements/${row.student_id}`}
+                  href={`/2026recital/measurements/${row.student_id}/view`}
                   className="text-sm text-purple-600 hover:underline"
                 >
                   View
