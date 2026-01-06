@@ -9,8 +9,6 @@ type MeasuredStudent = {
   studentId: string
   firstName: string
   lastName: string
-  height: number
-  hasPhoto: boolean
   measuredAt: string
 }
 
@@ -104,40 +102,39 @@ export default function MeasurementsDashboardPage() {
           </Card>
 
           {/* MEASURED */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Measured</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {measured.map((s) => (
-                <div
-                  key={s.studentId}
-                  className="flex justify-between items-center border-b py-2"
-                >
-                  <div>
-                    <div className="font-medium">
-                      {s.firstName} {s.lastName}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Height: {s.height}" · Photo:{' '}
-                      {s.hasPhoto ? '✅' : '⚠️'}
-                    </div>
-                  </div>
+<Card>
+  <CardHeader>
+    <CardTitle>Measured</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-2">
+    {measured.map((s) => (
+      <div
+        key={s.studentId}
+        className="flex justify-between items-center border-b py-2"
+      >
+        <div>
+          <div className="font-medium">
+            {s.firstName} {s.lastName}
+          </div>
+          <div className="text-sm text-gray-500">
+            Completed on{' '}
+            {new Date(s.measuredAt).toLocaleDateString()}
+          </div>
+        </div>
 
-                  <button
-                    onClick={() =>
-                      router.push(
-                        `/2026recital/measurements/${s.studentId}`
-                      )
-                    }
-                    className="text-gray-600 font-semibold"
-                  >
-                    Re-measure
-                  </button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        <button
+          onClick={() =>
+            router.push(`/2026recital/measurements/${s.studentId}`)
+          }
+          className="text-gray-600 font-semibold"
+        >
+          View
+        </button>
+      </div>
+    ))}
+  </CardContent>
+</Card>
+
         </>
       )}
     </div>

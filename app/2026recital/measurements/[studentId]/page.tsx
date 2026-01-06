@@ -210,7 +210,7 @@ if (saveSuccess && student) {
     {/* REQUIRED */}
     <div>
   <label className="block text-sm font-medium">
-    Height (in) <span className="text-red-500">*</span>
+    Height (cm) <span className="text-red-500">*</span>
   </label>
   <input
     type="number"

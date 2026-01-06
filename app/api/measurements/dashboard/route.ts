@@ -22,46 +22,41 @@ export async function GET() {
 
     const performanceId = performanceRes.rows[0].id
 
-    // 2️⃣ Get all students (already filtered upstream)
+    // 2️⃣ Get all students
     const studentsRes = await client.query(`
       SELECT id, external_id, first_name, last_name
       FROM students
       ORDER BY last_name, first_name
     `)
 
-    // 3️⃣ Get latest measurement per student for this performance
-    const measurementsRes = await client.query(
+    // 3️⃣ Get COMPLETED measurements only
+    const completedRes = await client.query(
       `
-      SELECT DISTINCT ON (student_id)
-        student_id,
-        height_in,
-        photo_url,
-        created_at
-      FROM measurement_events
-      WHERE performance_id = $1
-      ORDER BY student_id, created_at DESC
+      SELECT
+        mec.student_id,
+        mec.completed_at
+      FROM measurement_event_completeness mec
+      WHERE mec.performance_id = $1
       `,
       [performanceId]
     )
 
-    const measurementMap = new Map(
-      measurementsRes.rows.map((m) => [m.student_id, m])
+    const completedMap = new Map(
+      completedRes.rows.map((r) => [r.student_id, r])
     )
 
     const measured: any[] = []
     const unmeasured: any[] = []
 
     for (const s of studentsRes.rows) {
-      const m = measurementMap.get(s.id)
+      const completed = completedMap.get(s.id)
 
-      if (m) {
+      if (completed) {
         measured.push({
           studentId: s.external_id,
           firstName: s.first_name,
           lastName: s.last_name,
-          height: m.height_in,
-          hasPhoto: Boolean(m.photo_url),
-          measuredAt: m.created_at,
+          measuredAt: completed.completed_at,
         })
       } else {
         unmeasured.push({
