@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 type Measurement = {
   heightIn: number | null
   hasPhoto: boolean | null
+  photoUrl?: string | null
   recordedAt: string | null
   girth?: number | null
   hips?: number | null
@@ -117,8 +118,20 @@ export default function MeasurementViewPage() {
                   {cell(measurement?.bust, ' in')}
                 </td>
                 <td className="py-2 px-3">
-                  {measurement?.hasPhoto ? 'Yes' : 'NM'}
-                </td>
+  {measurement?.photoUrl ? (
+    <a
+      href={measurement.photoUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-purple-600 font-semibold underline"
+    >
+      Yes
+    </a>
+  ) : (
+    'NM'
+  )}
+</td>
+
               </tr>
             </tbody>
           </table>
