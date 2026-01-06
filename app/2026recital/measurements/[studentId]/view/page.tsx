@@ -111,7 +111,7 @@ async function handleSave() {
   useEffect(() => {
     async function loadStudent() {
       try {
-        const res = await fetch(`/api/students/by-external-id/${studentId}`)
+        const res = await fetch(`/api/students/${studentId}`)
         if (!res.ok) {
           throw new Error('Student not found')
         }
@@ -191,7 +191,7 @@ if (saveSuccess && student) {
       <Card>
         <CardHeader>
           <CardTitle>
-            Measuring: {student.first_name} {student.last_name}
+            Viewing: {student.first_name} {student.last_name}
           </CardTitle>
         </CardHeader>
         <CardContent>
