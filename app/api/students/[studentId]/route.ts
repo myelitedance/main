@@ -16,9 +16,10 @@ const MEASUREMENT_KEY_MAP: Record<string, string> = {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { studentId: string } }
+  { params }: { params: Promise<{ studentId: string }> }
 ) {
-  const { studentId } = params
+  const { studentId } = await params
+
   const client = await pool.connect()
 
   try {
