@@ -2,7 +2,10 @@
 
 export type DashboardRow = {
   measurement_event_id: string | null;
+
   student_id: string;
+  external_id: string;
+
   first_name: string;
   last_name: string;
 

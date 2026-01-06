@@ -118,7 +118,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
               <td className="text-center">{row.has_photo ? "✅" : "❌"}</td>
               <td className="text-right">
                 <Link
-                  href={`/2026recital/measurements/${row.student_id}/view`}
+                  href={`/2026recital/measurements/${row.external_id}/view`}
                   className="text-sm text-purple-600 hover:underline"
                 >
                   View

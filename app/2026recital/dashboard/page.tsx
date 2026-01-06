@@ -31,6 +31,7 @@ export default async function DashboardPage() {
     WITH registered AS (
       SELECT
         pr.student_id,
+        s.external_id,
         s.first_name,
         s.last_name
       FROM performance_registrations pr
@@ -81,6 +82,7 @@ export default async function DashboardPage() {
   const data: DashboardRow[] = rows.map((r) => ({
     measurement_event_id: toNullableString(r.measurement_event_id),
     student_id: toString(r.student_id, "student_id"),
+    external_id: toString(r.external_id, "external_id"),
     first_name: toString(r.first_name, "first_name"),
     last_name: toString(r.last_name, "last_name"),
 
