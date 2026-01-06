@@ -53,13 +53,14 @@ measurement_flags AS (
   SELECT
     me.student_id,
 
-    -- height + photo live on measurement_events
-    MAX(me.height_in IS NOT NULL)::boolean AS has_height,
-    MAX(me.photo_url IS NOT NULL)::boolean AS has_photo,
+    -- measurement_events fields
+    BOOL_OR(me.height_in IS NOT NULL) AS has_height,
+    BOOL_OR(me.photo_url IS NOT NULL) AS has_photo,
 
-    -- values live in measurement_values
-    MAX(mt.code = 'SHOE_SIZE') AS has_shoe_size,
-    MAX(mt.code = 'GIRTH')     AS has_girth
+    -- measurement_values via types
+    BOOL_OR(mt.code = 'SHOE_SIZE') AS has_shoe_size,
+    BOOL_OR(mt.code = 'GIRTH')     AS has_girth
+
   FROM measurement_events me
   LEFT JOIN measurement_values mv
     ON mv.measurement_event_id = me.id
@@ -68,6 +69,7 @@ measurement_flags AS (
   WHERE me.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
   GROUP BY me.student_id
 )
+
 
 SELECT
   r.student_id,
