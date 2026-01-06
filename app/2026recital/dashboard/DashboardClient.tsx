@@ -4,11 +4,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { DashboardRow } from "@/lib/types/dashboard";
 
-
 // ----------------------------
 // Types
 // ----------------------------
-
 type DashboardClientProps = {
   data: DashboardRow[];
 };
@@ -32,14 +30,16 @@ function Stat({
   return (
     <button
       onClick={onClick}
-      className={`rounded-lg border p-4 text-left transition ${
+      className={`rounded-lg border p-6 text-left transition ${
         active
           ? "border-purple-600 bg-purple-50"
           : "border-gray-200 hover:bg-gray-50"
       }`}
     >
       <div className="text-sm text-gray-500">{label}</div>
-      <div className="text-2xl font-semibold">{value}</div>
+      <div className="mt-2 text-2xl font-semibold text-gray-900">
+        {value}
+      </div>
     </button>
   );
 }
@@ -50,6 +50,7 @@ function Stat({
 export default function DashboardClient({ data }: DashboardClientProps) {
   const [filter, setFilter] = useState<Filter>('all');
 
+  // counts must come from the SAME source data
   const counts = useMemo(() => {
     const missing = data.filter(d => !d.is_complete).length;
     return {
@@ -59,6 +60,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
     };
   }, [data]);
 
+  // derived filtered data (never store this in state)
   const filtered = useMemo(() => {
     switch (filter) {
       case 'missing':
@@ -73,7 +75,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
   return (
     <div className="space-y-8">
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3>">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <Stat
           label="Registered"
           value={counts.total}
@@ -95,39 +97,49 @@ export default function DashboardClient({ data }: DashboardClientProps) {
       </div>
 
       {/* Table */}
-      <table className="rounded-lg border bg-white shadow-sm">
-        <thead>
-          <tr className="border-b text-sm text-gray-600">
-            <th className="py-2 text-left">Student</th>
-            <th>Height</th>
-            <th>Shoe</th>
-            <th>Girth</th>
-            <th>Photo</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((row) => (
-            <tr key={row.measurement_event_id} className="border-b">
-              <td className="py-2">
-                {row.last_name}, {row.first_name}
-              </td>
-              <td className="text-center">{row.has_height ? "✅" : "❌"}</td>
-              <td className="text-center">{row.has_shoe_size ? "✅" : "❌"}</td>
-              <td className="text-center">{row.has_girth ? "✅" : "❌"}</td>
-              <td className="text-center">{row.has_photo ? "✅" : "❌"}</td>
-              <td className="text-right">
-                <Link
-                  href={`/2026recital/measurements/${row.external_id}/view`}
-                  className="text-sm text-purple-600 hover:underline"
-                >
-                  View
-                </Link>
-              </td>
+      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr className="text-left text-sm font-medium text-gray-600">
+              <th className="px-6 py-3">Student</th>
+              <th className="px-4 py-3 text-center">Height</th>
+              <th className="px-4 py-3 text-center">Shoe</th>
+              <th className="px-4 py-3 text-center">Girth</th>
+              <th className="px-4 py-3 text-center">Photo</th>
+              <th className="px-6 py-3"></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {filtered.map((row) => (
+              <tr key={row.student_id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  {row.last_name}, {row.first_name}
+                </td>
+                <td className="px-4 py-4 text-center">
+                  {row.has_height ? "✅" : "❌"}
+                </td>
+                <td className="px-4 py-4 text-center">
+                  {row.has_shoe_size ? "✅" : "❌"}
+                </td>
+                <td className="px-4 py-4 text-center">
+                  {row.has_girth ? "✅" : "❌"}
+                </td>
+                <td className="px-4 py-4 text-center">
+                  {row.has_photo ? "✅" : "❌"}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <Link
+                    href={`/2026recital/measurements/${row.external_id}/view`}
+                    className="text-sm font-medium text-purple-600 hover:underline"
+                  >
+                    View
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
