@@ -58,6 +58,7 @@ export default async function DashboardPage() {
     )
     SELECT
       r.student_id,
+      r.external_id,
       r.first_name,
       r.last_name,
       m.measurement_event_id,
