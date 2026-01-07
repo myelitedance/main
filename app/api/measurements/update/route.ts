@@ -5,7 +5,6 @@ import { uploadImage } from '@/lib/storage'
 export const runtime = 'nodejs'
 
 type UpdateType = 'PHOTO_ONLY' | 'ADD_MISSING' | 'REMEASURE_FULL'
-
 const REQUIRED_CODES = ['GIRTH', 'HIPS', 'SHOE_SIZE']
 
 export async function POST(req: Request) {
@@ -26,10 +25,7 @@ export async function POST(req: Request) {
       formData.get('verificationReason') as string | null
 
     if (!studentId || !performanceId || !previousEventId || !updateType) {
-      return NextResponse.json(
-        { error: 'Missing required identifiers' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Missing identifiers' }, { status: 400 })
     }
 
     if (
@@ -37,100 +33,48 @@ export async function POST(req: Request) {
       (!confirmReMeasure || !verificationReason)
     ) {
       return NextResponse.json(
-        { error: 'Re-measure confirmation and reason required' },
+        { error: 'Confirmation + reason required' },
         { status: 400 }
       )
     }
 
-    const measurements = measurementsRaw
-      ? JSON.parse(measurementsRaw)
-      : {}
+    const measurements = measurementsRaw ? JSON.parse(measurementsRaw) : {}
 
     await client.query('BEGIN')
 
-    /* ---------------------------------------------------
-       1️⃣ Resolve internal student ID
-    --------------------------------------------------- */
+    /* 1️⃣ Resolve internal student */
     const studentRes = await client.query(
       `SELECT id FROM students WHERE external_id = $1`,
       [studentId]
     )
-
-    if (studentRes.rows.length === 0) {
-      throw new Error('Student not found')
-    }
-
+    if (!studentRes.rowCount) throw new Error('Student not found')
     const internalStudentId = studentRes.rows[0].id
 
-    /* ---------------------------------------------------
-       2️⃣ Load previous measurement event
-    --------------------------------------------------- */
+    /* 2️⃣ Load active previous event */
     const prevEventRes = await client.query(
       `
-      SELECT
-        id,
-        performance_id,
-        height_in,
-        photo_url,
-        superseded_by_event_id
+      SELECT *
       FROM measurement_events
       WHERE id = $1
         AND student_id = $2
+        AND is_active = true
       `,
       [previousEventId, internalStudentId]
     )
 
-    if (prevEventRes.rows.length === 0) {
+    if (!prevEventRes.rowCount) {
       return NextResponse.json(
-        { error: 'Previous measurement event not found' },
+        { error: 'Previous event not active' },
         { status: 409 }
       )
     }
 
     const prevEvent = prevEventRes.rows[0]
 
-    if (prevEvent.performance_id !== performanceId) {
-      return NextResponse.json(
-        { error: 'Performance mismatch' },
-        { status: 409 }
-      )
-    }
-
-    if (prevEvent.superseded_by_event_id) {
-      return NextResponse.json(
-        { error: 'Measurement already superseded' },
-        { status: 409 }
-      )
-    }
-
-    /* ---------------------------------------------------
-       3️⃣ Load existing measurement values
-    --------------------------------------------------- */
-    const valuesRes = await client.query(
-      `
-      SELECT mt.code
-      FROM measurement_values mv
-      JOIN measurement_types mt ON mt.id = mv.measurement_type_id
-      WHERE mv.measurement_event_id = $1
-      `,
-      [previousEventId]
-    )
-
-    const existingCodes = new Set(valuesRes.rows.map(r => r.code))
-
-    const isComplete =
-      REQUIRED_CODES.every(code => existingCodes.has(code)) &&
-      prevEvent.height_in != null
-
-    /* ---------------------------------------------------
-       4️⃣ Guard rules by update type
-    --------------------------------------------------- */
+    /* 3️⃣ Validate update type */
     if (updateType === 'PHOTO_ONLY') {
       if (!photo) {
-        return NextResponse.json(
-          { error: 'Photo required for PHOTO_ONLY update' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Photo required' }, { status: 400 })
       }
       if (prevEvent.photo_url) {
         return NextResponse.json(
@@ -140,61 +84,28 @@ export async function POST(req: Request) {
       }
     }
 
-    if (updateType === 'ADD_MISSING') {
-      if (isComplete) {
-        return NextResponse.json(
-          { error: 'Measurements already complete' },
-          { status: 409 }
-        )
-      }
-
-      const providedCodes = Object.keys(measurements)
-        .map(k => k.toUpperCase())
-        .filter(k => k !== 'HEIGHT')
-
-      const addingHeight =
-        measurements.height != null && prevEvent.height_in == null
-
-      const hasNewValues =
-        providedCodes.some(code => !existingCodes.has(code)) ||
-        addingHeight ||
-        (photo && !prevEvent.photo_url)
-
-      if (!hasNewValues) {
-        return NextResponse.json(
-          { error: 'No missing data provided' },
-          { status: 400 }
-        )
-      }
-    }
-
     if (updateType === 'REMEASURE_FULL') {
       for (const code of REQUIRED_CODES) {
         if (measurements[code.toLowerCase()] == null) {
           return NextResponse.json(
-            { error: 'Missing required measurement fields' },
+            { error: 'Missing required measurements' },
             { status: 400 }
           )
         }
       }
     }
 
-    /* ---------------------------------------------------
-       5️⃣ Supersede previous event FIRST (constraint-safe)
-    --------------------------------------------------- */
+    /* 4️⃣ Deactivate previous event */
     await client.query(
       `
       UPDATE measurement_events
-      SET superseded_by_event_id = '__PENDING__'
+      SET is_active = false
       WHERE id = $1
-        AND superseded_by_event_id IS NULL
       `,
       [previousEventId]
     )
 
-    /* ---------------------------------------------------
-       6️⃣ Upload photo (if provided)
-    --------------------------------------------------- */
+    /* 5️⃣ Upload photo */
     let photoUrl: string | null = null
     if (photo) {
       photoUrl = await uploadImage(
@@ -203,14 +114,12 @@ export async function POST(req: Request) {
       )
     }
 
-    /* ---------------------------------------------------
-       7️⃣ Insert new measurement event
-    --------------------------------------------------- */
+    /* 6️⃣ Insert new event */
     const newEventRes = await client.query(
       `
       INSERT INTO measurement_events
-        (student_id, performance_id, recorded_by, height_in, photo_url, verification_reason)
-      VALUES ($1, $2, $3, $4, $5, $6)
+        (student_id, performance_id, recorded_by, height_in, photo_url, verification_reason, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, true)
       RETURNING id
       `,
       [
@@ -219,34 +128,23 @@ export async function POST(req: Request) {
         'admin',
         measurements.height ?? prevEvent.height_in,
         photoUrl,
-        verificationReason ?? null,
+        verificationReason,
       ]
     )
 
     const newEventId = newEventRes.rows[0].id
 
-    /* ---------------------------------------------------
-       8️⃣ Insert measurement values
-    --------------------------------------------------- */
+    /* 7️⃣ Insert measurement values */
     if (updateType !== 'PHOTO_ONLY') {
-      const typesRes = await client.query(
+      const types = await client.query(
         `SELECT id, code FROM measurement_types`
       )
-
-      const typeMap: Record<string, string> = {}
-      for (const row of typesRes.rows) {
-        typeMap[row.code] = row.id
-      }
+      const typeMap = Object.fromEntries(
+        types.rows.map(r => [r.code, r.id])
+      )
 
       for (const [key, value] of Object.entries(measurements)) {
         if (value == null || key === 'height') continue
-
-        const code = key.toUpperCase()
-        const typeId = typeMap[code]
-
-        if (!typeId) {
-          throw new Error(`Unknown measurement type: ${code}`)
-        }
 
         await client.query(
           `
@@ -254,36 +152,17 @@ export async function POST(req: Request) {
             (measurement_event_id, measurement_type_id, value)
           VALUES ($1, $2, $3)
           `,
-          [newEventId, typeId, value]
+          [newEventId, typeMap[key.toUpperCase()], value]
         )
       }
     }
 
-    /* ---------------------------------------------------
-       9️⃣ Finalize supersession
-    --------------------------------------------------- */
-    await client.query(
-      `
-      UPDATE measurement_events
-      SET superseded_by_event_id = $1
-      WHERE superseded_by_event_id = '__PENDING__'
-        AND student_id = $2
-        AND performance_id = $3
-      `,
-      [newEventId, internalStudentId, performanceId]
-    )
-
     await client.query('COMMIT')
 
-    return NextResponse.json({
-      success: true,
-      newEventId,
-      supersededEventId: previousEventId,
-    })
+    return NextResponse.json({ success: true, newEventId })
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('Measurement update failed:', err)
-
     return NextResponse.json(
       { error: 'Failed to update measurements' },
       { status: 500 }
