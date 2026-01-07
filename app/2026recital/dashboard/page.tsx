@@ -28,7 +28,7 @@ function toNullableString(v: unknown): string | null {
 // ----------------------------
 export default async function DashboardPage() {
   const rows = await sql`
-    WITH registered AS (
+WITH registered AS (
   SELECT
     pr.student_id,
     s.external_id,
@@ -39,27 +39,25 @@ export default async function DashboardPage() {
   WHERE pr.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
 ),
 
-measurement_base AS (
+active_measurement AS (
   SELECT
-    me.id                AS measurement_event_id,
+    me.id AS measurement_event_id,
     me.student_id,
     me.height_in,
     me.photo_url
   FROM measurement_events me
   WHERE me.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
+    AND me.is_active = true
 ),
 
 measurement_flags AS (
   SELECT
     me.student_id,
 
-    -- measurement_events fields
     BOOL_OR(me.height_in IS NOT NULL) AS has_height,
     BOOL_OR(me.photo_url IS NOT NULL) AS has_photo,
-
-    -- measurement_values via types
-    BOOL_OR(mt.code = 'SHOE_SIZE') AS has_shoe_size,
-    BOOL_OR(mt.code = 'GIRTH')     AS has_girth
+    BOOL_OR(mt.code = 'SHOE_SIZE')    AS has_shoe_size,
+    BOOL_OR(mt.code = 'GIRTH')        AS has_girth
 
   FROM measurement_events me
   LEFT JOIN measurement_values mv
@@ -67,9 +65,9 @@ measurement_flags AS (
   LEFT JOIN measurement_types mt
     ON mt.id = mv.measurement_type_id
   WHERE me.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
+    AND me.is_active = true
   GROUP BY me.student_id
 )
-
 
 SELECT
   r.student_id,
@@ -77,12 +75,12 @@ SELECT
   r.first_name,
   r.last_name,
 
-  mb.measurement_event_id,
+  am.measurement_event_id,
 
-  COALESCE(mf.has_height, false)     AS has_height,
-  COALESCE(mf.has_shoe_size, false)  AS has_shoe_size,
-  COALESCE(mf.has_girth, false)      AS has_girth,
-  COALESCE(mf.has_photo, false)      AS has_photo,
+  COALESCE(mf.has_height, false)    AS has_height,
+  COALESCE(mf.has_shoe_size, false) AS has_shoe_size,
+  COALESCE(mf.has_girth, false)     AS has_girth,
+  COALESCE(mf.has_photo, false)     AS has_photo,
 
   (
     COALESCE(mf.has_height, false)
@@ -92,12 +90,11 @@ SELECT
   ) AS is_complete
 
 FROM registered r
-LEFT JOIN measurement_base mb
-  ON mb.student_id = r.student_id
+LEFT JOIN active_measurement am
+  ON am.student_id = r.student_id
 LEFT JOIN measurement_flags mf
   ON mf.student_id = r.student_id
 ORDER BY r.last_name, r.first_name;
-
   `;
 
   const data: DashboardRow[] = rows.map((r) => ({

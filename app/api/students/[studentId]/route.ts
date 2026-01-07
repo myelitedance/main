@@ -75,7 +75,7 @@ export async function GET(
         ON mt.id = mv.measurement_type_id
       WHERE me.student_id = $1
         AND me.performance_id = $2
-      ORDER BY me.recorded_at DESC
+        AND me.is_active = true
       `,
       [student.id, performanceId]
     )
@@ -91,21 +91,18 @@ export async function GET(
     }
  
     /* 4️⃣ Collapse rows → single measurement object */
-    const base = measurementRes.rows[0]
+const base = measurementRes.rows[0]
 
-   const values: Record<string, number> = {}
+const values: Record<string, number | null> = {
+  heightIn: base.height_in ?? null,
+}
 
 for (const row of measurementRes.rows) {
   if (!row.measurement_key) continue
 
-  const normalizedKey = normalizeMeasurementKey(row.measurement_key)
-  values[normalizedKey] = Number(row.value)
+  const key = normalizeMeasurementKey(row.measurement_key)
+  values[key] = row.value !== null ? Number(row.value) : null
 }
-
-if (base.height_in !== null) {
-  values.heightIn = Number(base.height_in)
-}
-
     return NextResponse.json({
       student: {
         firstName: student.first_name,
