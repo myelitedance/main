@@ -8,23 +8,11 @@ type UpdateType = 'PHOTO_ONLY' | 'ADD_MISSING' | 'REMEASURE_FULL'
 
 const REQUIRED_CODES = ['GIRTH', 'HIPS', 'SHOE_SIZE']
 
-
 export async function POST(req: Request) {
   const client = await pool.connect()
 
   try {
     const formData = await req.formData()
-    console.log('UPDATE FORM DATA:', {
-  studentId: formData.get('studentId'),
-  performanceId: formData.get('performanceId'),
-  previousEventId: formData.get('previousEventId'),
-  updateType: formData.get('updateType'),
-  hasPhoto: !!formData.get('photo'),
-  measurementsRaw: formData.get('measurements'),
-  confirmReMeasure: formData.get('confirmReMeasure'),
-  verificationReason: formData.get('verificationReason'),
-})
-
 
     const studentId = formData.get('studentId') as string | null
     const performanceId = formData.get('performanceId') as string | null
@@ -33,8 +21,7 @@ export async function POST(req: Request) {
     const measurementsRaw = formData.get('measurements') as string | null
     const photo = formData.get('photo') as File | null
 
-    const confirmReMeasure =
-      formData.get('confirmReMeasure') === 'true'
+    const confirmReMeasure = formData.get('confirmReMeasure') === 'true'
     const verificationReason =
       formData.get('verificationReason') as string | null
 
@@ -61,7 +48,9 @@ export async function POST(req: Request) {
 
     await client.query('BEGIN')
 
-    // 1️⃣ Resolve internal student ID
+    /* ---------------------------------------------------
+       1️⃣ Resolve internal student ID
+    --------------------------------------------------- */
     const studentRes = await client.query(
       `SELECT id FROM students WHERE external_id = $1`,
       [studentId]
@@ -73,18 +62,20 @@ export async function POST(req: Request) {
 
     const internalStudentId = studentRes.rows[0].id
 
-    // 2️⃣ Load previous measurement event
+    /* ---------------------------------------------------
+       2️⃣ Load previous measurement event
+    --------------------------------------------------- */
     const prevEventRes = await client.query(
       `
       SELECT
-        me.id,
-        me.performance_id,
-        me.height_in,
-        me.photo_url,
-        me.superseded_by_event_id
-      FROM measurement_events me
-      WHERE me.id = $1
-        AND me.student_id = $2
+        id,
+        performance_id,
+        height_in,
+        photo_url,
+        superseded_by_event_id
+      FROM measurement_events
+      WHERE id = $1
+        AND student_id = $2
       `,
       [previousEventId, internalStudentId]
     )
@@ -112,7 +103,9 @@ export async function POST(req: Request) {
       )
     }
 
-    // 3️⃣ Load existing measurement values
+    /* ---------------------------------------------------
+       3️⃣ Load existing measurement values
+    --------------------------------------------------- */
     const valuesRes = await client.query(
       `
       SELECT mt.code
@@ -129,7 +122,24 @@ export async function POST(req: Request) {
       REQUIRED_CODES.every(code => existingCodes.has(code)) &&
       prevEvent.height_in != null
 
-    // 🔒 ADD_MISSING guards
+    /* ---------------------------------------------------
+       4️⃣ Guard rules by update type
+    --------------------------------------------------- */
+    if (updateType === 'PHOTO_ONLY') {
+      if (!photo) {
+        return NextResponse.json(
+          { error: 'Photo required for PHOTO_ONLY update' },
+          { status: 400 }
+        )
+      }
+      if (prevEvent.photo_url) {
+        return NextResponse.json(
+          { error: 'Photo already exists' },
+          { status: 409 }
+        )
+      }
+    }
+
     if (updateType === 'ADD_MISSING') {
       if (isComplete) {
         return NextResponse.json(
@@ -142,55 +152,22 @@ export async function POST(req: Request) {
         .map(k => k.toUpperCase())
         .filter(k => k !== 'HEIGHT')
 
-      const newCodes = providedCodes.filter(
-        code => !existingCodes.has(code)
-      )
-
       const addingHeight =
         measurements.height != null && prevEvent.height_in == null
 
-      if (newCodes.length === 0 && !addingHeight && !photo) {
+      const hasNewValues =
+        providedCodes.some(code => !existingCodes.has(code)) ||
+        addingHeight ||
+        (photo && !prevEvent.photo_url)
+
+      if (!hasNewValues) {
         return NextResponse.json(
           { error: 'No missing data provided' },
           { status: 400 }
         )
       }
-
-      for (const code of providedCodes) {
-        if (existingCodes.has(code)) {
-          return NextResponse.json(
-            { error: `Measurement ${code} already exists` },
-            { status: 409 }
-          )
-        }
-      }
-
-      if (photo && prevEvent.photo_url) {
-        return NextResponse.json(
-          { error: 'Photo already exists' },
-          { status: 409 }
-        )
-      }
     }
 
-    // 🔒 PHOTO_ONLY guards
-    if (updateType === 'PHOTO_ONLY') {
-      if (!photo) {
-        return NextResponse.json(
-          { error: 'Photo required for PHOTO_ONLY update' },
-          { status: 400 }
-        )
-      }
-
-      if (prevEvent.photo_url) {
-        return NextResponse.json(
-          { error: 'Photo already exists' },
-          { status: 409 }
-        )
-      }
-    }
-
-    // 🔒 REMEASURE_FULL guards
     if (updateType === 'REMEASURE_FULL') {
       for (const code of REQUIRED_CODES) {
         if (measurements[code.toLowerCase()] == null) {
@@ -202,7 +179,22 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4️⃣ Upload photo if provided
+    /* ---------------------------------------------------
+       5️⃣ Supersede previous event FIRST (constraint-safe)
+    --------------------------------------------------- */
+    await client.query(
+      `
+      UPDATE measurement_events
+      SET superseded_by_event_id = '__PENDING__'
+      WHERE id = $1
+        AND superseded_by_event_id IS NULL
+      `,
+      [previousEventId]
+    )
+
+    /* ---------------------------------------------------
+       6️⃣ Upload photo (if provided)
+    --------------------------------------------------- */
     let photoUrl: string | null = null
     if (photo) {
       photoUrl = await uploadImage(
@@ -211,7 +203,9 @@ export async function POST(req: Request) {
       )
     }
 
-    // 5️⃣ Insert new measurement event
+    /* ---------------------------------------------------
+       7️⃣ Insert new measurement event
+    --------------------------------------------------- */
     const newEventRes = await client.query(
       `
       INSERT INTO measurement_events
@@ -222,7 +216,7 @@ export async function POST(req: Request) {
       [
         internalStudentId,
         performanceId,
-        'admin', // TODO: replace with auth user
+        'admin',
         measurements.height ?? prevEvent.height_in,
         photoUrl,
         verificationReason ?? null,
@@ -231,7 +225,9 @@ export async function POST(req: Request) {
 
     const newEventId = newEventRes.rows[0].id
 
-    // 6️⃣ Insert measurement values (if any)
+    /* ---------------------------------------------------
+       8️⃣ Insert measurement values
+    --------------------------------------------------- */
     if (updateType !== 'PHOTO_ONLY') {
       const typesRes = await client.query(
         `SELECT id, code FROM measurement_types`
@@ -263,25 +259,26 @@ export async function POST(req: Request) {
       }
     }
 
-    // 7️⃣ Supersede previous event if full re-measure
-    if (updateType === 'REMEASURE_FULL') {
-      await client.query(
-        `
-        UPDATE measurement_events
-        SET superseded_by_event_id = $1
-        WHERE id = $2
-        `,
-        [newEventId, previousEventId]
-      )
-    }
+    /* ---------------------------------------------------
+       9️⃣ Finalize supersession
+    --------------------------------------------------- */
+    await client.query(
+      `
+      UPDATE measurement_events
+      SET superseded_by_event_id = $1
+      WHERE superseded_by_event_id = '__PENDING__'
+        AND student_id = $2
+        AND performance_id = $3
+      `,
+      [newEventId, internalStudentId, performanceId]
+    )
 
     await client.query('COMMIT')
 
     return NextResponse.json({
       success: true,
       newEventId,
-      supersededEventId:
-        updateType === 'REMEASURE_FULL' ? previousEventId : null,
+      supersededEventId: previousEventId,
     })
   } catch (err) {
     await client.query('ROLLBACK')
