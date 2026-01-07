@@ -15,7 +15,6 @@ export async function POST(req: Request) {
 
     const studentId = formData.get('studentId') as string | null
     const performanceId = formData.get('performanceId') as string | null
-    const previousEventId = formData.get('previousEventId') as string | null
     const updateType = formData.get('updateType') as UpdateType | null
     const measurementsRaw = formData.get('measurements') as string | null
     const photo = formData.get('photo') as File | null
@@ -24,7 +23,7 @@ export async function POST(req: Request) {
     const verificationReason =
       formData.get('verificationReason') as string | null
 
-    if (!studentId || !performanceId || !previousEventId || !updateType) {
+    if (!studentId || !performanceId || !updateType) {
       return NextResponse.json({ error: 'Missing identifiers' }, { status: 400 })
     }
 
@@ -50,33 +49,33 @@ export async function POST(req: Request) {
     if (!studentRes.rowCount) throw new Error('Student not found')
     const internalStudentId = studentRes.rows[0].id
 
-    /* 2️⃣ Load active previous event */
-    const prevEventRes = await client.query(
+    /* 2️⃣ Load active event (read-only) */
+    const activeRes = await client.query(
       `
       SELECT *
       FROM measurement_events
-      WHERE id = $1
-        AND student_id = $2
+      WHERE student_id = $1
+        AND performance_id = $2
         AND is_active = true
       `,
-      [previousEventId, internalStudentId]
+      [internalStudentId, performanceId]
     )
 
-    if (!prevEventRes.rowCount) {
+    if (!activeRes.rowCount) {
       return NextResponse.json(
-        { error: 'Previous event not active' },
+        { error: 'No active measurement found' },
         { status: 409 }
       )
     }
 
-    const prevEvent = prevEventRes.rows[0]
+    const activeEvent = activeRes.rows[0]
 
-    /* 3️⃣ Validate update type */
+    /* 3️⃣ Guards */
     if (updateType === 'PHOTO_ONLY') {
       if (!photo) {
         return NextResponse.json({ error: 'Photo required' }, { status: 400 })
       }
-      if (prevEvent.photo_url) {
+      if (activeEvent.photo_url) {
         return NextResponse.json(
           { error: 'Photo already exists' },
           { status: 409 }
@@ -95,17 +94,7 @@ export async function POST(req: Request) {
       }
     }
 
-    /* 4️⃣ Deactivate previous event */
-    await client.query(
-      `
-      UPDATE measurement_events
-      SET is_active = false
-      WHERE id = $1
-      `,
-      [previousEventId]
-    )
-
-    /* 5️⃣ Upload photo */
+    /* 4️⃣ Upload photo */
     let photoUrl: string | null = null
     if (photo) {
       photoUrl = await uploadImage(
@@ -114,7 +103,19 @@ export async function POST(req: Request) {
       )
     }
 
-    /* 6️⃣ Insert new event */
+    /* 5️⃣ 🔥 Deactivate active event (authoritative) */
+    await client.query(
+      `
+      UPDATE measurement_events
+      SET is_active = false
+      WHERE student_id = $1
+        AND performance_id = $2
+        AND is_active = true
+      `,
+      [internalStudentId, performanceId]
+    )
+
+    /* 6️⃣ Insert new active event */
     const newEventRes = await client.query(
       `
       INSERT INTO measurement_events
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
         internalStudentId,
         performanceId,
         'admin',
-        measurements.height ?? prevEvent.height_in,
+        measurements.height ?? activeEvent.height_in,
         photoUrl,
         verificationReason,
       ]
