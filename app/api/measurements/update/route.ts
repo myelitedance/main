@@ -7,6 +7,7 @@ export const runtime = 'nodejs'
 type UpdateType = 'PHOTO_ONLY' | 'ADD_MISSING' | 'REMEASURE_FULL'
 const REQUIRED_CODES = ['GIRTH', 'HIPS', 'SHOE_SIZE']
 
+
 export async function POST(req: Request) {
   const client = await pool.connect()
 
@@ -22,6 +23,15 @@ export async function POST(req: Request) {
     const confirmReMeasure = formData.get('confirmReMeasure') === 'true'
     const verificationReason =
       formData.get('verificationReason') as string | null
+
+      const FIELD_TO_CODE: Record<string, string> = {
+  girth: 'GIRTH',
+  hips: 'HIPS',
+  shoeSize: 'SHOE_SIZE',
+  waist: 'WAIST',
+  bust: 'BUST',
+}
+
 
     if (!studentId || !performanceId || !updateType) {
       return NextResponse.json({ error: 'Missing identifiers' }, { status: 400 })
@@ -154,18 +164,26 @@ if (
       )
 
       for (const [key, value] of Object.entries(measurements)) {
-        if (value == null || key === 'height') continue
+  if (value == null || key === 'height') continue
 
-        await client.query(
-          `
-          INSERT INTO measurement_values
-            (measurement_event_id, measurement_type_id, value)
-          VALUES ($1, $2, $3)
-          `,
-          [newEventId, typeMap[key.toUpperCase()], value]
-        )
-      }
-    }
+  const code = FIELD_TO_CODE[key]
+  if (!code) continue
+
+  const typeId = typeMap[code]
+  if (!typeId) {
+    throw new Error(`Unknown measurement type code: ${code}`)
+  }
+
+  await client.query(
+    `
+    INSERT INTO measurement_values
+      (measurement_event_id, measurement_type_id, value)
+    VALUES ($1, $2, $3)
+    `,
+    [newEventId, typeId, value]
+  )
+}
+}
 
     await client.query('COMMIT')
 
