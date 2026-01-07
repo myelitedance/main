@@ -174,11 +174,14 @@ if (saveSuccess && student) {
             </a>
 
             <button
-              onClick={() => setSaveSuccess(false)}
-              className="block w-full py-3 rounded font-semibold bg-gray-200 text-gray-800"
-            >
-              Re-measure This Student
-            </button>
+  onClick={() =>
+    window.location.href =
+      `/2026recital/measurements/${studentId}/remeasure`
+  }
+  className="block w-full py-3 rounded font-semibold bg-gray-200 text-gray-800"
+>
+  Re-measure This Student
+</button>
           </div>
         </CardContent>
       </Card>

@@ -74,7 +74,7 @@ export default function MeasurementViewPage() {
 
         <button
           onClick={() =>
-            router.push(`/2026recital/measurements/${studentId}`)
+            router.push(`/2026recital/measurements/${studentId}/remeasure`)
           }
           className="text-purple-600 font-semibold"
         >
