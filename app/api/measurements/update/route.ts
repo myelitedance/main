@@ -84,14 +84,23 @@ export async function POST(req: Request) {
     }
 
     if (updateType === 'REMEASURE_FULL') {
-      for (const code of REQUIRED_CODES) {
-        if (measurements[code.toLowerCase()] == null) {
-          return NextResponse.json(
-            { error: 'Missing required measurements' },
-            { status: 400 }
-          )
-        }
-      }
+      const normalized = {
+  girth: measurements.girth,
+  hips: measurements.hips,
+  shoe_size: measurements.shoeSize,
+}
+
+if (
+  normalized.girth == null ||
+  normalized.hips == null ||
+  normalized.shoe_size == null
+) {
+  return NextResponse.json(
+    { error: 'Missing required measurements' },
+    { status: 400 }
+  )
+}
+
     }
 
     /* 4️⃣ Upload photo */
