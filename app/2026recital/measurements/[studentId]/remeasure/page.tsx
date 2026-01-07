@@ -41,6 +41,8 @@ export default function RemeasurePage() {
   const [updateType, setUpdateType] = useState<UpdateType | null>(null)
   const [measurements, setMeasurements] = useState<Record<string, number>>({})
   const [photo, setPhoto] = useState<File | null>(null)
+  const OPTIONAL_FIELDS = ['waist', 'bust']
+
 
   const [confirm, setConfirm] = useState(false)
   const [reason, setReason] = useState('')
@@ -94,15 +96,17 @@ export default function RemeasurePage() {
       method: 'POST',
       body: form,
     })
-      .then(res => {
-        if (!res.ok) throw new Error()
-        router.push(`/2026recital/measurements/${studentId}`)
-      })
-      .catch(() =>
-        alert(
-          'This measurement set was already updated. Please reload the dashboard.'
-        )
-      )
+      .then(async res => {
+  if (!res.ok) {
+    const body = await res.json()
+    throw new Error(body.error || 'Update failed')
+  }
+  router.push(`/2026recital/measurements/${studentId}`)
+})
+.catch(err => {
+  alert(err.message)
+})
+
       .finally(() => setSaving(false))
   }
 
@@ -174,28 +178,56 @@ export default function RemeasurePage() {
         </Card>
       )}
 
-      {/* ADD MISSING */}
-      {updateType === 'ADD_MISSING' &&
-        derived.missingFields.map(field => (
-          <Card key={field}>
-            <CardHeader>
-              <CardTitle>{field}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <input
-                type="number"
-                step="0.1"
-                className="w-full border rounded px-3 py-2"
-                onChange={e =>
-                  setMeasurements(prev => ({
-                    ...prev,
-                    [field.toLowerCase()]: Number(e.target.value),
-                  }))
-                }
-              />
-            </CardContent>
-          </Card>
-        ))}
+      {updateType === 'ADD_MISSING' && (
+  <>
+    {/* Required missing fields */}
+    {derived.missingFields.map(field => (
+      <Card key={field}>
+        <CardHeader>
+          <CardTitle>{field}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            type="number"
+            step="0.1"
+            className="w-full border rounded px-3 py-2"
+            onChange={e =>
+              setMeasurements(prev => ({
+                ...prev,
+                [field.toLowerCase()]: Number(e.target.value),
+              }))
+            }
+          />
+        </CardContent>
+      </Card>
+    ))}
+ 
+    {/* Optional fields */}
+    {OPTIONAL_FIELDS.map(field => (
+      <Card key={field}>
+        <CardHeader>
+          <CardTitle>
+            {field.toUpperCase()} <span className="text-gray-400">(optional)</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            type="number"
+            step="0.1"
+            className="w-full border rounded px-3 py-2"
+            onChange={e =>
+              setMeasurements(prev => ({
+                ...prev,
+                [field]: Number(e.target.value),
+              }))
+            }
+          />
+        </CardContent>
+      </Card>
+    ))}
+  </>
+)}
+
 
       {/* FULL REMEASURE */}
       {updateType === 'REMEASURE_FULL' && (
