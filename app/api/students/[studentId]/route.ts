@@ -4,20 +4,20 @@ import { pool } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
-function normalizeMeasurementKey(dbKey: string) {
-  const key = dbKey.toLowerCase()
-
-  if (key === 'shoe_size') return 'shoeSize'
-  return key
+function normalizeKey(code: string) {
+  switch (code) {
+    case 'SHOE_SIZE':
+      return 'shoeSize'
+    default:
+      return code.toLowerCase()
+  }
 }
-
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ studentId: string }> }
 ) {
   const { studentId } = await params
-
   const client = await pool.connect()
 
   try {
@@ -29,14 +29,9 @@ export async function GET(
       ORDER BY created_at DESC
       LIMIT 1
     `)
-
-    if (perfRes.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'No active performance' },
-        { status: 404 }
-      )
+    if (!perfRes.rowCount) {
+      return NextResponse.json({ error: 'No active performance' }, { status: 404 })
     }
-
     const performanceId = perfRes.rows[0].id
 
     /* 2️⃣ Student */
@@ -48,25 +43,20 @@ export async function GET(
       `,
       [studentId]
     )
-
-    if (studentRes.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Student not found' },
-        { status: 404 }
-      )
+    if (!studentRes.rowCount) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 })
     }
-
     const student = studentRes.rows[0]
 
-    /* 3️⃣ Latest measurement event + values */
-    const measurementRes = await client.query(
+    /* 3️⃣ All measurement events + values (newest first) */
+    const rowsRes = await client.query(
       `
       SELECT
         me.id                AS event_id,
         me.recorded_at,
-        me.photo_url,
         me.height_in,
-        mt.code              AS measurement_key,
+        me.photo_url,
+        mt.code              AS measurement_code,
         mv.value
       FROM measurement_events me
       LEFT JOIN measurement_values mv
@@ -75,50 +65,78 @@ export async function GET(
         ON mt.id = mv.measurement_type_id
       WHERE me.student_id = $1
         AND me.performance_id = $2
-        AND me.is_active = true
+      ORDER BY me.recorded_at DESC
       `,
       [student.id, performanceId]
     )
 
-    if (measurementRes.rows.length === 0) {
+    if (!rowsRes.rowCount) {
       return NextResponse.json({
         student: {
           firstName: student.first_name,
           lastName: student.last_name,
         },
-        measurement: null,
+        currentMeasurement: null,
+        history: [],
       })
     }
- 
-    /* 4️⃣ Collapse rows → single measurement object */
-const base = measurementRes.rows[0]
 
-const values: Record<string, number | null> = {
-  heightIn: base.height_in ?? null,
-}
+    /* 4️⃣ Build history + derived currentMeasurement */
+    const historyMap = new Map<string, any>()
+    const current: any = {}
 
-for (const row of measurementRes.rows) {
-  if (!row.measurement_key) continue
+    for (const row of rowsRes.rows) {
+      // Initialize history event
+      if (!historyMap.has(row.event_id)) {
+        historyMap.set(row.event_id, {
+          eventId: row.event_id,
+          recordedAt: row.recorded_at,
+          heightIn: row.height_in ?? null,
+          photoUrl: row.photo_url ?? null,
+          values: {},
+        })
+      }
 
-  const key = normalizeMeasurementKey(row.measurement_key)
-  values[key] = row.value !== null ? Number(row.value) : null
-}
+      // History values
+      if (row.measurement_code) {
+        const key = normalizeKey(row.measurement_code)
+        historyMap.get(row.event_id).values[key] = Number(row.value)
+      }
+
+      // Current derived values (first non-null wins)
+      if (current.heightIn == null && row.height_in != null) {
+        current.heightIn = Number(row.height_in)
+      }
+
+      if (current.photoUrl == null && row.photo_url) {
+        current.photoUrl = row.photo_url
+      }
+
+      if (row.measurement_code) {
+        const key = normalizeKey(row.measurement_code)
+        if (current[key] == null && row.value != null) {
+          current[key] = Number(row.value)
+        }
+      }
+    }
+
+    const history = Array.from(historyMap.values())
+
     return NextResponse.json({
       student: {
         firstName: student.first_name,
         lastName: student.last_name,
       },
-      measurement: {
-        ...values,
-        hasPhoto: Boolean(base.photo_url),
-        photoUrl: base.photo_url,
-        recordedAt: base.recorded_at,
+      currentMeasurement: {
+        ...current,
+        hasPhoto: Boolean(current.photoUrl),
       },
+      history,
     })
   } catch (err) {
     console.error(err)
     return NextResponse.json(
-      { error: 'Failed to load student measurement' },
+      { error: 'Failed to load measurement data' },
       { status: 500 }
     )
   } finally {

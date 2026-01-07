@@ -22,7 +22,9 @@ export default function MeasurementViewPage() {
 
   const [loading, setLoading] = useState(true)
   const [studentName, setStudentName] = useState('')
-  const [measurement, setMeasurement] = useState<Measurement | null>(null)
+  const [current, setCurrent] = useState<Measurement | null>(null)
+  const [history, setHistory] = useState<any[]>([])
+
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -37,7 +39,9 @@ export default function MeasurementViewPage() {
           `${data.student.firstName} ${data.student.lastName}`
         )
 
-        setMeasurement(data.measurement ?? null)
+        setCurrent(data.currentMeasurement ?? null)
+        setHistory(data.history ?? [])
+
       } catch (err) {
         console.error(err)
         setError('Unable to load measurement data')
@@ -100,27 +104,27 @@ export default function MeasurementViewPage() {
             <tbody>
               <tr>
                 <td className="py-2 px-3">
-                  {cell(measurement?.heightIn, ' in')}
+                  {cell(current?.heightIn, ' in')}
                 </td>
                 <td className="py-2 px-3">
-                  {cell(measurement?.girth, ' in')}
+                  {cell(current?.girth, ' in')}
                 </td>
                 <td className="py-2 px-3">
-                  {cell(measurement?.hips, ' in')}
+                  {cell(current?.hips, ' in')}
                 </td>
                 <td className="py-2 px-3">
-                  {cell(measurement?.shoeSize)}
+                  {cell(current?.shoeSize)}
                 </td>
                 <td className="py-2 px-3">
-                  {cell(measurement?.waist, ' in')}
+                  {cell(current?.waist, ' in')}
                 </td>
                 <td className="py-2 px-3">
-                  {cell(measurement?.bust, ' in')}
+                  {cell(current?.bust, ' in')}
                 </td>
                 <td className="py-2 px-3">
-  {measurement?.photoUrl ? (
+  {current?.photoUrl ? (
     <a
-      href={measurement.photoUrl}
+      href={current.photoUrl}
       target="_blank"
       rel="noopener noreferrer"
       className="text-purple-600 font-semibold underline"
@@ -136,14 +140,64 @@ export default function MeasurementViewPage() {
             </tbody>
           </table>
 
-          {measurement?.recordedAt && (
+          {current?.recordedAt && (
             <p className="mt-4 text-sm text-gray-500">
               Recorded on{' '}
-              {new Date(measurement.recordedAt).toLocaleString()}
+              {new Date(current.recordedAt).toLocaleString()}
             </p>
           )}
         </CardContent>
       </Card>
+      <Card>
+  <CardContent className="p-6">
+    <h2 className="text-lg font-semibold mb-4">Measurement History</h2>
+
+    <div className="space-y-4">
+      {history.length === 0 ? (
+        <p className="text-sm text-gray-500">No history found.</p>
+      ) : (
+        history.map((h) => (
+          <div
+            key={h.eventId}
+            className="rounded border p-4 text-sm bg-gray-50"
+          >
+            <p className="font-medium">
+              {h.recordedAt
+                ? new Date(h.recordedAt).toLocaleString()
+                : 'Unknown date'}
+            </p>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+              <div>Height: {h.heightIn ?? 'NM'}</div>
+              <div>Girth: {h.values?.girth ?? 'NM'}</div>
+              <div>Hips: {h.values?.hips ?? 'NM'}</div>
+              <div>Shoe: {h.values?.shoeSize ?? 'NM'}</div>
+              <div>Waist: {h.values?.waist ?? 'NM'}</div>
+              <div>Bust: {h.values?.bust ?? 'NM'}</div>
+
+              <div>
+                Photo:{' '}
+                {h.photoUrl ? (
+                  <a
+                    href={h.photoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-purple-600"
+                  >
+                    Yes
+                  </a>
+                ) : (
+                  'NM'
+                )}
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </CardContent>
+</Card>
+
     </div>
   )
 }
