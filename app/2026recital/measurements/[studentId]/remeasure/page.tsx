@@ -98,14 +98,27 @@ export default function RemeasurePage() {
     })
       .then(async res => {
   if (!res.ok) {
-    const body = await res.json()
-    throw new Error(body.error || 'Update failed')
+    const contentType = res.headers.get('content-type')
+
+    let message = 'Update failed'
+
+    if (contentType && contentType.includes('application/json')) {
+      const body = await res.json()
+      message = body.error || message
+    } else {
+      const text = await res.text()
+      message = text.slice(0, 200) // avoid dumping huge HTML
+    }
+
+    throw new Error(message)
   }
+
   router.push(`/2026recital/measurements/${studentId}`)
 })
 .catch(err => {
   alert(err.message)
 })
+
 
       .finally(() => setSaving(false))
   }
