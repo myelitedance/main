@@ -113,7 +113,7 @@ export default function RemeasurePage() {
     throw new Error(message)
   }
 
-  router.push(`/2026recital/measurements/${studentId}`)
+  router.push(`/2026recital/measurements/${studentId}/view`)
 })
 .catch(err => {
   alert(err.message)
