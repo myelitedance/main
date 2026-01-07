@@ -8,11 +8,23 @@ type UpdateType = 'PHOTO_ONLY' | 'ADD_MISSING' | 'REMEASURE_FULL'
 
 const REQUIRED_CODES = ['GIRTH', 'HIPS', 'SHOE_SIZE']
 
+
 export async function POST(req: Request) {
   const client = await pool.connect()
 
   try {
     const formData = await req.formData()
+    console.log('UPDATE FORM DATA:', {
+  studentId: formData.get('studentId'),
+  performanceId: formData.get('performanceId'),
+  previousEventId: formData.get('previousEventId'),
+  updateType: formData.get('updateType'),
+  hasPhoto: !!formData.get('photo'),
+  measurementsRaw: formData.get('measurements'),
+  confirmReMeasure: formData.get('confirmReMeasure'),
+  verificationReason: formData.get('verificationReason'),
+})
+
 
     const studentId = formData.get('studentId') as string | null
     const performanceId = formData.get('performanceId') as string | null
