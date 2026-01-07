@@ -114,7 +114,7 @@ if (
     }
 
     /* 4️⃣ Upload photo */
-    let photoUrl: string | null = null
+    let photoUrl: string | null = activeEvent.photo_url
     if (photo) {
       photoUrl = await uploadImage(
         photo,
