@@ -92,6 +92,14 @@ if (existingEventRes.rows.length > 0) {
     { status: 409 }
   )
 }
+function readableTimestamp() {
+  const d = new Date()
+
+  const pad = (n: number) => n.toString().padStart(2, '0')
+
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_` +
+         `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`
+}
 
     // 3️⃣ Upload photo (optional)
     let photoUrl: string | null = null
@@ -99,7 +107,7 @@ if (existingEventRes.rows.length > 0) {
     if (photo) {
       photoUrl = await uploadImage(
         photo,
-        `measurements/${studentId}-${Date.now()}`
+        `measurements/${studentId}-${readableTimestamp()}`
       )
     }
 

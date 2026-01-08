@@ -113,12 +113,20 @@ if (
 
     }
 
+    function readableTimestamp() {
+  const d = new Date()
+
+  const pad = (n: number) => n.toString().padStart(2, '0')
+
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_` +
+         `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`
+}
     /* 4️⃣ Upload photo */
     let photoUrl: string | null = activeEvent.photo_url
     if (photo) {
       photoUrl = await uploadImage(
         photo,
-        `measurements/${studentId}-${Date.now()}`
+        `measurements/${studentId}-${readableTimestamp()}`
       )
     }
 
