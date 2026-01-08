@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import Link from 'next/link'
 
 export interface MeasurementStudent {
   studentId: string
@@ -77,9 +78,24 @@ export default function StudentSearch({ onSelect }: StudentSearchProps) {
           onKeyDown={(e) => e.key === 'Enter' && search()}
         />
 
-        <Button onClick={search} disabled={loading}>
-          {loading ? 'Searching…' : 'Search'}
-        </Button>
+        <div className="space-y-3">
+  <Button
+    onClick={search}
+    disabled={loading}
+    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+  >
+    {loading ? 'Searching…' : 'Search'}
+  </Button>
+
+  <div className="text-center">
+    <Link
+      href="/2026recital/measurements/dashboard"
+      className="text-sm text-purple-600 font-medium hover:underline"
+    >
+      Go to Measurement Dashboard →
+    </Link>
+  </div>
+</div>
 
         {error && <p className="text-red-600">{error}</p>}
 

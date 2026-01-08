@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
+import Link from 'next/link'
 
 type Measurement = {
   heightIn: number | null
@@ -73,18 +74,28 @@ export default function MeasurementViewPage() {
   return (
     <div className="max-w-5xl mx-auto mt-10 space-y-6">
       {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">{studentName}</h1>
+<div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+  <h1 className="text-3xl font-bold">{studentName}</h1>
 
-        <button
-          onClick={() =>
-            router.push(`/2026recital/measurements/${studentId}/remeasure`)
-          }
-          className="text-purple-600 font-semibold"
-        >
-          Re-measure →
-        </button>
-      </div>
+  <div className="flex items-center gap-4">
+    <Link
+      href="/2026recital/measurements/dashboard"
+      className="text-sm text-gray-600 hover:text-purple-600 font-medium"
+    >
+      ← Dashboard
+    </Link>
+
+    <button
+      onClick={() =>
+        router.push(`/2026recital/measurements/${studentId}/remeasure`)
+      }
+      className="text-purple-600 font-semibold hover:underline"
+    >
+      Re-measure →
+    </button>
+  </div>
+</div>
+
 
       {/* TABLE */}
       <Card>
