@@ -65,7 +65,6 @@ measurement_flags AS (
   LEFT JOIN measurement_types mt
     ON mt.id = mv.measurement_type_id
   WHERE me.performance_id = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11'
-    AND me.is_active = true
   GROUP BY me.student_id
 )
 
