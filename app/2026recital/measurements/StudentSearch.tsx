@@ -89,7 +89,7 @@ export default function StudentSearch({ onSelect }: StudentSearchProps) {
 
   <div className="text-center">
     <Link
-      href="/2026recital/measurements/dashboard"
+      href="/2026recital/dashboard"
       className="text-sm text-purple-600 font-medium hover:underline"
     >
       Go to Measurement Dashboard →

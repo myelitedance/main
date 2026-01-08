@@ -73,26 +73,46 @@ export default function MeasurementViewPage() {
 
   return (
     <div className="max-w-5xl mx-auto mt-10 space-y-6">
-      {/* HEADER */}
-<div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-  <h1 className="text-3xl font-bold">{studentName}</h1>
+ {/* HEADER */}
+<div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
+  <div>
+    <h1 className="text-3xl font-bold">{studentName}</h1>
+  </div>
 
-  <div className="flex items-center gap-4">
-    <Link
-      href="/2026recital/measurements/dashboard"
-      className="text-sm text-gray-600 hover:text-purple-600 font-medium"
-    >
-      ← Dashboard
-    </Link>
+  <div className="flex flex-col items-end gap-2">
+    <div className="flex items-center gap-4">
+      <Link
+        href="/2026recital/dashboard"
+        className="text-sm text-gray-600 hover:text-purple-600 font-medium"
+      >
+        ← Dashboard
+      </Link>
 
-    <button
-      onClick={() =>
-        router.push(`/2026recital/measurements/${studentId}/remeasure`)
-      }
-      className="text-purple-600 font-semibold hover:underline"
-    >
-      Re-measure →
-    </button>
+      <button
+        onClick={() =>
+          router.push(`/2026recital/measurements/${studentId}/remeasure`)
+        }
+        className="text-purple-600 font-semibold hover:underline"
+      >
+        Re-measure →
+      </button>
+    </div>
+
+    {/* PHOTO THUMBNAIL */}
+    {current?.photoUrl && (
+      <a
+        href={current.photoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <img
+          src={current.photoUrl}
+          alt={`${studentName} measurement photo`}
+          className="h-24 w-24 object-cover rounded border shadow-sm hover:shadow-md transition"
+        />
+      </a>
+    )}
   </div>
 </div>
 
