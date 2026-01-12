@@ -2,6 +2,7 @@ import { sql } from "@/lib/db";
 import DashboardClient from "./DashboardClient";
 import type { DashboardRow } from "@/lib/types/dashboard";
 
+export const dynamic = "force-dynamic";
 // ----------------------------
 // Helpers
 // ----------------------------
