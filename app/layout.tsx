@@ -13,7 +13,7 @@ const poppins = Poppins({
 
 import SiteHeaderWC from "@/components/SiteHeaderWC";
 import HeaderIslands from "./HeaderIslands";
-import MetaPixel from "./MetaPixel";
+import MetaPixelProvider from "@/components/MetaPixelProvider";
 
 
 export const metadata: Metadata = {
@@ -109,7 +109,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Fire PageView on client-side route changes */}
         {isProd && PIXEL_ID && (
           <Suspense fallback={null}>
-            <MetaPixel />
+             <MetaPixelProvider pixelId={PIXEL_ID} />
             </Suspense>
           )}
 
