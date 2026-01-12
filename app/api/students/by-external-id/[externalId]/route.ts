@@ -11,18 +11,29 @@ type StudentRow = {
   last_name: string;
 };
 
+async function ensurePerformanceRegistration(studentId: string) {
+  await sql`
+    INSERT INTO performance_registrations (
+      performance_id,
+      student_id,
+      source
+    )
+    SELECT id, ${studentId}, 'akada-search'
+    FROM performances
+    WHERE status = 'active'
+    ON CONFLICT (performance_id, student_id)
+    DO NOTHING
+  `;
+}
+
 export async function GET(
   req: Request,
   context: { params: Promise<{ externalId: string }> }
 ) {
-  console.log("🔥 by-external-id route HIT");
   const { externalId } = await context.params;
 
   if (!externalId) {
-    return NextResponse.json(
-      { error: "Missing externalId" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing externalId" }, { status: 400 });
   }
 
   // 1️⃣ Check local DB
@@ -34,6 +45,7 @@ export async function GET(
   `) as StudentRow[];
 
   if (existing.length > 0) {
+    await ensurePerformanceRegistration(existing[0].id);
     return NextResponse.json(existing[0]);
   }
 
@@ -49,9 +61,9 @@ export async function GET(
   }
 
   const j = JSON.parse(text);
-  const raw: any[] =
-    j?.returnValue?.currentPageItems ||
-    j?.returnValue ||
+  const raw =
+    j?.returnValue?.currentPageItems ??
+    j?.returnValue ??
     [];
 
   const match = raw.find(
@@ -66,22 +78,19 @@ export async function GET(
     );
   }
 
-  const student = {
-    external_id: String(match.id ?? match.studentId),
-    first_name: String(
-      match.fName ?? match.firstName ?? match.studentFirstName ?? ""
-    ).trim(),
-    last_name: String(
-      match.lName ?? match.lastName ?? match.studentLastName ?? ""
-    ).trim(),
-  };
-
-  // 3️⃣ Insert into DB
+  // 3️⃣ Insert student
   const inserted = (await sql`
     INSERT INTO students (external_id, first_name, last_name)
-    VALUES (${student.external_id}, ${student.first_name}, ${student.last_name})
+    VALUES (
+      ${String(match.id ?? match.studentId)},
+      ${String(match.fName ?? match.firstName ?? match.studentFirstName ?? "").trim()},
+      ${String(match.lName ?? match.lastName ?? match.studentLastName ?? "").trim()}
+    )
     RETURNING id, external_id, first_name, last_name
   `) as StudentRow[];
+
+  // 4️⃣ Enforce performance membership
+  await ensurePerformanceRegistration(inserted[0].id);
 
   return NextResponse.json(inserted[0]);
 }
