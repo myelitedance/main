@@ -11,6 +11,8 @@ type StudentRow = {
   last_name: string;
 };
 
+const PERFORMANCE_ID = 'af7ee279-ee4e-4a91-83ef-36f95e78fa11';
+
 async function ensurePerformanceRegistration(studentId: string) {
   await sql`
     INSERT INTO performance_registrations (
@@ -18,13 +20,16 @@ async function ensurePerformanceRegistration(studentId: string) {
       student_id,
       source
     )
-    SELECT id, ${studentId}, 'akada-search'
-    FROM performances
-    WHERE status = 'active'
+    VALUES (
+      ${PERFORMANCE_ID}::uuid,
+      ${studentId},
+      'akada-search'
+    )
     ON CONFLICT (performance_id, student_id)
     DO NOTHING
   `;
 }
+
 
 export async function GET(
   req: Request,
