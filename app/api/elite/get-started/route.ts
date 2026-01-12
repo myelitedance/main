@@ -19,7 +19,7 @@ const PIPELINE_ID    = need("GHL_PIPELINE_ID");
 const STAGE_NEW_LEAD = need("GHL_STAGE_NEW_LEAD");
 
 const EMAIL_FROM   = need("EMAIL_FROM");
-const FRONTDESK_TO = process.env.FRONTDESK_TO || "jason@myelitedance.com";
+const FRONTDESK_TO = process.env.FRONTDESK_TO || "frontdesk@myelitedance.com";
 const resend       = new Resend(process.env.RESEND_API_KEY || "");
 
 // ======== Custom Field IDs (only the ones we need here) ========
@@ -219,7 +219,7 @@ export async function POST(req: NextRequest) {
         locationId: LOCATION_ID,
         pipelineId: PIPELINE_ID,
         pipelineStageId: STAGE_NEW_LEAD,
-        name: `${parentFirst} ${parentLast} – Get Started (${dancerFirst}, Age ${dancerAge})`,
+        name: `${parentFirst} ${parentLast} – (${dancerFirst}, Age ${dancerAge})`,
         contactId,
         status: "open",
         monetaryValue: 0,
