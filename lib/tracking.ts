@@ -10,4 +10,5 @@ export const TRACKED_ROUTE_PREFIXES = [
   "/team",
   "/book-trial",
   "/workshops",
+  "/get-started",
 ];
