@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }] },
   title: "Elite Dance & Music | Dance Classes in Nolensville, TN",
   description:
-    "Elite Dance & Music in Nolensville, TN offers ballet, tap, jazz, hip hop, acro, and Mini-Movers recreation dance program. Supportive, high-quality training for ages 2–18.",
+  "Elite Dance & Music in Nolensville, TN offers ballet, tap, jazz, hip hop, and acro with dance programs for ages 3 through adult that build confidence.",
   metadataBase: new URL("https://www.myelitedance.com"),
   alternates: { canonical: "/" },
   openGraph: {
