@@ -19,27 +19,36 @@ export async function GET(req: Request) {
   }
 
  const rows = await sql`
+  WITH latest_event AS (
+    SELECT DISTINCT ON (me.student_id)
+      me.id,
+      me.student_id,
+      me.height_in,
+      me.photo_url
+    FROM measurement_events me
+    WHERE me.performance_id = ${performanceId}
+    ORDER BY me.student_id, me.recorded_at DESC
+  )
+
   SELECT
     s.external_id,
     s.first_name,
     s.last_name,
+    le.height_in,
 
-    MAX(CASE WHEN mt.code = 'height' THEN mv.value END)     AS height_in,
-    MAX(CASE WHEN mt.code = 'shoe_size' THEN mv.value END) AS shoe_size,
-    MAX(CASE WHEN mt.code = 'girth' THEN mv.value END)      AS girth,
-    MAX(CASE WHEN mt.code = 'waist' THEN mv.value END)      AS waist
+    MAX(CASE WHEN mt.code = 'SHOE_SIZE' THEN mv.value END) AS shoe_size,
+    MAX(CASE WHEN mt.code = 'GIRTH' THEN mv.value END)     AS girth,
+    MAX(CASE WHEN mt.code = 'WAIST' THEN mv.value END)     AS waist
 
   FROM performance_registrations pr
   JOIN students s
     ON s.id = pr.student_id
 
-  LEFT JOIN measurement_events me
-    ON me.student_id = s.id
-   AND me.performance_id = pr.performance_id
-   AND me.is_active = true
+  LEFT JOIN latest_event le
+    ON le.student_id = s.id
 
   LEFT JOIN measurement_values mv
-    ON mv.measurement_event_id = me.id
+    ON mv.measurement_event_id = le.id
 
   LEFT JOIN measurement_types mt
     ON mt.id = mv.measurement_type_id
@@ -49,12 +58,14 @@ export async function GET(req: Request) {
   GROUP BY
     s.external_id,
     s.first_name,
-    s.last_name
+    s.last_name,
+    le.height_in
 
   ORDER BY
     s.last_name,
     s.first_name;
 `;
+
 
 
 
