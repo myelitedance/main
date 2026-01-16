@@ -3,6 +3,9 @@ import ExcelJS from "exceljs";
 import { sql } from "@/lib/db";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -38,7 +41,7 @@ LEFT JOIN measurement_events me
 LEFT JOIN measurement_values mv
   ON mv.measurement_event_id = me.id
 
-WHERE pr.performance_id = $1
+WHERE pr.performance_id = ${performanceId}
 
 GROUP BY
   s.external_id,
