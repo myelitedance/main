@@ -93,7 +93,7 @@ rows.forEach(r => {
     height_in: toNumber(r.height_in),
     shoe_size: toNumber(r.shoe_size),
     girth: toNumber(r.girth),
-    waist: toNumber(r.waist),
+    hips: toNumber(r.hips),
   });
 });
 
