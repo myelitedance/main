@@ -67,6 +67,19 @@ export async function GET(req: Request) {
 `;
 
 
+function toNumber(v: any) {
+  return v === null || v === undefined ? null : Number(v);
+}
+
+rows.forEach(r => {
+  sheet.addRow({
+    ...r,
+    height_in: toNumber(r.height_in),
+    shoe_size: toNumber(r.shoe_size),
+    girth: toNumber(r.girth),
+    waist: toNumber(r.waist),
+  });
+});
 
 
   const workbook = new ExcelJS.Workbook();
