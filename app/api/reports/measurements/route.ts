@@ -38,7 +38,7 @@ export async function GET(req: Request) {
 
     MAX(CASE WHEN mt.code = 'SHOE_SIZE' THEN mv.value END) AS shoe_size,
     MAX(CASE WHEN mt.code = 'GIRTH' THEN mv.value END)     AS girth,
-    MAX(CASE WHEN mt.code = 'WAIST' THEN mv.value END)     AS waist
+    MAX(CASE WHEN mt.code = 'HIPS' THEN mv.value END)     AS hips
 
   FROM performance_registrations pr
   JOIN students s
@@ -79,7 +79,7 @@ export async function GET(req: Request) {
   { header: "Height", key: "height_in", width: 12 },
   { header: "Shoe Size", key: "shoe_size", width: 12 },
   { header: "Girth", key: "girth", width: 10 },
-  { header: "Waist", key: "waist", width: 10 },
+  { header: "Hips", key: "hips", width: 10 },
 ];
 
 
