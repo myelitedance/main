@@ -18,41 +18,45 @@ export async function GET(req: Request) {
     );
   }
 
-  const rows = await sql`
-    SELECT
-  s.external_id,
-  s.first_name,
-  s.last_name,
+ const rows = await sql`
+  SELECT
+    s.external_id,
+    s.first_name,
+    s.last_name,
 
-  MAX(CASE WHEN mv.measurement_key = 'height' THEN mv.numeric_value END)     AS height_in,
-  MAX(CASE WHEN mv.measurement_key = 'shoe_size' THEN mv.numeric_value END) AS shoe_size,
-  MAX(CASE WHEN mv.measurement_key = 'girth' THEN mv.numeric_value END)      AS girth,
-  MAX(CASE WHEN mv.measurement_key = 'waist' THEN mv.numeric_value END)      AS waist
+    MAX(CASE WHEN mt.code = 'height' THEN mv.value END)     AS height_in,
+    MAX(CASE WHEN mt.code = 'shoe_size' THEN mv.value END) AS shoe_size,
+    MAX(CASE WHEN mt.code = 'girth' THEN mv.value END)      AS girth,
+    MAX(CASE WHEN mt.code = 'waist' THEN mv.value END)      AS waist
 
-FROM performance_registrations pr
-JOIN students s
-  ON s.id = pr.student_id
+  FROM performance_registrations pr
+  JOIN students s
+    ON s.id = pr.student_id
 
-LEFT JOIN measurement_events me
-  ON me.student_id = s.id
- AND me.performance_id = pr.performance_id
- AND me.is_active = true
+  LEFT JOIN measurement_events me
+    ON me.student_id = s.id
+   AND me.performance_id = pr.performance_id
+   AND me.is_active = true
 
-LEFT JOIN measurement_values mv
-  ON mv.measurement_event_id = me.id
+  LEFT JOIN measurement_values mv
+    ON mv.measurement_event_id = me.id
 
-WHERE pr.performance_id = ${performanceId}
+  LEFT JOIN measurement_types mt
+    ON mt.id = mv.measurement_type_id
 
-GROUP BY
-  s.external_id,
-  s.first_name,
-  s.last_name
+  WHERE pr.performance_id = ${performanceId}
 
-ORDER BY
-  s.last_name,
-  s.first_name;
+  GROUP BY
+    s.external_id,
+    s.first_name,
+    s.last_name
 
-  `;
+  ORDER BY
+    s.last_name,
+    s.first_name;
+`;
+
+
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Measurements");
