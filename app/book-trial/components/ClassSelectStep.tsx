@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Button from "./ui/Button";
 import ErrorText from "./ui/ErrorText";
 import StepWrapper from "./StepWrapper";
+import TrialButton from "../../../components/TrialButton";
 
 interface ClassOption {
   id: string;
@@ -60,6 +61,8 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
   >(null);
 
   const [openDesc, setOpenDesc] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+
 
   // Load descriptions JSON ONCE
   useEffect(() => {
@@ -224,6 +227,18 @@ export default function ClassSelectStep({ age, years, onBack, onNext }: Props) {
           })}
 
         {error && <ErrorText>{error}</ErrorText>}
+
+<div className="text-center mt-6 space-y-2">
+  <p className="text-sm text-gray-600">
+    Not sure which class is right?
+  </p>
+
+  <TrialButton
+    label="Get help choosing"
+    variant="small"
+    mode="help"
+  />
+</div>
 
         <div className="flex items-center justify-between pt-6">
           <Button variant="secondary" onClick={onBack}>

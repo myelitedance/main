@@ -4,6 +4,7 @@ import { useState } from "react";
 
 type BookTrialFormProps = {
   onClose?: () => void;
+  mode?: "book" | "help";
 };
 
 // Step 1 fields (now includes phone + sms opt-in, unchecked by default)
@@ -35,7 +36,7 @@ const phoneOk = (p: string) => {
 };
 const req = (s: string) => s.trim().length > 0;
 
-export default function BookTrialForm({ onClose }: BookTrialFormProps) {
+export default function BookTrialForm({ onClose, mode = "book", }: BookTrialFormProps) {
   // Step 0 = form, Step 1 = thank you
   const [step, setStep] = useState<0 | 1>(0);
   const [busy, setBusy] = useState(false);
@@ -162,13 +163,27 @@ export default function BookTrialForm({ onClose }: BookTrialFormProps) {
       {step === 0 && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold mb-2">
-              Looking to book your trial class? <span className="text-dance-pink">GREAT!</span>
-            </h2>
-            <p className="text-gray-700">
-              Let’s gather a little information about you and your dancer, and our front desk team will get you scheduled.
-            </p>
-          </div>
+  <h2 className="text-2xl font-bold mb-2">
+    {mode === "help" ? (
+      <>
+        Not sure which class is right?{" "}
+        <span className="text-dance-pink">We can help.</span>
+      </>
+    ) : (
+      <>
+        Looking to book your trial class?{" "}
+        <span className="text-dance-pink">GREAT!</span>
+      </>
+    )}
+  </h2>
+
+  <p className="text-gray-700">
+    {mode === "help"
+      ? "Tell us a little about your dancer and our front desk team will help you choose the best class."
+      : "Let’s gather a little information about you and your dancer, and our front desk team will get you scheduled."}
+  </p>
+</div>
+
 
           {/* Parent name */}
           <div className="grid md:grid-cols-2 gap-4">

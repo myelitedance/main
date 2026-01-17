@@ -10,9 +10,10 @@ type Props = {
   variant?: "small" | "big";
   /** Optional custom label */
   label?: string;
+  mode?: "book" | "help";
 };
 
-export default function TrialButton({ variant = "small", label = "Book Your Trial" }: Props) {
+export default function TrialButton({ variant = "small", label = "Book Your Trial", mode = "book" }: Props) {
   const [open, setOpen] = useState(false);
 
   const base = "font-semibold transition-all transform hover:scale-105";
@@ -27,12 +28,17 @@ export default function TrialButton({ variant = "small", label = "Book Your Tria
         {label}
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Book Your ßTrial">
-  <BookTrialForm
-    key={open ? "form-open" : "form-closed"} // 👈 this forces a remount
-    onClose={() => setOpen(false)}
-  />
-</Modal>
+      <Modal 
+        open={open} 
+        onClose={() => setOpen(false)} 
+        title={mode === "help" ? "Need help choosing a class?" : "Book Your Trial"}
+        >
+        <BookTrialForm
+          key={open ? "form-open" : "form-closed"} // 👈 this forces a remount
+          mode={mode}
+          onClose={() => setOpen(false)}
+        />
+      </Modal>
     </>
   );
 }
