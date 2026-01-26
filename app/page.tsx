@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import TrialButton from "@/components/TrialButton";
+import WeatherNotice from "@/components/WeatherNotice";
 //import LoginModal from "@/components/LoginModal";
 
 /* Simple FAQ model */
@@ -17,6 +18,8 @@ const faqs: FAQ[] = [
 ];
 
 export default function HomePage() {
+
+
   // Removed: const [mobileOpen, setMobileOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -30,6 +33,7 @@ export default function HomePage() {
 
   return (
     <main className="scroll-smooth">
+      <WeatherNotice />
       {/* HERO */}
 <section
   id="home"
