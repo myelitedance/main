@@ -6,22 +6,22 @@ import { WEATHER_NOTICE } from "@/lib/site-notices";
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
-function formatDateWithOrdinal(isoDate: string) {
-  const date = new Date(`${isoDate}T12:00:00`); // avoid timezone edge cases
-  const day = date.getDate();
+ function formatDateWithOrdinal(isoDate: string) {
+  // Force midday to avoid timezone rollover issues
+  const d = new Date(`${isoDate}T12:00:00`);
+  const day = d.getDate();
 
   const ordinal =
     day % 10 === 1 && day !== 11 ? "st" :
     day % 10 === 2 && day !== 12 ? "nd" :
     day % 10 === 3 && day !== 13 ? "rd" : "th";
 
-  const formatted = date.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const month = d.toLocaleDateString("en-US", { month: "long" });
+  const year = d.getFullYear();
 
-  return `${formatted.replace(",", "")} ${day}${ordinal}`;
+  return `${month} ${day}${ordinal}, ${year}`;
 }
+
 
 
 export default function WeatherNotice() {
