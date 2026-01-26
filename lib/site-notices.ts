@@ -8,7 +8,7 @@ export const WEATHER_NOTICE = {
 
   title: "Studio Closed Due to Inclement Weather",
   message:
-    "Due to inclement weather, Elite Dance & Music is closed today for the safety of our dancers and families. Classes will resume once conditions improve.",
+    "Due to inclement weather, Elite Dance & Music is closed today, {{DATE}}. for the safety of our dancers, families and instructors. Classes will resume once conditions improve.  We will assess the safety each day and update by 1pm.  Please stay safe and warm.",
 
   // Used only for non-forced days
   effectiveId: "winter-2026-storm-1",

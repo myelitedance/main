@@ -6,6 +6,23 @@ import { WEATHER_NOTICE } from "@/lib/site-notices";
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
+function formatDateWithOrdinal(isoDate: string) {
+  const date = new Date(`${isoDate}T12:00:00`); // avoid timezone edge cases
+  const day = date.getDate();
+
+  const ordinal =
+    day % 10 === 1 && day !== 11 ? "st" :
+    day % 10 === 2 && day !== 12 ? "nd" :
+    day % 10 === 3 && day !== 13 ? "rd" : "th";
+
+  const formatted = date.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  return `${formatted.replace(",", "")} ${day}${ordinal}`;
+}
+
 
 export default function WeatherNotice() {
   const [open, setOpen] = useState(false);
@@ -43,6 +60,13 @@ export default function WeatherNotice() {
 
     setOpen(false);
   };
+const today = todayISO();
+const displayDate = formatDateWithOrdinal(today);
+
+const renderedMessage = WEATHER_NOTICE.message.replace(
+  "{{DATE}}",
+  `<strong>${displayDate}</strong>`
+);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -61,10 +85,11 @@ export default function WeatherNotice() {
         <h3 className="text-2xl font-bold text-gray-900 mb-3">
           {WEATHER_NOTICE.title}
         </h3>
+<p
+  className="text-gray-700 mb-6 leading-relaxed"
+  dangerouslySetInnerHTML={{ __html: renderedMessage }}
+/>
 
-        <p className="text-gray-700 mb-6 leading-relaxed">
-          {WEATHER_NOTICE.message}
-        </p>
 
         <button
           onClick={dismiss}
