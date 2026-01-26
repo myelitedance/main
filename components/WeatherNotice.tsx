@@ -3,13 +3,27 @@
 import { useEffect, useState } from "react";
 import { WEATHER_NOTICE } from "@/lib/site-notices";
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function WeatherNotice() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!WEATHER_NOTICE.enabled) return;
 
-    const key = `weather-notice-dismissed-${WEATHER_NOTICE.effectiveDate}`;
+    const today = todayISO();
+    const isForcedToday = WEATHER_NOTICE.forceDates.includes(today);
+
+    // 🚨 FORCE SHOW: ignore dismissal entirely
+    if (isForcedToday) {
+      setOpen(true);
+      return;
+    }
+
+    // Normal dismissible behavior
+    const key = `weather-notice-dismissed-${WEATHER_NOTICE.effectiveId}`;
     const dismissed = localStorage.getItem(key);
 
     if (!dismissed) setOpen(true);
@@ -18,8 +32,15 @@ export default function WeatherNotice() {
   if (!open) return null;
 
   const dismiss = () => {
-    const key = `weather-notice-dismissed-${WEATHER_NOTICE.effectiveDate}`;
-    localStorage.setItem(key, "true");
+    const today = todayISO();
+    const isForcedToday = WEATHER_NOTICE.forceDates.includes(today);
+
+    // On forced days, only close for this render
+    if (!isForcedToday) {
+      const key = `weather-notice-dismissed-${WEATHER_NOTICE.effectiveId}`;
+      localStorage.setItem(key, "true");
+    }
+
     setOpen(false);
   };
 
@@ -27,12 +48,12 @@ export default function WeatherNotice() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
       {/* backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70"
         onClick={dismiss}
       />
 
       {/* modal */}
-      <div className="relative bg-white max-w-lg w-full rounded-2xl shadow-2xl p-8 text-center animate-fadeIn">
+      <div className="relative bg-white max-w-lg w-full rounded-2xl shadow-2xl p-8 text-center">
         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-dance-purple to-dance-pink flex items-center justify-center text-white text-3xl">
           ❄️
         </div>
