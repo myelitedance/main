@@ -6,8 +6,8 @@ import { WEATHER_NOTICE } from "@/lib/site-notices";
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
-function formatDateWithOrdinalCST(isoDate: string) {
-  // Parse YYYY-MM-DD manually (NO Date constructor yet)
+
+function formatDateWithOrdinal(isoDate: string) {
   const [year, month, day] = isoDate.split("-").map(Number);
 
   const ordinal =
@@ -15,49 +15,41 @@ function formatDateWithOrdinalCST(isoDate: string) {
     day % 10 === 2 && day !== 12 ? "nd" :
     day % 10 === 3 && day !== 13 ? "rd" : "th";
 
-  // Create a Date pinned to CST via Intl
-  const date = new Date(Date.UTC(year, month - 1, day, 18)); 
-  // ↑ 18:00 UTC = 12:00 CST (safe midpoint)
-
-  const monthName = new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    timeZone: "America/Chicago",
-  }).format(date);
+  const monthName = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ][month - 1];
 
   return `${monthName} ${day}${ordinal}, ${year}`;
 }
 
-
-
 export default function WeatherNotice() {
   const [open, setOpen] = useState(false);
+  const today = todayISO();
 
   useEffect(() => {
     if (!WEATHER_NOTICE.enabled) return;
 
-    const today = todayISO();
     const isForcedToday = WEATHER_NOTICE.forceDates.includes(today);
 
-    // 🚨 FORCE SHOW: ignore dismissal entirely
     if (isForcedToday) {
       setOpen(true);
       return;
     }
 
-    // Normal dismissible behavior
     const key = `weather-notice-dismissed-${WEATHER_NOTICE.effectiveId}`;
     const dismissed = localStorage.getItem(key);
 
-    if (!dismissed) setOpen(true);
-  }, []);
+    if (!dismissed) {
+      setOpen(true);
+    }
+  }, [WEATHER_NOTICE.effectiveId, WEATHER_NOTICE.enabled, today]);
 
   if (!open) return null;
 
   const dismiss = () => {
-    const today = todayISO();
     const isForcedToday = WEATHER_NOTICE.forceDates.includes(today);
 
-    // On forced days, only close for this render
     if (!isForcedToday) {
       const key = `weather-notice-dismissed-${WEATHER_NOTICE.effectiveId}`;
       localStorage.setItem(key, "true");
@@ -65,30 +57,20 @@ export default function WeatherNotice() {
 
     setOpen(false);
   };
-const today = todayISO();
-const forcedDate =
-  WEATHER_NOTICE.forceDates.includes(today)
-    ? today
-    : today;
 
-const displayDate = formatDateWithOrdinalCST(forcedDate);
-
-
-const renderedMessage = WEATHER_NOTICE.message.replace(
-  "{{DATE}}",
-  `<strong>${displayDate}</strong>`
-);
-
+  const displayDate = formatDateWithOrdinal(today);
+  const renderedMessage = WEATHER_NOTICE.message.replace(
+    "{{DATE}}",
+    `<strong>${displayDate}</strong>`
+  );
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-      {/* backdrop */}
       <div
         className="absolute inset-0 bg-black/70"
         onClick={dismiss}
       />
 
-      {/* modal */}
       <div className="relative bg-white max-w-lg w-full rounded-2xl shadow-2xl p-8 text-center">
         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-dance-purple to-dance-pink flex items-center justify-center text-white text-3xl">
           ❄️
@@ -97,11 +79,11 @@ const renderedMessage = WEATHER_NOTICE.message.replace(
         <h3 className="text-2xl font-bold text-gray-900 mb-3">
           {WEATHER_NOTICE.title}
         </h3>
-<p
-  className="text-gray-700 mb-6 leading-relaxed"
-  dangerouslySetInnerHTML={{ __html: renderedMessage }}
-/>
 
+        <p
+          className="text-gray-700 mb-6 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: renderedMessage }}
+        />
 
         <button
           onClick={dismiss}
