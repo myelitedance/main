@@ -6,20 +6,25 @@ import { WEATHER_NOTICE } from "@/lib/site-notices";
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
- function formatDateWithOrdinal(isoDate: string) {
-  // Force midday to avoid timezone rollover issues
-  const d = new Date(`${isoDate}T12:00:00`);
-  const day = d.getDate();
+function formatDateWithOrdinalCST(isoDate: string) {
+  // Parse YYYY-MM-DD manually (NO Date constructor yet)
+  const [year, month, day] = isoDate.split("-").map(Number);
 
   const ordinal =
     day % 10 === 1 && day !== 11 ? "st" :
     day % 10 === 2 && day !== 12 ? "nd" :
     day % 10 === 3 && day !== 13 ? "rd" : "th";
 
-  const month = d.toLocaleDateString("en-US", { month: "long" });
-  const year = d.getFullYear();
+  // Create a Date pinned to CST via Intl
+  const date = new Date(Date.UTC(year, month - 1, day, 18)); 
+  // ↑ 18:00 UTC = 12:00 CST (safe midpoint)
 
-  return `${month} ${day}${ordinal}, ${year}`;
+  const monthName = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    timeZone: "America/Chicago",
+  }).format(date);
+
+  return `${monthName} ${day}${ordinal}, ${year}`;
 }
 
 
@@ -61,12 +66,19 @@ export default function WeatherNotice() {
     setOpen(false);
   };
 const today = todayISO();
-const displayDate = formatDateWithOrdinal(today);
+const forcedDate =
+  WEATHER_NOTICE.forceDates.includes(today)
+    ? today
+    : today;
+
+const displayDate = formatDateWithOrdinalCST(forcedDate);
+
 
 const renderedMessage = WEATHER_NOTICE.message.replace(
   "{{DATE}}",
   `<strong>${displayDate}</strong>`
 );
+
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
