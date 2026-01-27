@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import { WEATHER_NOTICE } from "@/lib/site-notices";
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+function todayISO_CST() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 function formatDateWithOrdinal(isoDate: string) {
@@ -17,7 +22,7 @@ function formatDateWithOrdinal(isoDate: string) {
 
   const monthName = [
     "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "July", "August", "September", "October", "November", "December",
   ][month - 1];
 
   return `${monthName} ${day}${ordinal}, ${year}`;
@@ -25,13 +30,14 @@ function formatDateWithOrdinal(isoDate: string) {
 
 export default function WeatherNotice() {
   const [open, setOpen] = useState(false);
-  const today = todayISO();
+  const today = todayISO_CST();
+
+  const isForcedToday = WEATHER_NOTICE.forceDates.includes(today);
 
   useEffect(() => {
     if (!WEATHER_NOTICE.enabled) return;
 
-    const isForcedToday = WEATHER_NOTICE.forceDates.includes(today);
-
+    // 🚨 Forced days ALWAYS show
     if (isForcedToday) {
       setOpen(true);
       return;
@@ -43,13 +49,12 @@ export default function WeatherNotice() {
     if (!dismissed) {
       setOpen(true);
     }
-  }, [WEATHER_NOTICE.effectiveId, WEATHER_NOTICE.enabled, today]);
+  }, [today, isForcedToday]);
 
   if (!open) return null;
 
   const dismiss = () => {
-    const isForcedToday = WEATHER_NOTICE.forceDates.includes(today);
-
+    // Forced days: close only for this render
     if (!isForcedToday) {
       const key = `weather-notice-dismissed-${WEATHER_NOTICE.effectiveId}`;
       localStorage.setItem(key, "true");
@@ -58,7 +63,11 @@ export default function WeatherNotice() {
     setOpen(false);
   };
 
-  const displayDate = formatDateWithOrdinal(today);
+  // ✅ Display the forced date (not UTC today)
+  const displayDate = formatDateWithOrdinal(
+    isForcedToday ? today : today
+  );
+
   const renderedMessage = WEATHER_NOTICE.message.replace(
     "{{DATE}}",
     `<strong>${displayDate}</strong>`
@@ -66,10 +75,7 @@ export default function WeatherNotice() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-      <div
-        className="absolute inset-0 bg-black/70"
-        onClick={dismiss}
-      />
+      <div className="absolute inset-0 bg-black/70" />
 
       <div className="relative bg-white max-w-lg w-full rounded-2xl shadow-2xl p-8 text-center">
         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-dance-purple to-dance-pink flex items-center justify-center text-white text-3xl">
