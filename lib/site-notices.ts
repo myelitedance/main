@@ -4,6 +4,9 @@ export const WEATHER_NOTICE = {
   // Dates where dismissal is ignored (ISO format)
   forceDates: [
     "2026-01-26",
+    "2026-01-27",
+    "2026-01-28",
+    "2026-01-29",
   ],
 
   title: "Studio Closed Due to Inclement Weather",
