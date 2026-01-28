@@ -37,7 +37,7 @@ export default function GetStartedPage() {
           <div className="relative">
             <div className="relative h-[420px] w-full rounded-3xl overflow-hidden shadow-2xl">
               <Image
-                src="https://images.unsplash.com/photo-1601288496920-b6154fe3626a"
+                src="/assets/hip-hop-kids.jpg"
                 alt="Children dancing at Elite Dance & Music"
                 fill
                 className="object-cover"
@@ -48,7 +48,7 @@ export default function GetStartedPage() {
             {/* OFFSET IMAGE FOR MOTION */}
             <div className="absolute -bottom-10 -left-10 hidden md:block h-48 w-48 rounded-2xl overflow-hidden shadow-xl border border-white/10">
               <Image
-                src="https://images.unsplash.com/photo-1526401485004-2fda9f4d6f4b"
+                src="/assets/ballet-class.jpg"
                 alt="Ballet class"
                 fill
                 className="object-cover"
@@ -75,9 +75,9 @@ export default function GetStartedPage() {
          ========================= */}
       <section className="mx-auto max-w-7xl px-6 py-20">
         <div className="grid gap-10 md:grid-cols-3">
-          <ImageCard src="https://images.unsplash.com/photo-1508804185872-d7badad00f7d" />
-          <ImageCard src="https://images.unsplash.com/photo-1518611012118-696072aa579a" />
-          <ImageCard src="https://images.unsplash.com/photo-1599058917212-d750089bc07c" />
+          <ImageCard src="/assets/jazz-class.jpg" />
+          <ImageCard src="/assets/ballet-class.jpg" />
+          <ImageCard src="/assets/hip-hop-kids.jpg" />
         </div>
 
         <p className="mt-10 text-center text-lg text-gray-700">
