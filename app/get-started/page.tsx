@@ -37,7 +37,7 @@ export default function GetStartedPage() {
           <div className="relative">
             <div className="relative h-[420px] w-full rounded-3xl overflow-hidden shadow-2xl">
               <Image
-                src="/assets/hiphop-kids.jpg"
+                src="/assets/ballet-tap-littles.jpg"
                 alt="Children dancing at Elite Dance & Music"
                 fill
                 className="object-cover"
@@ -75,9 +75,9 @@ export default function GetStartedPage() {
          ========================= */}
       <section className="mx-auto max-w-7xl px-6 py-20">
         <div className="grid gap-10 md:grid-cols-3">
-          <ImageCard src="/assets/jazz-class.jpg" />
-          <ImageCard src="/assets/ballet-tap-littles.jpg" />
+          <ImageCard src="/assets/mini-movers.jpg" />
           <ImageCard src="/assets/hiphop-kids.jpg" />
+          <ImageCard src="/assets/ballet-barre.jpg" />
         </div>
 
         <p className="mt-10 text-center text-lg text-gray-700">
