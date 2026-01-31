@@ -33,7 +33,7 @@ export default function HomePage() {
 
   return (
     <main className="scroll-smooth">
-      <WeatherNotice />
+      {/*<WeatherNotice />*/}
       {/* HERO */}
 <section
   id="home"
