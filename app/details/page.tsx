@@ -192,7 +192,7 @@ function priceFromDurationExact(mins: number, rows: TuitionRow[]): number {
 function regFeeForIndex(i: number) {
   if (i === 0) return 75;
   if (i === 1) return 105;
-  return 0;
+  return 105;
 }
 
 /** Create a reg record from a GHL dancer */
