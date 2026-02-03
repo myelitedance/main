@@ -438,7 +438,7 @@ try {
           <CardContent className="space-y-6">
             {step === 1 && (
               <>
-                {/* Email lookup */}
+                {/* Email lookup 
                 <section className="space-y-2 rounded-xl border p-3">
                   <h2 className="text-base font-semibold" style={{ color: "#8B5CF6" }}>Find your info</h2>
                   <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
@@ -474,7 +474,7 @@ try {
                   <p className="text-[12px] text-neutral-500">
                     We’ll pre-fill the form if we already have your info in our system. You can still edit anything before submitting.
                   </p>
-                </section>
+                </section> */}
 
                 {/* Student */}
                 <section className="space-y-3">
