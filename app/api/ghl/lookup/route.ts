@@ -60,47 +60,72 @@ const getCF = (arr: Array<{id:string,value:any}>, id: string) =>
   arr.find(f => f.id === id)?.value ?? "";
 
 async function searchContact(query: string) {
-  const u = new URL(API + "/contacts/");
-  u.searchParams.set("locationId", LOCATION_ID);
-  u.searchParams.set("query", query);
+  const email = query.toLowerCase().trim();
 
-  const res = await fetch(u.toString(), { headers: headers(), cache: "no-store" });
+  const res = await fetch(`${API}/contacts/search`, {
+    method: "POST",
+    headers: {
+      ...headers(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      locationId: LOCATION_ID,
+      filters: [
+        {
+          field: "email",
+          operator: "eq",
+          value: email,
+        },
+      ],
+      limit: 1,
+    }),
+  });
+
   if (!res.ok) {
-    return NextResponse.json({ error: `GHL search failed (${res.status})` }, { status: 502 });
+    return NextResponse.json(
+      { error: `GHL search failed (${res.status})` },
+      { status: 502 }
+    );
   }
-  const json = await res.json() as any;
 
+  const json = await res.json();
   const contacts = json?.contacts || [];
-  if (!Array.isArray(contacts) || !contacts.length) {
+
+  if (!contacts.length) {
     return NextResponse.json({ found: false });
   }
 
-  const lower = (s:string)=>String(s||"").toLowerCase();
-  const exact = contacts.find((c:any)=>lower(c.email)===lower(query)) || contacts[0];
+  const c = contacts[0];
 
-  const c = exact;
-  const cf = (c.customFields || []) as Array<{id:string,value:any}>;
+  return buildResponseFromContact(c, email);
+}
+
+function buildResponseFromContact(c: any, query: string) {
+  const cf = (c.customFields || []) as Array<{ id: string; value: any }>;
+
   let additionalStudents: any[] = [];
-  try { additionalStudents = JSON.parse(String(getCF(cf, CF.ADDL_JSON) || "[]")); } catch {}
+  try {
+    additionalStudents = JSON.parse(String(getCF(cf, CF.ADDL_JSON) || "[]"));
+  } catch {}
 
   const parentFirst = c.firstName ?? "";
   const parentLast  = c.lastName ?? "";
-  const parentFull  = (parentFirst || parentLast)
-    ? `${parentFirst} ${parentLast}`.trim()
-    : (c.contactName || "");
+  const parentFull =
+    parentFirst || parentLast
+      ? `${parentFirst} ${parentLast}`.trim()
+      : c.contactName || "";
 
   const formDraft = {
     studentFirstName: String(getCF(cf, CF.DANCER_FIRST) || ""),
-    studentLastName:  String(getCF(cf, CF.DANCER_LAST)  || ""),
-    birthdate:        String(getCF(cf, CF.DANCER_DOB)   || ""),
-    age:              String(getCF(cf, CF.DANCER_AGE)   || ""),
-    // Title-case to avoid all-lowercase coming from GHL
+    studentLastName:  String(getCF(cf, CF.DANCER_LAST) || ""),
+    birthdate:        String(getCF(cf, CF.DANCER_DOB) || ""),
+    age:              String(getCF(cf, CF.DANCER_AGE) || ""),
     parent1:          titleCaseName(parentFull),
-    parent2:          String(getCF(cf, CF.PARENT2)      || ""),
+    parent2:          String(getCF(cf, CF.PARENT2) || ""),
     primaryPhone:     c.phone || "",
     primaryPhoneIsCell: !!getCF(cf, CF.PRI_CELL),
     primaryPhoneSmsOptIn: !!getCF(cf, CF.SMS_ANY) || !!c.smsOptIn,
-    altPhone:         String(getCF(cf, CF.ALT_PHONE)    || ""),
+    altPhone:         String(getCF(cf, CF.ALT_PHONE) || ""),
     altPhoneIsCell:   !!getCF(cf, CF.ALT_CELL),
     altPhoneSmsOptIn: !!getCF(cf, CF.SMS_ANY),
     email:            c.email || query,
@@ -108,18 +133,22 @@ async function searchContact(query: string) {
     city:             c.city || "",
     state:            c.state || "",
     zip:              c.postalCode || "",
-    hearAbout:        String(getCF(cf, CF.HEAR_ABOUT)   || ""),
+    hearAbout:        String(getCF(cf, CF.HEAR_ABOUT) || ""),
     hearAboutDetails: String(getCF(cf, CF.HEAR_DETAILS) || ""),
     benefits:         [],
     benefitsOther:    "",
-    area6to12mo:      String(getCF(cf, CF.AREA_6_12)    || ""),
+    area6to12mo:      String(getCF(cf, CF.AREA_6_12) || ""),
     waiverAcknowledged: !!getCF(cf, CF.WAIVER_ACK),
-    waiverDate:         String(getCF(cf, CF.WAIVER_DATE)|| ""),
-    signatureDataUrl:   String(getCF(cf, CF.SIG_DATAURL)|| ""),
+    waiverDate:         String(getCF(cf, CF.WAIVER_DATE) || ""),
+    signatureDataUrl:   String(getCF(cf, CF.SIG_DATAURL) || ""),
     additionalStudents,
   };
 
-  return NextResponse.json({ found: true, contactId: c.id, formDraft });
+  return NextResponse.json({
+    found: true,
+    contactId: c.id,
+    formDraft,
+  });
 }
 
 export async function GET(req: Request) {
