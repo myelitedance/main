@@ -59,34 +59,53 @@ const CF = {
 const getCF = (arr: Array<{id:string,value:any}>, id: string) =>
   arr.find(f => f.id === id)?.value ?? "";
 
+
+
+
 async function searchContact(query: string) {
   const email = query.toLowerCase().trim();
 
-  const res = await fetch(`${API}/contacts/search`, {
-    method: "POST",
-    headers: {
-      ...headers(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      locationId: LOCATION_ID,
-      filters: [
-        {
-          field: "email",
-          operator: "eq",
-          value: email,
-        },
-      ],
-      limit: 1,
-    }),
+  const ghlHeaders = {
+  Accept: "application/json",
+  Authorization: `Bearer ${GHL_KEY}`,
+  Version: "2021-07-28",
+  "Content-Type": "application/json",
+};
+
+ const res = await fetch(`${API}/contacts/search`, {
+  method: "POST",
+  headers: ghlHeaders,
+  body: JSON.stringify({
+    locationId: LOCATION_ID,
+    filters: [
+      {
+        field: "email",
+        operator: "eq",
+        value: email,
+      },
+    ],
+    limit: 1,
+  }),
+});
+
+
+ if (!res.ok) {
+  const text = await res.text();
+  console.error("[GHL SEARCH ERROR]", {
+    status: res.status,
+    body: text,
   });
 
-  if (!res.ok) {
-    return NextResponse.json(
-      { error: `GHL search failed (${res.status})` },
-      { status: 502 }
-    );
-  }
+  return NextResponse.json(
+    {
+      error: "GHL search failed",
+      status: res.status,
+      details: text,
+    },
+    { status: 502 }
+  );
+}
+
 
   const json = await res.json();
   const contacts = json?.contacts || [];
