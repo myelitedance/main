@@ -75,17 +75,19 @@ async function searchContact(query: string) {
  const res = await fetch(`${API}/contacts/search`, {
   method: "POST",
   headers: ghlHeaders,
-  body: JSON.stringify({
-    locationId: LOCATION_ID,
-    filters: [
-      {
-        field: "email",
-        operator: "eq",
-        value: email,
-      },
-    ],
-    limit: 1,
-  }),
+body: JSON.stringify({
+  locationId: LOCATION_ID,
+  filters: [
+    {
+      field: "email",
+      operator: "eq",
+      value: email,
+    },
+  ],
+  page: 1,
+  pageLimit: 1,
+}),
+
 });
 
 
