@@ -24,6 +24,13 @@ const AD_AMOUNT_CENTS: Record<CongratsSize, number> = {
   full: 10000,
 };
 
+const MAX_PHOTOS_BY_SIZE: Record<CongratsSize, number> = {
+  none: 0,
+  quarter: 1,
+  half: 3,
+  full: 6,
+};
+
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -149,8 +156,12 @@ export async function POST(req: Request) {
       }
     }
 
-    if (photos.length > 5) {
-      return NextResponse.json({ error: "Maximum 5 photos allowed." }, { status: 400 });
+    const maxPhotos = MAX_PHOTOS_BY_SIZE[congratsSize];
+    if (photos.length > maxPhotos) {
+      return NextResponse.json(
+        { error: `Maximum ${maxPhotos} photo${maxPhotos === 1 ? "" : "s"} allowed for selected ad size.` },
+        { status: 400 }
+      );
     }
 
     for (const photo of photos) {
@@ -228,6 +239,12 @@ export async function POST(req: Request) {
 
     const preorderId = insertRes.rows[0].id as string;
     const submittedAt = insertRes.rows[0].created_at as string;
+    const studioTimeZone = process.env.STUDIO_TIMEZONE || "America/Chicago";
+    const submittedAtLocal = new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: studioTimeZone,
+    }).format(new Date(submittedAt));
 
     for (let i = 0; i < photos.length; i += 1) {
       const file = photos[i];
@@ -324,7 +341,7 @@ export async function POST(req: Request) {
       <div style="font-family:Arial, sans-serif;font-size:16px;color:#222;line-height:1.4;">
         <h2 style="margin:0 0 12px 0;">PREORDER Received</h2>
         <p><strong>Order ID:</strong> ${preorderId}</p>
-        <p><strong>Submitted:</strong> ${submittedAt}</p>
+        <p><strong>Submitted:</strong> ${submittedAtLocal} (${studioTimeZone})</p>
 
         <h3 style="margin-top:20px;">Parent</h3>
         <p>${safeParentFirstName} ${safeParentLastName}</p>
