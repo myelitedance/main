@@ -298,7 +298,7 @@ export async function POST(req: Request) {
 
     await resend.emails.send({
       from: EMAIL_FROM,
-      to: [parentEmail, "frontdesk@myelitedance.com"],
+      to: [parentEmail, "jason@myelitedance.com"],
       subject: "PREORDER Received",
       html,
     });
