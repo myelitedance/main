@@ -17,6 +17,21 @@ function asBool(value: unknown): boolean {
 }
 
 export default async function RecitalPreorderAdminPage() {
+  const tableCheck = await sql`
+    SELECT to_regclass('public.xero_integration_settings') AS reg
+  `;
+
+  const hasSettingsTable = Boolean(tableCheck[0]?.reg);
+  const xeroSettings = hasSettingsTable
+    ? await sql`
+        SELECT tenant_id, sales_account_code, connected_at
+        FROM public.xero_integration_settings
+        WHERE id = true
+        LIMIT 1
+      `
+    : [];
+  const xeroConnected = xeroSettings.length > 0;
+
   const rows = await sql`
     SELECT
       rp.id,
@@ -49,12 +64,42 @@ export default async function RecitalPreorderAdminPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold text-gray-900">2026 Recital Preorders</h1>
 
-          <Link
-            href="/api/reports/preorders"
-            className="rounded border border-purple-600 bg-white px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50"
-          >
-            Download CSV
-          </Link>
+          <div className="flex items-center gap-2">
+            <a
+              href="/api/xero/connect/start"
+              className="rounded border border-emerald-600 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            >
+              Connect Xero
+            </a>
+
+            <Link
+              href="/api/reports/preorders"
+              className="rounded border border-purple-600 bg-white px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50"
+            >
+              Download CSV
+            </Link>
+          </div>
+        </div>
+
+        <div className="mb-4 rounded border bg-white p-4 text-sm">
+          {!hasSettingsTable && (
+            <p className="text-amber-700">
+              Xero settings table missing. Run `scripts/sql/2026_recital_xero_integration.sql` on this branch DB.
+            </p>
+          )}
+
+          {hasSettingsTable && !xeroConnected && (
+            <p className="text-amber-700">
+              Xero is not connected yet. Click <strong>Connect Xero</strong> to authorize and store tenant/token settings.
+            </p>
+          )}
+
+          {hasSettingsTable && xeroConnected && (
+            <p className="text-emerald-700">
+              Xero connected. Tenant: <strong>{asString(xeroSettings[0]?.tenant_id)}</strong>, Sales Account Code:{" "}
+              <strong>{asString(xeroSettings[0]?.sales_account_code)}</strong>
+            </p>
+          )}
         </div>
 
         <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
