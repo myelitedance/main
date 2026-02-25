@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { pool } from "@/lib/db";
 import { uploadImage } from "@/lib/storage";
+import { createXeroInvoiceForPreorder } from "@/lib/xero";
 
 export const runtime = "nodejs";
 
@@ -74,6 +75,7 @@ function adDisplay(size: CongratsSize): string {
 
 export async function POST(req: Request) {
   const client = await pool.connect();
+  let inTransaction = false;
 
   try {
     const formData = await req.formData();
@@ -174,6 +176,7 @@ export async function POST(req: Request) {
     const totalAmountCents = yearbookAmountCents + congratsAmountCents;
 
     await client.query("BEGIN");
+    inTransaction = true;
 
     const insertRes = await client.query(
       `
@@ -248,10 +251,63 @@ export async function POST(req: Request) {
     }
 
     await client.query("COMMIT");
+    inTransaction = false;
+
+    let payNowUrl: string | null = null;
+    let payNowIntegrationStatus: "not_needed" | "synced" | "failed" = "not_needed";
+    let xeroErrorSummary: string | null = null;
+
+    if (paymentOption === "pay_now") {
+      try {
+        const xeroInvoice = await createXeroInvoiceForPreorder({
+          preorderId,
+          parentFirstName,
+          parentLastName,
+          parentEmail,
+          yearbookAmountCents,
+          congratsAmountCents,
+          totalAmountCents,
+        });
+
+        payNowUrl = xeroInvoice.onlineInvoiceUrl;
+        payNowIntegrationStatus = "synced";
+
+        await client.query(
+          `
+          UPDATE public.recital_preorders
+          SET
+            xero_sync_status = 'synced',
+            xero_invoice_id = $2,
+            xero_payment_url = $3,
+            xero_last_error = NULL
+          WHERE id = $1
+          `,
+          [preorderId, xeroInvoice.invoiceId, xeroInvoice.onlineInvoiceUrl]
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unknown Xero sync error";
+        xeroErrorSummary = msg;
+        payNowIntegrationStatus = "failed";
+
+        await client.query(
+          `
+          UPDATE public.recital_preorders
+          SET
+            xero_sync_status = 'failed',
+            payment_status = 'failed',
+            xero_last_error = $2
+          WHERE id = $1
+          `,
+          [preorderId, msg.slice(0, 500)]
+        );
+      }
+    }
 
     const xeroPayNowNote =
       paymentOption === "pay_now"
-        ? "Pay now selected. Xero checkout integration is being finalized; front desk will follow up with payment instructions."
+        ? payNowUrl
+          ? `Pay now selected. Complete payment here: <a href="${payNowUrl}" target="_blank" rel="noreferrer">${payNowUrl}</a>`
+          : "Pay now selected. We could not generate a payment link automatically, and front desk will follow up."
         : "Studio account charge requested.";
 
     const photoLines = photos.length > 0 ? `<p><strong>Photos uploaded:</strong> ${photos.length}</p>` : "";
@@ -308,10 +364,14 @@ export async function POST(req: Request) {
       preorderId,
       paymentOption,
       totalAmountCents,
-      payNowIntegrationStatus: paymentOption === "pay_now" ? "pending_xero_setup" : null,
+      payNowIntegrationStatus,
+      payNowUrl,
+      xeroErrorSummary,
     });
   } catch (err: unknown) {
-    await client.query("ROLLBACK");
+    if (inTransaction) {
+      await client.query("ROLLBACK");
+    }
     console.error("Preorder submission failed:", err);
     return NextResponse.json(
       { error: "Failed to save preorder. Please try again." },

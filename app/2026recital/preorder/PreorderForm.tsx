@@ -66,6 +66,8 @@ export default function PreorderForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [payNowUrl, setPayNowUrl] = useState<string | null>(null);
+  const [payNowStatus, setPayNowStatus] = useState<"not_needed" | "synced" | "failed">("not_needed");
 
   const currentMessageLimit = MESSAGE_LIMITS[form.congratsSize];
 
@@ -173,11 +175,18 @@ export default function PreorderForm() {
         body,
       });
 
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        payNowUrl?: string | null;
+        payNowIntegrationStatus?: "not_needed" | "synced" | "failed";
+      };
+
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error || "Submission failed");
       }
 
+      setPayNowUrl(data.payNowUrl ?? null);
+      setPayNowStatus(data.payNowIntegrationStatus ?? "not_needed");
       setSuccess(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Submission failed";
@@ -196,9 +205,27 @@ export default function PreorderForm() {
         <CardContent className="space-y-3 text-sm text-slate-700">
           <p>Thank you. We emailed your confirmation and copied the front desk.</p>
           <p>
-            If you selected <strong>Pay Now</strong>, online checkout is being connected to Xero and
-            the studio will follow up with payment instructions.
+            If you selected <strong>Pay Now</strong>, use your Xero link below when available.
+            If a link could not be generated, front desk will follow up with payment instructions.
           </p>
+          {payNowStatus === "synced" && payNowUrl && (
+            <p>
+              Payment link:{" "}
+              <a
+                href={payNowUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-purple-700 underline"
+              >
+                Open Xero checkout
+              </a>
+            </p>
+          )}
+          {payNowStatus === "failed" && (
+            <p className="text-amber-700">
+              Pay-now invoice link could not be generated automatically. Front desk will follow up.
+            </p>
+          )}
         </CardContent>
       </Card>
     );

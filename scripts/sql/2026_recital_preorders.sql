@@ -3,7 +3,7 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE IF NOT EXISTS recital_preorders (
+CREATE TABLE IF NOT EXISTS public.recital_preorders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   parent_first_name TEXT NOT NULL,
@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS recital_preorders (
   xero_sync_status TEXT NOT NULL DEFAULT 'not_configured'
     CHECK (xero_sync_status IN ('not_configured', 'pending', 'synced', 'failed')),
   xero_invoice_id TEXT,
+  xero_payment_url TEXT,
+  xero_last_error TEXT,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -49,9 +51,9 @@ CREATE TABLE IF NOT EXISTS recital_preorders (
   )
 );
 
-CREATE TABLE IF NOT EXISTS recital_preorder_photos (
+CREATE TABLE IF NOT EXISTS public.recital_preorder_photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  preorder_id UUID NOT NULL REFERENCES recital_preorders(id) ON DELETE CASCADE,
+  preorder_id UUID NOT NULL REFERENCES public.recital_preorders(id) ON DELETE CASCADE,
 
   file_url TEXT NOT NULL,
   file_name TEXT NOT NULL,
@@ -63,13 +65,13 @@ CREATE TABLE IF NOT EXISTS recital_preorder_photos (
 );
 
 CREATE INDEX IF NOT EXISTS idx_recital_preorders_created_at
-  ON recital_preorders(created_at DESC);
+  ON public.recital_preorders(created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_recital_preorders_parent_email
-  ON recital_preorders(parent_email);
+  ON public.recital_preorders(parent_email);
 
 CREATE INDEX IF NOT EXISTS idx_recital_preorder_photos_preorder_id
-  ON recital_preorder_photos(preorder_id);
+  ON public.recital_preorder_photos(preorder_id);
 
 CREATE OR REPLACE FUNCTION set_recital_preorders_updated_at()
 RETURNS TRIGGER AS $$
@@ -79,8 +81,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_set_recital_preorders_updated_at ON recital_preorders;
+DROP TRIGGER IF EXISTS trg_set_recital_preorders_updated_at ON public.recital_preorders;
 CREATE TRIGGER trg_set_recital_preorders_updated_at
-BEFORE UPDATE ON recital_preorders
+BEFORE UPDATE ON public.recital_preorders
 FOR EACH ROW
 EXECUTE FUNCTION set_recital_preorders_updated_at();
