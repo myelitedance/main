@@ -39,7 +39,10 @@ type CreateInvoiceResult = {
 type StoredConfig = {
   tenantId: string;
   refreshToken: string;
-  salesAccountCode: string;
+  yearbookAccountCode: string;
+  calloutsAccountCode: string;
+  yearbookTaxType: string;
+  calloutsTaxType: string;
 };
 
 function needEnv(key: string): string {
@@ -136,6 +139,11 @@ async function upsertSettings(values: {
   tenantId: string;
   refreshToken: string;
   salesAccountCode?: string;
+  taxType?: string;
+  yearbookAccountCode?: string;
+  calloutsAccountCode?: string;
+  yearbookTaxType?: string;
+  calloutsTaxType?: string;
   connectedBy?: string;
 }): Promise<void> {
   await assertSettingsTableExists();
@@ -146,6 +154,11 @@ async function upsertSettings(values: {
       tenant_id,
       refresh_token,
       sales_account_code,
+      tax_type,
+      yearbook_account_code,
+      callouts_account_code,
+      yearbook_tax_type,
+      callouts_tax_type,
       connected_by_email,
       connected_at,
       updated_at
@@ -155,6 +168,11 @@ async function upsertSettings(values: {
       ${values.tenantId},
       ${values.refreshToken},
       COALESCE(${values.salesAccountCode ?? null}, '200'),
+      COALESCE(${values.taxType ?? null}, 'OUTPUT'),
+      COALESCE(${values.yearbookAccountCode ?? null}, 'Yearbook'),
+      COALESCE(${values.calloutsAccountCode ?? null}, 'Callouts'),
+      COALESCE(${values.yearbookTaxType ?? null}, 'OUTPUT'),
+      COALESCE(${values.calloutsTaxType ?? null}, 'NONE'),
       ${values.connectedBy ?? null},
       NOW(),
       NOW()
@@ -164,6 +182,11 @@ async function upsertSettings(values: {
       tenant_id = EXCLUDED.tenant_id,
       refresh_token = EXCLUDED.refresh_token,
       sales_account_code = COALESCE(EXCLUDED.sales_account_code, public.xero_integration_settings.sales_account_code),
+      tax_type = COALESCE(EXCLUDED.tax_type, public.xero_integration_settings.tax_type),
+      yearbook_account_code = COALESCE(EXCLUDED.yearbook_account_code, public.xero_integration_settings.yearbook_account_code),
+      callouts_account_code = COALESCE(EXCLUDED.callouts_account_code, public.xero_integration_settings.callouts_account_code),
+      yearbook_tax_type = COALESCE(EXCLUDED.yearbook_tax_type, public.xero_integration_settings.yearbook_tax_type),
+      callouts_tax_type = COALESCE(EXCLUDED.callouts_tax_type, public.xero_integration_settings.callouts_tax_type),
       connected_by_email = COALESCE(EXCLUDED.connected_by_email, public.xero_integration_settings.connected_by_email),
       connected_at = NOW(),
       updated_at = NOW();
@@ -174,7 +197,15 @@ async function loadSettings(): Promise<StoredConfig> {
   await assertSettingsTableExists();
 
   const rows = await sql`
-    SELECT tenant_id, refresh_token, sales_account_code
+    SELECT
+      tenant_id,
+      refresh_token,
+      sales_account_code,
+      tax_type,
+      yearbook_account_code,
+      callouts_account_code,
+      yearbook_tax_type,
+      callouts_tax_type
     FROM public.xero_integration_settings
     WHERE id = true
     LIMIT 1
@@ -187,13 +218,34 @@ async function loadSettings(): Promise<StoredConfig> {
 
   const tenantId = String(row.tenant_id || "").trim();
   const refreshToken = String(row.refresh_token || "").trim();
-  const salesAccountCode = String(row.sales_account_code || "").trim();
+  const legacySalesCode = String(row.sales_account_code || "").trim();
+  const legacyTaxType = String(row.tax_type || "").trim();
+  const yearbookAccountCode = String(row.yearbook_account_code || "").trim() || legacySalesCode;
+  const calloutsAccountCode = String(row.callouts_account_code || "").trim() || legacySalesCode;
+  const yearbookTaxType = String(row.yearbook_tax_type || "").trim() || legacyTaxType;
+  const calloutsTaxType = String(row.callouts_tax_type || "").trim() || "NONE";
 
-  if (!tenantId || !refreshToken || !salesAccountCode) {
-    throw new Error("Xero settings incomplete. Verify tenant_id, refresh_token, and sales_account_code.");
+  if (
+    !tenantId ||
+    !refreshToken ||
+    !yearbookAccountCode ||
+    !calloutsAccountCode ||
+    !yearbookTaxType ||
+    !calloutsTaxType
+  ) {
+    throw new Error(
+      "Xero settings incomplete. Verify tenant_id, refresh_token, yearbook_account_code, callouts_account_code, yearbook_tax_type, and callouts_tax_type."
+    );
   }
 
-  return { tenantId, refreshToken, salesAccountCode };
+  return {
+    tenantId,
+    refreshToken,
+    yearbookAccountCode,
+    calloutsAccountCode,
+    yearbookTaxType,
+    calloutsTaxType,
+  };
 }
 
 async function rotateAccessTokenFromStoredRefreshToken(stored: StoredConfig): Promise<{ accessToken: string; refreshTokenRotated: boolean }> {
@@ -218,15 +270,22 @@ async function rotateAccessTokenFromStoredRefreshToken(stored: StoredConfig): Pr
   };
 }
 
-function buildLineItems(input: CreateInvoiceInput, salesAccountCode: string) {
-  const items: Array<{ Description: string; Quantity: number; UnitAmount: number; AccountCode: string }> = [];
+function buildLineItems(input: CreateInvoiceInput, config: StoredConfig) {
+  const items: Array<{
+    Description: string;
+    Quantity: number;
+    UnitAmount: number;
+    AccountCode: string;
+    TaxType: string;
+  }> = [];
 
   if (input.yearbookAmountCents > 0) {
     items.push({
       Description: "2026 Recital Yearbook Preorder",
       Quantity: 1,
       UnitAmount: dollarsFromCents(input.yearbookAmountCents),
-      AccountCode: salesAccountCode,
+      AccountCode: config.yearbookAccountCode,
+      TaxType: config.yearbookTaxType,
     });
   }
 
@@ -235,7 +294,8 @@ function buildLineItems(input: CreateInvoiceInput, salesAccountCode: string) {
       Description: "2026 Recital Dancer Congratulations Ad",
       Quantity: 1,
       UnitAmount: dollarsFromCents(input.congratsAmountCents),
-      AccountCode: salesAccountCode,
+      AccountCode: config.calloutsAccountCode,
+      TaxType: config.calloutsTaxType,
     });
   }
 
@@ -244,7 +304,8 @@ function buildLineItems(input: CreateInvoiceInput, salesAccountCode: string) {
       Description: "2026 Recital Preorder",
       Quantity: 1,
       UnitAmount: dollarsFromCents(input.totalAmountCents),
-      AccountCode: salesAccountCode,
+      AccountCode: config.yearbookAccountCode,
+      TaxType: config.yearbookTaxType,
     });
   }
 
@@ -353,7 +414,7 @@ export async function createXeroInvoiceForPreorder(input: CreateInvoiceInput): P
       Name: `${input.parentFirstName} ${input.parentLastName}`.trim(),
       EmailAddress: input.parentEmail,
     },
-    LineItems: buildLineItems(input, stored.salesAccountCode),
+    LineItems: buildLineItems(input, stored),
     Reference: `Recital Preorder ${input.preorderId}`,
   };
 
