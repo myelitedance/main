@@ -292,6 +292,11 @@ function extractXeroErrorDetails(payload: any): string {
     return messages.join(" | ");
   }
 
+  const compact = JSON.stringify(payload);
+  if (compact && compact !== "{}") {
+    return compact.length > 800 ? `${compact.slice(0, 800)}...` : compact;
+  }
+
   return "Unknown Xero validation error";
 }
 
