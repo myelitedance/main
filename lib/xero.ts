@@ -269,6 +269,32 @@ function extractOnlineInvoiceUrl(value: any): string | null {
   return null;
 }
 
+function extractXeroErrorDetails(payload: any): string {
+  const direct =
+    (typeof payload?.Message === "string" && payload.Message) ||
+    (typeof payload?.message === "string" && payload.message) ||
+    (typeof payload?.error === "string" && payload.error);
+  if (direct) return direct;
+
+  const elements = Array.isArray(payload?.Elements) ? payload.Elements : [];
+  const messages: string[] = [];
+
+  for (const el of elements) {
+    const validationErrors = Array.isArray(el?.ValidationErrors) ? el.ValidationErrors : [];
+    for (const ve of validationErrors) {
+      if (typeof ve?.Message === "string" && ve.Message.trim()) {
+        messages.push(ve.Message.trim());
+      }
+    }
+  }
+
+  if (messages.length > 0) {
+    return messages.join(" | ");
+  }
+
+  return "Unknown Xero validation error";
+}
+
 export async function completeXeroAuthorization(params: {
   code: string;
   origin: string;
@@ -339,7 +365,8 @@ export async function createXeroInvoiceForPreorder(input: CreateInvoiceInput): P
 
   const createData = (await createRes.json().catch(() => ({}))) as any;
   if (!createRes.ok) {
-    throw new Error(`Xero invoice creation failed (${createRes.status})`);
+    const details = extractXeroErrorDetails(createData);
+    throw new Error(`Xero invoice creation failed (${createRes.status}): ${details}`);
   }
 
   const invoice = createData?.Invoices?.[0] || createData?.invoices?.[0];
