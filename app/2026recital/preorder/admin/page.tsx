@@ -24,7 +24,15 @@ export default async function RecitalPreorderAdminPage() {
   const hasSettingsTable = Boolean(tableCheck[0]?.reg);
   const xeroSettings = hasSettingsTable
     ? await sql`
-        SELECT tenant_id, sales_account_code, connected_at
+        SELECT
+          tenant_id,
+          sales_account_code,
+          tax_type,
+          yearbook_account_code,
+          callouts_account_code,
+          yearbook_tax_type,
+          callouts_tax_type,
+          connected_at
         FROM public.xero_integration_settings
         WHERE id = true
         LIMIT 1
@@ -96,8 +104,11 @@ export default async function RecitalPreorderAdminPage() {
 
           {hasSettingsTable && xeroConnected && (
             <p className="text-emerald-700">
-              Xero connected. Tenant: <strong>{asString(xeroSettings[0]?.tenant_id)}</strong>, Sales Account Code:{" "}
-              <strong>{asString(xeroSettings[0]?.sales_account_code)}</strong>
+              Xero connected. Tenant: <strong>{asString(xeroSettings[0]?.tenant_id)}</strong>, Yearbook Code:{" "}
+              <strong>{asString(xeroSettings[0]?.yearbook_account_code || xeroSettings[0]?.sales_account_code)}</strong>{" "}
+              (Tax: <strong>{asString(xeroSettings[0]?.yearbook_tax_type || xeroSettings[0]?.tax_type)}</strong>), Callouts Code:{" "}
+              <strong>{asString(xeroSettings[0]?.callouts_account_code || xeroSettings[0]?.sales_account_code)}</strong>{" "}
+              (Tax: <strong>{asString(xeroSettings[0]?.callouts_tax_type || "NONE")}</strong>)
             </p>
           )}
         </div>
