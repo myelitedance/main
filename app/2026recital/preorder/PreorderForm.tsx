@@ -47,6 +47,10 @@ const MAX_PHOTOS_BY_SIZE: Record<CongratsSize, number> = {
   full: 6,
 };
 
+// Vercel serverless request body limits can reject large multipart payloads.
+// Keep a conservative cap until direct-to-storage uploads are implemented.
+const MAX_TOTAL_UPLOAD_BYTES = 4 * 1024 * 1024;
+
 const ALLOWED_TYPES_TEXT = "JPG, PNG, or HEIC (max 10MB each).";
 
 function adLabel(size: CongratsSize): string {
@@ -144,6 +148,11 @@ export default function PreorderForm() {
       if (file.size > 10 * 1024 * 1024) {
         return `File ${file.name} exceeds 10MB.`;
       }
+    }
+
+    const totalBytes = photos.reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > MAX_TOTAL_UPLOAD_BYTES) {
+      return "Total upload size is too large for this form. Please use smaller photos (about 4MB total max).";
     }
 
     return null;
@@ -392,6 +401,9 @@ export default function PreorderForm() {
                   />
                   <p className="text-xs text-slate-600">
                     {ALLOWED_TYPES_TEXT} Limit: {currentPhotoLimit} photo{currentPhotoLimit === 1 ? "" : "s"} for this ad size.
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Current total upload limit for this form: about 4MB combined.
                   </p>
                   {photos.length > 0 && (
                     <ul className="list-disc space-y-1 pl-6 text-xs text-slate-700">

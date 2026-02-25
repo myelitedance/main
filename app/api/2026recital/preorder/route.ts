@@ -30,6 +30,7 @@ const MAX_PHOTOS_BY_SIZE: Record<CongratsSize, number> = {
   half: 3,
   full: 6,
 };
+const MAX_TOTAL_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -180,6 +181,14 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
+    }
+
+    const totalPhotoBytes = photos.reduce((sum, photo) => sum + photo.size, 0);
+    if (totalPhotoBytes > MAX_TOTAL_UPLOAD_BYTES) {
+      return NextResponse.json(
+        { error: "Total upload size is too large for this form. Please use smaller photos (about 4MB total max)." },
+        { status: 400 }
+      );
     }
 
     const yearbookAmountCents = yearbookRequested ? YEARBOOK_AMOUNT_CENTS : 0;
