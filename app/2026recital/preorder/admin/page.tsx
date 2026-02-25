@@ -16,7 +16,23 @@ function asBool(value: unknown): boolean {
   return value === true || value === "true" || value === "t";
 }
 
+function asDate(value: unknown): Date | null {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === "string" || typeof value === "number") {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
 export default async function RecitalPreorderAdminPage() {
+  const studioTimeZone = process.env.STUDIO_TIMEZONE || "America/Chicago";
+  const dateFormatter = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: studioTimeZone,
+  });
+
   const tableCheck = await sql`
     SELECT to_regclass('public.xero_integration_settings') AS reg
   `;
@@ -128,15 +144,15 @@ export default async function RecitalPreorderAdminPage() {
 
             <tbody className="divide-y divide-gray-100 text-sm">
               {rows.map((r) => {
-                const submittedAt = new Date(asString(r.created_at));
+                const submittedAt = asDate(r.created_at);
                 const parentName = `${asString(r.parent_first_name)} ${asString(r.parent_last_name)}`.trim();
                 const dancerName = `${asString(r.dancer_first_name)} ${asString(r.dancer_last_name)}`.trim();
 
                 return (
                   <tr key={asString(r.id)} className="align-top hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-700">
-                      <div>{submittedAt.toLocaleDateString()}</div>
-                      <div className="text-xs text-gray-500">{submittedAt.toLocaleTimeString()}</div>
+                      <div>{submittedAt ? dateFormatter.format(submittedAt) : "N/A"}</div>
+                      <div className="text-xs text-gray-500">{studioTimeZone}</div>
                     </td>
 
                     <td className="px-4 py-3">

@@ -5,10 +5,10 @@ CREATE TABLE IF NOT EXISTS public.xero_integration_settings (
   id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id = TRUE),
   tenant_id TEXT NOT NULL,
   refresh_token TEXT NOT NULL,
-  sales_account_code TEXT NOT NULL DEFAULT '200',
+  sales_account_code TEXT NOT NULL DEFAULT '4715',
   tax_type TEXT NOT NULL DEFAULT 'OUTPUT',
-  yearbook_account_code TEXT NOT NULL DEFAULT 'Yearbook',
-  callouts_account_code TEXT NOT NULL DEFAULT 'Callouts',
+  yearbook_account_code TEXT NOT NULL DEFAULT '4715',
+  callouts_account_code TEXT NOT NULL DEFAULT '4715',
   yearbook_tax_type TEXT NOT NULL DEFAULT 'OUTPUT',
   callouts_tax_type TEXT NOT NULL DEFAULT 'NONE',
   connected_by_email TEXT,
@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS public.xero_integration_settings (
 
 ALTER TABLE public.xero_integration_settings
   ADD COLUMN IF NOT EXISTS tax_type TEXT NOT NULL DEFAULT 'OUTPUT',
-  ADD COLUMN IF NOT EXISTS yearbook_account_code TEXT NOT NULL DEFAULT 'Yearbook',
-  ADD COLUMN IF NOT EXISTS callouts_account_code TEXT NOT NULL DEFAULT 'Callouts',
+  ADD COLUMN IF NOT EXISTS yearbook_account_code TEXT NOT NULL DEFAULT '4715',
+  ADD COLUMN IF NOT EXISTS callouts_account_code TEXT NOT NULL DEFAULT '4715',
   ADD COLUMN IF NOT EXISTS yearbook_tax_type TEXT NOT NULL DEFAULT 'OUTPUT',
   ADD COLUMN IF NOT EXISTS callouts_tax_type TEXT NOT NULL DEFAULT 'NONE';
 

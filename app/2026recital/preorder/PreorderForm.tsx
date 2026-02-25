@@ -40,7 +40,14 @@ const MESSAGE_LIMITS: Record<CongratsSize, number> = {
   full: 500,
 };
 
-const ALLOWED_TYPES_TEXT = "JPG, PNG, or HEIC (max 10MB each, up to 5 photos).";
+const MAX_PHOTOS_BY_SIZE: Record<CongratsSize, number> = {
+  none: 0,
+  quarter: 1,
+  half: 3,
+  full: 6,
+};
+
+const ALLOWED_TYPES_TEXT = "JPG, PNG, or HEIC (max 10MB each).";
 
 function adLabel(size: CongratsSize): string {
   if (size === "quarter") return "1/4 Page Dancer Congratulations";
@@ -70,6 +77,7 @@ export default function PreorderForm() {
   const [payNowStatus, setPayNowStatus] = useState<"not_needed" | "synced" | "failed">("not_needed");
 
   const currentMessageLimit = MESSAGE_LIMITS[form.congratsSize];
+  const currentPhotoLimit = MAX_PHOTOS_BY_SIZE[form.congratsSize];
 
   const pricing = useMemo(() => {
     const yearbookAmount = form.yearbookRequested ? PRICES.yearbook : 0;
@@ -128,8 +136,8 @@ export default function PreorderForm() {
       }
     }
 
-    if (photos.length > 5) {
-      return "You can upload up to 5 photos.";
+    if (photos.length > currentPhotoLimit) {
+      return `You can upload up to ${currentPhotoLimit} photo${currentPhotoLimit === 1 ? "" : "s"} for this ad size.`;
     }
 
     for (const file of photos) {
@@ -236,9 +244,13 @@ export default function PreorderForm() {
       <CardHeader>
         <CardTitle>Yearbook + Dancer Congratulations Preorder</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
         <form onSubmit={onSubmit} className="space-y-8">
-          <section className="grid gap-4 md:grid-cols-2">
+          <section className="rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-purple-700">
+              Parent + Dancer Details
+            </h3>
+            <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="parentFirstName">Parent First Name *</Label>
               <Input
@@ -300,9 +312,10 @@ export default function PreorderForm() {
                 required
               />
             </div>
+            </div>
           </section>
 
-          <section className="space-y-4">
+          <section className="space-y-4 rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
             <Label className="text-base">Yearbook</Label>
             <label className="flex items-center gap-3 rounded border p-3">
               <Checkbox
@@ -314,7 +327,7 @@ export default function PreorderForm() {
             </label>
           </section>
 
-          <section className="space-y-4">
+          <section className="space-y-4 rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
             <Label className="text-base">Dancer Congratulations (choose one)</Label>
             <RadioGroup
               value={form.congratsSize}
@@ -377,7 +390,9 @@ export default function PreorderForm() {
                     multiple
                     onChange={(e) => setPhotos(Array.from(e.target.files || []))}
                   />
-                  <p className="text-xs text-slate-600">{ALLOWED_TYPES_TEXT}</p>
+                  <p className="text-xs text-slate-600">
+                    {ALLOWED_TYPES_TEXT} Limit: {currentPhotoLimit} photo{currentPhotoLimit === 1 ? "" : "s"} for this ad size.
+                  </p>
                   {photos.length > 0 && (
                     <ul className="list-disc space-y-1 pl-6 text-xs text-slate-700">
                       {photos.map((file) => (
@@ -392,7 +407,7 @@ export default function PreorderForm() {
             )}
           </section>
 
-          <section className="space-y-4">
+          <section className="space-y-4 rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
             <Label className="text-base">Payment Option *</Label>
             <RadioGroup
               value={form.paymentOption}
@@ -405,17 +420,12 @@ export default function PreorderForm() {
 
               <label className="flex items-center gap-3 rounded border p-3">
                 <RadioGroupItem value="pay_now" id="pay-now" />
-                <span>Pay now (Xero checkout coming next)</span>
+                <span>Pay now</span>
               </label>
             </RadioGroup>
-            {form.paymentOption === "pay_now" && (
-              <p className="text-xs text-amber-700">
-                Pay-now is being wired to Xero. Submit now and front desk will follow up with payment details.
-              </p>
-            )}
           </section>
 
-          <section className="rounded-md border bg-slate-50 p-4 text-sm">
+          <section className="rounded-md border border-purple-200 bg-slate-50 p-4 text-sm">
             <h3 className="font-semibold">Order Summary</h3>
             <div className="mt-3 space-y-1">
               <p>Yearbook: ${pricing.yearbookAmount}</p>
@@ -426,9 +436,13 @@ export default function PreorderForm() {
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <Button type="submit" disabled={submitting} className="w-full md:w-auto">
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-md bg-purple-700 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-purple-800 md:w-auto"
+          >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitting ? "Submitting..." : "Submit Preorder"}
+            {submitting ? "Submitting..." : "Submit Order"}
           </Button>
         </form>
       </CardContent>
