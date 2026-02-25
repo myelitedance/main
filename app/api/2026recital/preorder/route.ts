@@ -177,7 +177,7 @@ export async function POST(req: Request) {
 
     const insertRes = await client.query(
       `
-      INSERT INTO recital_preorders (
+      INSERT INTO public.recital_preorders (
         parent_first_name,
         parent_last_name,
         parent_email,
@@ -233,7 +233,7 @@ export async function POST(req: Request) {
 
       await client.query(
         `
-        INSERT INTO recital_preorder_photos (
+        INSERT INTO public.recital_preorder_photos (
           preorder_id,
           file_url,
           file_name,
