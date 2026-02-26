@@ -200,8 +200,8 @@ export default function PreorderForm() {
                   return (
                     <div key={p.id} className="rounded-md border bg-white p-3">
                       {p.image_url ? (
-                        <div className="relative mb-3 h-40 w-full overflow-hidden rounded-md bg-slate-100">
-                          <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                        <div className="relative mb-3 flex h-40 w-full items-center justify-center overflow-hidden rounded-md border bg-white p-2">
+                          <img src={p.image_url} alt={p.name} className="max-h-full max-w-full object-contain" />
                         </div>
                       ) : (
                         <div className="mb-3 flex h-40 items-center justify-center rounded-md bg-slate-100 text-xs text-slate-500">
