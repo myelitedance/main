@@ -1,23 +1,13 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { pool } from "@/lib/db";
+import { uploadImage } from "@/lib/storage";
 import { createXeroInvoiceForPreorder } from "@/lib/xero";
 
 export const runtime = "nodejs";
 
-type CustomerType = "akada" | "guest";
 type PaymentOption = "charge_account" | "pay_now";
-
-type SubmitBody = {
-  customerType: CustomerType;
-  paymentOption: PaymentOption;
-  akadaChargeAuthorized?: boolean;
-  parentFirstName: string;
-  parentLastName: string;
-  parentEmail: string;
-  parentPhone: string;
-  items: Array<{ productId: string; quantity: number }>;
-};
+type CalloutTier = "quarter" | "half" | "full";
 
 type ProductRow = {
   id: string;
@@ -28,6 +18,20 @@ type ProductRow = {
   xero_account_code: string;
   xero_tax_type: string;
 };
+
+const CALL_OUT_CHAR_LIMITS: Record<CalloutTier, number> = {
+  quarter: 120,
+  half: 240,
+  full: 360,
+};
+
+const CALL_OUT_PHOTO_LIMITS: Record<CalloutTier, number> = {
+  quarter: 1,
+  half: 2,
+  full: 3,
+};
+
+const MAX_TOTAL_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
@@ -44,8 +48,7 @@ function isValidEmail(email: string): boolean {
 }
 
 function isValidPhone(phone: string): boolean {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length >= 10;
+  return phone.replace(/\D/g, "").length >= 10;
 }
 
 function parseTaxRate(): number {
@@ -67,27 +70,48 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function detectCalloutTier(name: string): CalloutTier | null {
+  const n = name.toLowerCase();
+  const isCallout = n.includes("callout") || n.includes("congrat");
+  if (!isCallout) return null;
+
+  if (n.includes("1/4") || n.includes("quarter")) return "quarter";
+  if (n.includes("1/2") || n.includes("half")) return "half";
+  if (n.includes("full")) return "full";
+  return null;
+}
+
 export async function POST(req: Request) {
   const client = await pool.connect();
   let inTransaction = false;
 
   try {
-    const body = (await req.json()) as SubmitBody;
+    const formData = await req.formData();
 
-    const customerType = body.customerType;
-    const paymentOption = body.paymentOption;
-    const akadaChargeAuthorized = body.akadaChargeAuthorized === true;
+    const paymentOption = String(formData.get("paymentOption") ?? "") as PaymentOption;
+    const customerType = paymentOption === "charge_account" ? "akada" : "guest";
+    const akadaChargeAuthorized = String(formData.get("akadaChargeAuthorized") ?? "false") === "true";
 
-    const parentFirstName = String(body.parentFirstName ?? "").trim();
-    const parentLastName = String(body.parentLastName ?? "").trim();
-    const parentEmail = String(body.parentEmail ?? "").trim().toLowerCase();
-    const parentPhone = String(body.parentPhone ?? "").trim();
+    const parentFirstName = String(formData.get("parentFirstName") ?? "").trim();
+    const parentLastName = String(formData.get("parentLastName") ?? "").trim();
+    const parentEmail = String(formData.get("parentEmail") ?? "").trim().toLowerCase();
+    const parentPhone = String(formData.get("parentPhone") ?? "").trim();
 
-    const items = Array.isArray(body.items)
-      ? body.items
+    const itemsRaw = String(formData.get("items") ?? "[]");
+    const parsedItems = JSON.parse(itemsRaw) as Array<{ productId: string; quantity: number }>;
+    const items = Array.isArray(parsedItems)
+      ? parsedItems
           .map((i) => ({ productId: String(i.productId ?? "").trim(), quantity: Number(i.quantity ?? 0) }))
           .filter((i) => i.productId.length > 0 && Number.isFinite(i.quantity) && i.quantity > 0)
       : [];
+
+    const calloutTierRaw = String(formData.get("calloutTier") ?? "").trim();
+    const calloutMessage = String(formData.get("calloutMessage") ?? "").trim();
+    const calloutPhotos = formData.getAll("calloutPhotos").filter((x): x is File => x instanceof File && x.size > 0);
+
+    if (paymentOption !== "charge_account" && paymentOption !== "pay_now") {
+      return NextResponse.json({ error: "Invalid payment option." }, { status: 400 });
+    }
 
     if (!parentFirstName || !parentLastName || !parentEmail || !parentPhone) {
       return NextResponse.json({ error: "Missing required contact fields." }, { status: 400 });
@@ -101,25 +125,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid phone number." }, { status: 400 });
     }
 
-    if (customerType !== "akada" && customerType !== "guest") {
-      return NextResponse.json({ error: "Invalid customer type." }, { status: 400 });
-    }
-
     if (items.length === 0) {
       return NextResponse.json({ error: "Please select at least one product." }, { status: 400 });
     }
 
-    if (customerType === "akada") {
-      if (paymentOption !== "charge_account") {
-        return NextResponse.json({ error: "Akada checkout must use charge_account." }, { status: 400 });
-      }
-      if (!akadaChargeAuthorized) {
-        return NextResponse.json({ error: "Authorization is required to charge studio account." }, { status: 400 });
-      }
-    }
-
-    if (customerType === "guest" && paymentOption !== "pay_now") {
-      return NextResponse.json({ error: "Guest checkout must use pay_now." }, { status: 400 });
+    if (paymentOption === "charge_account" && !akadaChargeAuthorized) {
+      return NextResponse.json(
+        { error: "Authorization is required for studio account charge." },
+        { status: 400 }
+      );
     }
 
     const uniqueProductIds = [...new Set(items.map((i) => i.productId))];
@@ -135,6 +149,68 @@ export async function POST(req: Request) {
     );
 
     const productMap = new Map(productsRes.rows.map((p) => [p.id, p]));
+
+    const selectedCalloutProducts = items
+      .map((it) => {
+        const p = productMap.get(it.productId);
+        if (!p) return null;
+        const tier = detectCalloutTier(p.name);
+        if (!tier) return null;
+        return { item: it, product: p, tier };
+      })
+      .filter((x): x is { item: { productId: string; quantity: number }; product: ProductRow; tier: CalloutTier } => Boolean(x));
+
+    const uniqueCalloutTiers = [...new Set(selectedCalloutProducts.map((x) => x.tier))];
+    if (uniqueCalloutTiers.length > 1) {
+      return NextResponse.json({ error: "Select only one dancer callout size." }, { status: 400 });
+    }
+
+    const activeCalloutTier = uniqueCalloutTiers.length === 1 ? uniqueCalloutTiers[0] : null;
+
+    if (activeCalloutTier) {
+      const calloutLine = selectedCalloutProducts[0];
+      if (calloutLine.item.quantity !== 1) {
+        return NextResponse.json({ error: "Dancer callout quantity must be 1." }, { status: 400 });
+      }
+
+      if (calloutTierRaw && calloutTierRaw !== activeCalloutTier) {
+        return NextResponse.json({ error: "Callout tier mismatch in submission." }, { status: 400 });
+      }
+
+      const maxChars = CALL_OUT_CHAR_LIMITS[activeCalloutTier];
+      const maxPhotos = CALL_OUT_PHOTO_LIMITS[activeCalloutTier];
+
+      if (!calloutMessage) {
+        return NextResponse.json({ error: "Callout message is required." }, { status: 400 });
+      }
+
+      if (calloutMessage.length > maxChars) {
+        return NextResponse.json(
+          { error: `Callout message must be ${maxChars} characters or less.` },
+          { status: 400 }
+        );
+      }
+
+      if (calloutPhotos.length > maxPhotos) {
+        return NextResponse.json(
+          { error: `You can upload up to ${maxPhotos} photo${maxPhotos === 1 ? "" : "s"} for this callout.` },
+          { status: 400 }
+        );
+      }
+
+      const totalBytes = calloutPhotos.reduce((sum, f) => sum + f.size, 0);
+      if (totalBytes > MAX_TOTAL_UPLOAD_BYTES) {
+        return NextResponse.json(
+          { error: "Total upload size is too large. Please use smaller photos (about 4MB total max)." },
+          { status: 400 }
+        );
+      }
+    } else if (calloutMessage || calloutPhotos.length > 0) {
+      return NextResponse.json(
+        { error: "Callout message/photos were provided without selecting a dancer callout product." },
+        { status: 400 }
+      );
+    }
 
     const taxRate = parseTaxRate();
 
@@ -198,6 +274,8 @@ export async function POST(req: Request) {
         tax_cents,
         total_cents,
         sales_tax_rate,
+        callout_tier,
+        callout_message,
         payment_status,
         xero_sync_status
       )
@@ -205,6 +283,7 @@ export async function POST(req: Request) {
         $1, $2, $3,
         $4, $5, $6, $7,
         $8, $9, $10, $11,
+        $12, $13,
         CASE WHEN $2 = 'pay_now' THEN 'queued_for_xero' ELSE 'pending' END,
         CASE WHEN $2 = 'pay_now' THEN 'pending' ELSE 'not_configured' END
       )
@@ -222,6 +301,8 @@ export async function POST(req: Request) {
         taxCents,
         totalCents,
         taxRate,
+        activeCalloutTier,
+        activeCalloutTier ? calloutMessage : null,
       ]
     );
 
@@ -264,12 +345,32 @@ export async function POST(req: Request) {
       );
     }
 
+    if (activeCalloutTier) {
+      for (let i = 0; i < calloutPhotos.length; i += 1) {
+        const file = calloutPhotos[i];
+        const url = await uploadImage(file, `recital-callouts/${orderId}/photo-${i + 1}-${Date.now()}`);
+
+        await client.query(
+          `
+          INSERT INTO public.recital_checkout_order_assets (
+            order_id,
+            file_url,
+            file_name,
+            file_size_bytes,
+            mime_type,
+            sort_order
+          )
+          VALUES ($1,$2,$3,$4,$5,$6)
+          `,
+          [orderId, url, file.name, file.size, file.type, i + 1]
+        );
+      }
+    }
+
     await client.query("COMMIT");
     inTransaction = false;
 
     let payNowUrl: string | null = null;
-    let payNowIntegrationStatus: "not_needed" | "synced" | "failed" = "not_needed";
-    let xeroErrorSummary: string | null = null;
 
     if (paymentOption === "pay_now") {
       try {
@@ -289,7 +390,6 @@ export async function POST(req: Request) {
         });
 
         payNowUrl = xeroInvoice.onlineInvoiceUrl;
-        payNowIntegrationStatus = "synced";
 
         await client.query(
           `
@@ -305,8 +405,6 @@ export async function POST(req: Request) {
         );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Unknown Xero sync error";
-        xeroErrorSummary = msg;
-        payNowIntegrationStatus = "failed";
 
         await client.query(
           `
@@ -330,25 +428,25 @@ export async function POST(req: Request) {
     }).format(new Date(createdAt));
 
     const itemLinesHtml = orderLines
-      .map((l) => {
-        const name = escapeHtml(l.productName);
-        return `<li>${name} x${l.quantity} — ${dollars(l.lineTotalCents)}</li>`;
-      })
+      .map((l) => `<li>${escapeHtml(l.productName)} x${l.quantity} — ${dollars(l.lineTotalCents)}</li>`)
       .join("");
+
+    const calloutHtml = activeCalloutTier
+      ? `<h3>Dancer Callout</h3><p><strong>Tier:</strong> ${escapeHtml(activeCalloutTier)}</p><p><strong>Message:</strong> ${escapeHtml(calloutMessage)}</p><p><strong>Photos:</strong> ${calloutPhotos.length}</p>`
+      : "";
 
     const paymentNote =
       paymentOption === "pay_now"
         ? payNowUrl
           ? `Pay online: <a href="${payNowUrl}" target="_blank" rel="noreferrer">${payNowUrl}</a>`
           : "Pay-now selected. We could not generate a payment link automatically; front desk will follow up."
-        : "Charge to card on file authorized in Akada flow.";
+        : "Charge to card on file authorized.";
 
     const html = `
       <div style="font-family:Arial,sans-serif;font-size:16px;color:#222;line-height:1.4;">
         <h2>PREORDER Received</h2>
         <p><strong>Order ID:</strong> ${orderId}</p>
         <p><strong>Submitted:</strong> ${submittedAtLocal} (${studioTimeZone})</p>
-        <p><strong>Customer Type:</strong> ${escapeHtml(customerType)}</p>
         <p><strong>Payment Option:</strong> ${escapeHtml(paymentOption)}</p>
 
         <h3>Parent</h3>
@@ -358,6 +456,8 @@ export async function POST(req: Request) {
 
         <h3>Items</h3>
         <ul>${itemLinesHtml}</ul>
+
+        ${calloutHtml}
 
         <p><strong>Subtotal:</strong> ${dollars(subtotalCents)}</p>
         <p><strong>Tax:</strong> ${dollars(taxCents)}</p>
@@ -381,9 +481,7 @@ export async function POST(req: Request) {
       subtotalCents,
       taxCents,
       totalCents,
-      payNowIntegrationStatus,
       payNowUrl,
-      xeroErrorSummary,
     });
   } catch (err: unknown) {
     if (inTransaction) {

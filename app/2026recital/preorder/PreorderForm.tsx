@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 type Product = {
   id: string;
@@ -19,19 +20,50 @@ type Product = {
   is_active: boolean;
 };
 
-type CustomerType = "akada" | "guest";
+type PaymentOption = "charge_account" | "pay_now";
+type Phase = "cart" | "checkout";
+type CalloutTier = "quarter" | "half" | "full";
+
+const CALL_OUT_CHAR_LIMITS: Record<CalloutTier, number> = {
+  quarter: 120,
+  half: 240,
+  full: 360,
+};
+
+const CALL_OUT_PHOTO_LIMITS: Record<CalloutTier, number> = {
+  quarter: 1,
+  half: 2,
+  full: 3,
+};
+
+const MAX_TOTAL_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 function dollars(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+function detectCalloutTier(name: string): CalloutTier | null {
+  const n = name.toLowerCase();
+  const isCallout = n.includes("callout") || n.includes("congrat");
+  if (!isCallout) return null;
+
+  if (n.includes("1/4") || n.includes("quarter")) return "quarter";
+  if (n.includes("1/2") || n.includes("half")) return "half";
+  if (n.includes("full")) return "full";
+  return null;
+}
+
 export default function PreorderForm() {
+  const [phase, setPhase] = useState<Phase>("cart");
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [qtyByProduct, setQtyByProduct] = useState<Record<string, number>>({});
 
-  const [customerType, setCustomerType] = useState<CustomerType>("akada");
+  const [paymentOption, setPaymentOption] = useState<PaymentOption>("charge_account");
   const [akadaChargeAuthorized, setAkadaChargeAuthorized] = useState(false);
+
+  const [calloutMessage, setCalloutMessage] = useState("");
+  const [calloutPhotos, setCalloutPhotos] = useState<File[]>([]);
 
   const [parentFirstName, setParentFirstName] = useState("");
   const [parentLastName, setParentLastName] = useState("");
@@ -41,14 +73,13 @@ export default function PreorderForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [payNowUrl, setPayNowUrl] = useState<string | null>(null);
-  const [payNowStatus, setPayNowStatus] = useState<"not_needed" | "synced" | "failed">("not_needed");
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadProducts() {
       setLoadingProducts(true);
+      setError("");
       try {
         const res = await fetch("/api/2026recital/products", { cache: "no-store" });
         const data = (await res.json()) as { products?: Product[]; error?: string };
@@ -84,74 +115,160 @@ export default function PreorderForm() {
       .filter((row) => row.quantity > 0);
   }, [products, qtyByProduct]);
 
+  const detectedCalloutTiers = useMemo(() => {
+    const tiers = selectedItems
+      .map((row) => detectCalloutTier(row.product.name))
+      .filter((x): x is CalloutTier => Boolean(x));
+    return [...new Set(tiers)];
+  }, [selectedItems]);
+
+  const activeCalloutTier = detectedCalloutTiers.length === 1 ? detectedCalloutTiers[0] : null;
+
   const summary = useMemo(() => {
     const subtotalCents = selectedItems.reduce((sum, row) => sum + row.product.price_cents * row.quantity, 0);
-    return { subtotalCents, totalItems: selectedItems.reduce((sum, row) => sum + row.quantity, 0) };
+    return {
+      subtotalCents,
+      totalItems: selectedItems.reduce((sum, row) => sum + row.quantity, 0),
+    };
   }, [selectedItems]);
 
   function setQty(productId: string, nextQty: number) {
     setQtyByProduct((prev) => ({ ...prev, [productId]: Math.max(0, nextQty) }));
   }
 
-  function validate(): string | null {
+  function validateCartPhase(): string | null {
     if (selectedItems.length === 0) return "Select at least one product.";
-    if (!parentFirstName.trim() || !parentLastName.trim() || !parentEmail.trim() || !parentPhone.trim()) {
-      return "Please complete all required contact fields.";
+
+    if (detectedCalloutTiers.length > 1) {
+      return "Select only one dancer callout size at a time.";
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail.trim())) {
-      return "Please enter a valid email.";
+
+    if (activeCalloutTier) {
+      const calloutLine = selectedItems.find((row) => detectCalloutTier(row.product.name) === activeCalloutTier);
+      if (!calloutLine) return null;
+
+      if (calloutLine.quantity !== 1) {
+        return "Dancer callout quantity must be 1.";
+      }
+
+      const maxChars = CALL_OUT_CHAR_LIMITS[activeCalloutTier];
+      const maxPhotos = CALL_OUT_PHOTO_LIMITS[activeCalloutTier];
+
+      if (!calloutMessage.trim()) {
+        return "Enter the dancer callout message before checkout.";
+      }
+
+      if (calloutMessage.trim().length > maxChars) {
+        return `Callout message must be ${maxChars} characters or less for this size.`;
+      }
+
+      if (calloutPhotos.length > maxPhotos) {
+        return `You can upload up to ${maxPhotos} photo${maxPhotos === 1 ? "" : "s"} for this callout size.`;
+      }
+
+      for (const file of calloutPhotos) {
+        if (file.size > 10 * 1024 * 1024) {
+          return `File ${file.name} exceeds 10MB.`;
+        }
+      }
+
+      const totalBytes = calloutPhotos.reduce((sum, f) => sum + f.size, 0);
+      if (totalBytes > MAX_TOTAL_UPLOAD_BYTES) {
+        return "Total upload size is too large. Please use smaller photos (about 4MB total max).";
+      }
     }
-    if (parentPhone.replace(/\D/g, "").length < 10) {
-      return "Please enter a valid phone number.";
-    }
-    if (customerType === "akada" && !akadaChargeAuthorized) {
-      return "You must authorize charge to the card on file.";
-    }
+
     return null;
   }
 
-  async function onSubmit(e: React.FormEvent) {
+  function validateCheckoutPhase(): string | null {
+    if (!parentFirstName.trim() || !parentLastName.trim() || !parentEmail.trim() || !parentPhone.trim()) {
+      return "Please complete all required contact fields.";
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail.trim())) {
+      return "Please enter a valid email.";
+    }
+
+    if (parentPhone.replace(/\D/g, "").length < 10) {
+      return "Please enter a valid phone number.";
+    }
+
+    if (paymentOption === "charge_account" && !akadaChargeAuthorized) {
+      return "You must authorize account charging to submit this order.";
+    }
+
+    return null;
+  }
+
+  function proceedToCheckout() {
+    setError("");
+    const msg = validateCartPhase();
+    if (msg) {
+      setError(msg);
+      return;
+    }
+    setPhase("checkout");
+  }
+
+  async function submitOrder(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
+    const cartValidation = validateCartPhase();
+    if (cartValidation) {
+      setError(cartValidation);
+      return;
+    }
+
+    const checkoutValidation = validateCheckoutPhase();
+    if (checkoutValidation) {
+      setError(checkoutValidation);
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const payload = {
-        customerType,
-        paymentOption: customerType === "akada" ? "charge_account" : "pay_now",
-        akadaChargeAuthorized,
-        parentFirstName: parentFirstName.trim(),
-        parentLastName: parentLastName.trim(),
-        parentEmail: parentEmail.trim(),
-        parentPhone: parentPhone.trim(),
-        items: selectedItems.map((row) => ({ productId: row.product.id, quantity: row.quantity })),
-      };
+      const fd = new FormData();
+      fd.set("paymentOption", paymentOption);
+      fd.set("akadaChargeAuthorized", String(akadaChargeAuthorized));
+      fd.set("parentFirstName", parentFirstName.trim());
+      fd.set("parentLastName", parentLastName.trim());
+      fd.set("parentEmail", parentEmail.trim());
+      fd.set("parentPhone", parentPhone.trim());
+      fd.set(
+        "items",
+        JSON.stringify(selectedItems.map((row) => ({ productId: row.product.id, quantity: row.quantity })))
+      );
+
+      if (activeCalloutTier) {
+        fd.set("calloutTier", activeCalloutTier);
+        fd.set("calloutMessage", calloutMessage.trim());
+        for (const file of calloutPhotos) {
+          fd.append("calloutPhotos", file);
+        }
+      }
 
       const res = await fetch("/api/2026recital/preorder", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: fd,
       });
 
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
         payNowUrl?: string | null;
-        payNowIntegrationStatus?: "not_needed" | "synced" | "failed";
       };
 
       if (!res.ok) {
         throw new Error(data.error || "Submission failed");
       }
 
-      setPayNowUrl(data.payNowUrl ?? null);
-      setPayNowStatus(data.payNowIntegrationStatus ?? "not_needed");
+      if (paymentOption === "pay_now" && data.payNowUrl) {
+        window.location.assign(data.payNowUrl);
+        return;
+      }
+
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submission failed");
@@ -166,16 +283,10 @@ export default function PreorderForm() {
         <CardHeader>
           <CardTitle>Order Received</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-slate-700">
-          <p>Thank you. We emailed your confirmation and copied the front desk.</p>
-          {payNowStatus === "synced" && payNowUrl && (
-            <p>
-              Payment link: <a href={payNowUrl} target="_blank" rel="noreferrer" className="font-semibold text-purple-700 underline">Open Xero checkout</a>
-            </p>
-          )}
-          {payNowStatus === "failed" && (
-            <p className="text-amber-700">We could not generate a payment link automatically. Front desk will follow up.</p>
-          )}
+        <CardContent>
+          <p className="text-sm text-slate-700">
+            Thank you. Your order has been submitted and a confirmation email was sent.
+          </p>
         </CardContent>
       </Card>
     );
@@ -190,13 +301,12 @@ export default function PreorderForm() {
         {loadingProducts && <p className="text-sm text-slate-600">Loading products...</p>}
 
         {!loadingProducts && (
-          <form onSubmit={onSubmit} className="space-y-8">
+          <>
             <section className="rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-purple-700">1. Select Products</h3>
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-purple-700">Select Products</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 {products.map((p) => {
                   const qty = qtyByProduct[p.id] || 0;
-
                   return (
                     <div key={p.id} className="rounded-md border bg-white p-3">
                       {p.image_url ? (
@@ -231,71 +341,127 @@ export default function PreorderForm() {
             </section>
 
             <section className="rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-purple-700">2. Account Type</h3>
-              <RadioGroup value={customerType} onValueChange={(v) => setCustomerType(v as CustomerType)}>
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-purple-700">Payment Option</h3>
+              <RadioGroup value={paymentOption} onValueChange={(v) => setPaymentOption(v as PaymentOption)}>
                 <label className="flex items-center gap-3 rounded border bg-white p-3">
-                  <RadioGroupItem value="akada" id="acct-akada" />
-                  <span>I have an Akada studio account</span>
+                  <RadioGroupItem value="charge_account" id="pay-charge" />
+                  <span>Charge my studio account</span>
                 </label>
                 <label className="flex items-center gap-3 rounded border bg-white p-3">
-                  <RadioGroupItem value="guest" id="acct-guest" />
-                  <span>I do not have an Akada account</span>
+                  <RadioGroupItem value="pay_now" id="pay-now" />
+                  <span>Pay Now</span>
                 </label>
               </RadioGroup>
-
-              {customerType === "akada" && (
-                <label className="mt-3 flex items-center gap-3 rounded border bg-white p-3">
-                  <Checkbox checked={akadaChargeAuthorized} onCheckedChange={(c) => setAkadaChargeAuthorized(c === true)} />
-                  <span className="text-sm">I authorize Elite Dance to charge the card on file for this order.</span>
-                </label>
-              )}
-
-              {customerType === "guest" && (
-                <p className="mt-3 text-sm text-slate-700">Guest orders are invoiced through Xero and paid online.</p>
-              )}
             </section>
 
-            <section className="rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-purple-700">3. Contact Info</h3>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="parentFirstName">First Name *</Label>
-                  <Input id="parentFirstName" value={parentFirstName} onChange={(e) => setParentFirstName(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="parentLastName">Last Name *</Label>
-                  <Input id="parentLastName" value={parentLastName} onChange={(e) => setParentLastName(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="parentEmail">Email *</Label>
-                  <Input id="parentEmail" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="parentPhone">Phone *</Label>
-                  <Input id="parentPhone" inputMode="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} required />
-                </div>
-              </div>
-            </section>
+            {activeCalloutTier && phase === "cart" && (
+              <section className="rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-purple-700">Dancer Callout Details</h3>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="calloutMessage">
+                      Message ({calloutMessage.length}/{CALL_OUT_CHAR_LIMITS[activeCalloutTier]})
+                    </Label>
+                    <Textarea
+                      id="calloutMessage"
+                      value={calloutMessage}
+                      maxLength={CALL_OUT_CHAR_LIMITS[activeCalloutTier]}
+                      onChange={(e) => setCalloutMessage(e.target.value)}
+                      placeholder="Enter exactly what should be printed"
+                    />
+                  </div>
 
-            <section className="rounded-md border border-purple-200 bg-slate-50 p-4 text-sm">
-              <h3 className="font-semibold">Order Summary</h3>
-              <p className="mt-2">Items selected: {summary.totalItems}</p>
-              <p>Subtotal: {dollars(summary.subtotalCents)}</p>
-              <p className="text-xs text-slate-500">Final tax and total are calculated at submit.</p>
-            </section>
+                  <div className="space-y-2">
+                    <Label htmlFor="calloutPhotos">
+                      Photos (up to {CALL_OUT_PHOTO_LIMITS[activeCalloutTier]})
+                    </Label>
+                    <Input
+                      id="calloutPhotos"
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic,image/heif"
+                      multiple
+                      onChange={(e) => setCalloutPhotos(Array.from(e.target.files || []))}
+                    />
+                    <p className="text-xs text-slate-600">JPG, PNG, HEIC. Max 10MB each, ~4MB combined request size limit.</p>
+                  </div>
+                </div>
+              </section>
+            )}
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {phase === "cart" && (
+              <Button
+                type="button"
+                onClick={proceedToCheckout}
+                className="w-full rounded-md bg-purple-700 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-purple-800 md:w-auto"
+              >
+                Checkout
+              </Button>
+            )}
 
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-md bg-purple-700 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-purple-800 md:w-auto"
-            >
-              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {submitting ? "Submitting..." : "Submit Order"}
-            </Button>
-          </form>
+            {phase === "checkout" && (
+              <form onSubmit={submitOrder} className="space-y-6">
+                <section className="rounded-lg border border-purple-200 bg-purple-50/30 p-4 md:p-5">
+                  <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-purple-700">Contact Details</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="parentFirstName">Name (First) *</Label>
+                      <Input id="parentFirstName" value={parentFirstName} onChange={(e) => setParentFirstName(e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="parentLastName">Name (Last) *</Label>
+                      <Input id="parentLastName" value={parentLastName} onChange={(e) => setParentLastName(e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="parentEmail">Email *</Label>
+                      <Input id="parentEmail" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="parentPhone">Phone *</Label>
+                      <Input id="parentPhone" inputMode="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} required />
+                    </div>
+                  </div>
+                </section>
+
+                {paymentOption === "charge_account" && (
+                  <label className="flex items-center gap-3 rounded border bg-white p-3">
+                    <Checkbox checked={akadaChargeAuthorized} onCheckedChange={(c) => setAkadaChargeAuthorized(c === true)} />
+                    <span className="text-sm">
+                      I authorize Elite Dance to apply charges to my studio account and charge my card on file.
+                    </span>
+                  </label>
+                )}
+
+                <section className="rounded-md border border-purple-200 bg-slate-50 p-4 text-sm">
+                  <h3 className="font-semibold">Order Summary</h3>
+                  <p className="mt-2">Items selected: {summary.totalItems}</p>
+                  <p>Subtotal: {dollars(summary.subtotalCents)}</p>
+                  <p className="text-xs text-slate-500">Tax and final total are calculated at submit.</p>
+                </section>
+
+                {error && <p className="text-sm text-red-600">{error}</p>}
+
+                <div className="flex gap-3">
+                  <Button type="button" variant="outline" onClick={() => setPhase("cart")}>
+                    Back
+                  </Button>
+
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="rounded-md bg-purple-700 px-8 py-3 text-base font-semibold text-white shadow-md transition hover:bg-purple-800"
+                  >
+                    {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {paymentOption === "charge_account"
+                      ? (submitting ? "Submitting..." : "Submit Order")
+                      : (submitting ? "Processing..." : "Pay Now")}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </>
         )}
+
+        {error && phase === "cart" && <p className="text-sm text-red-600">{error}</p>}
       </CardContent>
     </Card>
   );

@@ -63,11 +63,22 @@ export default async function RecitalPreorderAdminPage() {
       o.xero_invoice_id,
       o.xero_payment_url,
       o.xero_last_error,
-      COUNT(i.id)::int AS item_count,
-      COALESCE(string_agg(i.product_name || ' x' || i.quantity::text, ', ' ORDER BY i.product_name), '') AS item_summary
+      COALESCE(iagg.item_count, 0)::int AS item_count,
+      COALESCE(aagg.asset_count, 0)::int AS asset_count,
+      COALESCE(iagg.item_summary, '') AS item_summary
     FROM public.recital_checkout_orders o
-    LEFT JOIN public.recital_checkout_order_items i ON i.order_id = o.id
-    GROUP BY o.id
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*)::int AS item_count,
+        string_agg(i.product_name || ' x' || i.quantity::text, ', ' ORDER BY i.product_name) AS item_summary
+      FROM public.recital_checkout_order_items i
+      WHERE i.order_id = o.id
+    ) iagg ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS asset_count
+      FROM public.recital_checkout_order_assets a
+      WHERE a.order_id = o.id
+    ) aagg ON true
     ORDER BY o.created_at DESC
   `;
 
@@ -154,6 +165,9 @@ export default async function RecitalPreorderAdminPage() {
                     <td className="px-4 py-3 text-gray-700">
                       <div className="font-medium">{Number(r.item_count ?? 0)} item(s)</div>
                       <div className="text-xs text-gray-600">{asString(r.item_summary)}</div>
+                      {Number(r.asset_count ?? 0) > 0 && (
+                        <div className="text-xs text-gray-500">Callout photos: {Number(r.asset_count ?? 0)}</div>
+                      )}
                     </td>
 
                     <td className="px-4 py-3 text-gray-700">

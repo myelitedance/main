@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS public.recital_checkout_orders (
   tax_cents INTEGER NOT NULL DEFAULT 0 CHECK (tax_cents >= 0),
   total_cents INTEGER NOT NULL DEFAULT 0 CHECK (total_cents >= 0),
   sales_tax_rate NUMERIC(8,6) NOT NULL DEFAULT 0,
+  callout_tier TEXT CHECK (callout_tier IN ('quarter','half','full')),
+  callout_message TEXT,
 
   payment_status TEXT NOT NULL DEFAULT 'pending'
     CHECK (payment_status IN ('pending', 'queued_for_xero', 'paid', 'failed', 'canceled')),
@@ -112,3 +114,17 @@ SELECT 'Dancer Congratulations', 'Custom callout printed for your dancer.', NULL
 WHERE NOT EXISTS (
   SELECT 1 FROM public.recital_preorder_products WHERE lower(name) = 'dancer congratulations'
 );
+
+CREATE TABLE IF NOT EXISTS public.recital_checkout_order_assets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL REFERENCES public.recital_checkout_orders(id) ON DELETE CASCADE,
+  file_url TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  file_size_bytes INTEGER NOT NULL CHECK (file_size_bytes > 0),
+  mime_type TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_recital_checkout_order_assets_order_id
+  ON public.recital_checkout_order_assets(order_id);

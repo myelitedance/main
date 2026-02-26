@@ -29,15 +29,28 @@ export async function GET() {
       o.tax_cents,
       o.total_cents,
       o.sales_tax_rate,
+      o.callout_tier,
+      o.callout_message,
       o.xero_sync_status,
       o.xero_invoice_id,
       o.xero_payment_url,
       o.xero_last_error,
-      COUNT(i.id)::int AS item_count,
-      COALESCE(string_agg(i.product_name || ' x' || i.quantity::text, ', ' ORDER BY i.product_name), '') AS item_summary
+      COALESCE(iagg.item_count, 0)::int AS item_count,
+      COALESCE(iagg.item_summary, '') AS item_summary,
+      COALESCE(aagg.asset_count, 0)::int AS asset_count
     FROM public.recital_checkout_orders o
-    LEFT JOIN public.recital_checkout_order_items i ON i.order_id = o.id
-    GROUP BY o.id
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*)::int AS item_count,
+        string_agg(i.product_name || ' x' || i.quantity::text, ', ' ORDER BY i.product_name) AS item_summary
+      FROM public.recital_checkout_order_items i
+      WHERE i.order_id = o.id
+    ) iagg ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS asset_count
+      FROM public.recital_checkout_order_assets a
+      WHERE a.order_id = o.id
+    ) aagg ON true
     ORDER BY o.created_at DESC
   `;
 
@@ -57,6 +70,9 @@ export async function GET() {
     "tax",
     "total",
     "sales_tax_rate",
+    "callout_tier",
+    "callout_message",
+    "callout_asset_count",
     "xero_sync_status",
     "xero_invoice_id",
     "xero_payment_url",
@@ -80,6 +96,9 @@ export async function GET() {
       Number(r.tax_cents ?? 0) / 100,
       Number(r.total_cents ?? 0) / 100,
       r.sales_tax_rate,
+      r.callout_tier,
+      r.callout_message,
+      r.asset_count,
       r.xero_sync_status,
       r.xero_invoice_id,
       r.xero_payment_url,
