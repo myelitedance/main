@@ -3,11 +3,15 @@ set -euo pipefail
 
 SKIP_TESTS=false
 TASK=""
+STRICT_CLEAN=false
+START_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --skip-tests) SKIP_TESTS=true; shift ;;
     --task) TASK="${2:-}"; shift 2 ;;
+    --strict-clean) STRICT_CLEAN=true; shift ;;
+    --start-only) START_ONLY=true; shift ;;
     *) echo "Unknown arg: $1"; exit 1 ;;
   esac
 done
@@ -26,12 +30,18 @@ BRANCH="$(git branch --show-current)"
 [[ -n "$BRANCH" ]] || fail "Could not detect branch"
 [[ "$BRANCH" != "main" ]] || fail "You are on main. Create a feature branch first."
 
+WORKTREE_DIRTY=false
 if [[ -n "$(git status --porcelain)" ]]; then
-  fail "Working tree is not clean"
+  WORKTREE_DIRTY=true
+  if [[ "$STRICT_CLEAN" == true ]]; then
+    fail "Working tree is not clean (--strict-clean enabled)"
+  fi
 fi
 
 LOG_DIR="$REPO_ROOT/.codex_logs"
 mkdir -p "$LOG_DIR"
+SESSIONS_DIR="$LOG_DIR/sessions"
+mkdir -p "$SESSIONS_DIR"
 
 START_EPOCH="$(date +%s)"
 START_ISO="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -41,6 +51,7 @@ SESSION_ID="$(date +"%Y%m%d-%H%M%S")"
 ACTIVE_FILE="$LOG_DIR/active_session.env"
 WORKLOG_FILE="$LOG_DIR/worklog.md"
 WORKLOG_CSV="$LOG_DIR/worklog.csv"
+SESSION_FILE="$SESSIONS_DIR/${SESSION_ID}.env"
 
 cat > "$ACTIVE_FILE" <<EOF
 SESSION_ID="$SESSION_ID"
@@ -49,7 +60,10 @@ START_ISO="$START_ISO"
 START_SHA="$START_SHA"
 BRANCH="$BRANCH"
 TASK="$TASK"
+WORKTREE_DIRTY="$WORKTREE_DIRTY"
 EOF
+
+cp "$ACTIVE_FILE" "$SESSION_FILE"
 
 if [[ ! -f "$WORKLOG_FILE" ]]; then
   cat > "$WORKLOG_FILE" <<EOF
@@ -67,6 +81,16 @@ echo "Repo: $REPO_ROOT"
 echo "Branch: $BRANCH"
 echo "Start: $START_ISO"
 [[ -n "$TASK" ]] && echo "Task: $TASK"
+if [[ "$WORKTREE_DIRTY" == true ]]; then
+  echo "Warning: working tree is dirty (timing still started)"
+fi
+
+if [[ "$START_ONLY" == true ]]; then
+  echo "Start-only mode: skipping typecheck/tests/build"
+  echo "Session active: $SESSION_ID"
+  echo "When done, run: ./scripts/postflight.sh --notes \"what you completed\""
+  exit 0
+fi
 
 echo "+ npm run typecheck"
 npm run typecheck

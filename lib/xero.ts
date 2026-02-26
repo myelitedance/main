@@ -21,9 +21,14 @@ type CreateInvoiceInput = {
   parentFirstName: string;
   parentLastName: string;
   parentEmail: string;
-  yearbookAmountCents: number;
-  congratsAmountCents: number;
-  totalAmountCents: number;
+  totalAmountCents?: number;
+  lineItems: Array<{
+    description: string;
+    quantity: number;
+    unitAmountCents: number;
+    accountCode: string;
+    taxType: string;
+  }>;
 };
 
 type CreateInvoiceResult = {
@@ -279,23 +284,14 @@ function buildLineItems(input: CreateInvoiceInput, config: StoredConfig) {
     TaxType: string;
   }> = [];
 
-  if (input.yearbookAmountCents > 0) {
+  for (const li of input.lineItems) {
+    if (li.quantity <= 0 || li.unitAmountCents < 0) continue;
     items.push({
-      Description: "2026 Recital Yearbook Preorder",
-      Quantity: 1,
-      UnitAmount: dollarsFromCents(input.yearbookAmountCents),
-      AccountCode: config.yearbookAccountCode,
-      TaxType: config.yearbookTaxType,
-    });
-  }
-
-  if (input.congratsAmountCents > 0) {
-    items.push({
-      Description: "2026 Recital Dancer Congratulations Ad",
-      Quantity: 1,
-      UnitAmount: dollarsFromCents(input.congratsAmountCents),
-      AccountCode: config.calloutsAccountCode,
-      TaxType: config.calloutsTaxType,
+      Description: li.description || "Recital Preorder Item",
+      Quantity: li.quantity,
+      UnitAmount: dollarsFromCents(li.unitAmountCents),
+      AccountCode: li.accountCode || config.yearbookAccountCode,
+      TaxType: li.taxType || config.yearbookTaxType,
     });
   }
 
@@ -303,7 +299,7 @@ function buildLineItems(input: CreateInvoiceInput, config: StoredConfig) {
     items.push({
       Description: "2026 Recital Preorder",
       Quantity: 1,
-      UnitAmount: dollarsFromCents(input.totalAmountCents),
+      UnitAmount: dollarsFromCents(input.totalAmountCents ?? 0),
       AccountCode: config.yearbookAccountCode,
       TaxType: config.yearbookTaxType,
     });

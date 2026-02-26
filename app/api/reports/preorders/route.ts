@@ -16,80 +16,93 @@ function csvEscape(value: unknown): string {
 export async function GET() {
   const rows = await sql`
     SELECT
-      rp.id,
-      rp.created_at,
-      rp.parent_first_name,
-      rp.parent_last_name,
-      rp.parent_email,
-      rp.parent_phone,
-      rp.dancer_first_name,
-      rp.dancer_last_name,
-      rp.yearbook_requested,
-      rp.congrats_size,
-      rp.congrats_message,
-      rp.yearbook_amount_cents,
-      rp.congrats_amount_cents,
-      rp.total_amount_cents,
-      rp.payment_option,
-      rp.payment_status,
-      rp.xero_sync_status,
-      rp.xero_invoice_id,
-      rp.xero_payment_url,
-      rp.xero_last_error,
-      COUNT(rpp.id)::int AS photo_count
-    FROM public.recital_preorders rp
-    LEFT JOIN public.recital_preorder_photos rpp ON rpp.preorder_id = rp.id
-    GROUP BY rp.id
-    ORDER BY rp.created_at DESC
+      o.id,
+      o.created_at,
+      o.customer_type,
+      o.payment_option,
+      o.payment_status,
+      o.parent_first_name,
+      o.parent_last_name,
+      o.parent_email,
+      o.parent_phone,
+      o.subtotal_cents,
+      o.tax_cents,
+      o.total_cents,
+      o.sales_tax_rate,
+      o.callout_tier,
+      o.callout_message,
+      o.xero_sync_status,
+      o.xero_invoice_id,
+      o.xero_payment_url,
+      o.xero_last_error,
+      COALESCE(iagg.item_count, 0)::int AS item_count,
+      COALESCE(iagg.item_summary, '') AS item_summary,
+      COALESCE(aagg.asset_count, 0)::int AS asset_count
+    FROM public.recital_checkout_orders o
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*)::int AS item_count,
+        string_agg(i.product_name || ' x' || i.quantity::text, ', ' ORDER BY i.product_name) AS item_summary
+      FROM public.recital_checkout_order_items i
+      WHERE i.order_id = o.id
+    ) iagg ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS asset_count
+      FROM public.recital_checkout_order_assets a
+      WHERE a.order_id = o.id
+    ) aagg ON true
+    ORDER BY o.created_at DESC
   `;
 
   const header = [
     "id",
     "created_at",
+    "customer_type",
+    "payment_option",
+    "payment_status",
     "parent_first_name",
     "parent_last_name",
     "parent_email",
     "parent_phone",
-    "dancer_first_name",
-    "dancer_last_name",
-    "yearbook_requested",
-    "congrats_size",
-    "congrats_message",
-    "yearbook_amount",
-    "congrats_amount",
-    "total_amount",
-    "payment_option",
-    "payment_status",
+    "item_count",
+    "item_summary",
+    "subtotal",
+    "tax",
+    "total",
+    "sales_tax_rate",
+    "callout_tier",
+    "callout_message",
+    "callout_asset_count",
     "xero_sync_status",
     "xero_invoice_id",
     "xero_payment_url",
     "xero_last_error",
-    "photo_count",
   ];
 
   const lines = rows.map((r) => {
     const values = [
       r.id,
       r.created_at,
+      r.customer_type,
+      r.payment_option,
+      r.payment_status,
       r.parent_first_name,
       r.parent_last_name,
       r.parent_email,
       r.parent_phone,
-      r.dancer_first_name,
-      r.dancer_last_name,
-      r.yearbook_requested,
-      r.congrats_size,
-      r.congrats_message,
-      Number(r.yearbook_amount_cents ?? 0) / 100,
-      Number(r.congrats_amount_cents ?? 0) / 100,
-      Number(r.total_amount_cents ?? 0) / 100,
-      r.payment_option,
-      r.payment_status,
+      r.item_count,
+      r.item_summary,
+      Number(r.subtotal_cents ?? 0) / 100,
+      Number(r.tax_cents ?? 0) / 100,
+      Number(r.total_cents ?? 0) / 100,
+      r.sales_tax_rate,
+      r.callout_tier,
+      r.callout_message,
+      r.asset_count,
       r.xero_sync_status,
       r.xero_invoice_id,
       r.xero_payment_url,
       r.xero_last_error,
-      r.photo_count,
     ];
 
     return values.map(csvEscape).join(",");
