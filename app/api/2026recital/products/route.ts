@@ -3,6 +3,8 @@ import { sql } from "@/lib/db";
 import { uploadImage } from "@/lib/storage";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function parseBool(value: FormDataEntryValue | null): boolean {
   if (typeof value !== "string") return false;
@@ -30,7 +32,10 @@ export async function GET(req: Request) {
         ORDER BY sort_order ASC, created_at DESC
       `;
 
-  return NextResponse.json({ products: rows });
+  return NextResponse.json(
+    { products: rows },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 export async function POST(req: Request) {

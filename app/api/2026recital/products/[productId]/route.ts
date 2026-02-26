@@ -3,6 +3,8 @@ import { sql } from "@/lib/db";
 import { uploadImage } from "@/lib/storage";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function parseBool(value: FormDataEntryValue | null): boolean {
   if (typeof value !== "string") return false;
