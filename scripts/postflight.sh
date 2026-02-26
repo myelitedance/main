@@ -29,15 +29,37 @@ LOG_DIR="$REPO_ROOT/.codex_logs"
 ACTIVE_FILE="$LOG_DIR/active_session.env"
 WORKLOG_FILE="$LOG_DIR/worklog.md"
 WORKLOG_CSV="$LOG_DIR/worklog.csv"
+SESSIONS_DIR="$LOG_DIR/sessions"
 
-[[ -f "$ACTIVE_FILE" ]] || fail "No active session found. Run preflight first."
-# shellcheck disable=SC1090
-source "$ACTIVE_FILE"
+RECOVERED=false
+if [[ -f "$ACTIVE_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ACTIVE_FILE"
+else
+  if [[ -d "$SESSIONS_DIR" ]]; then
+    CANDIDATE="$(ls -1t "$SESSIONS_DIR"/*.env 2>/dev/null | head -n 1 || true)"
+    if [[ -n "${CANDIDATE:-}" ]]; then
+      # shellcheck disable=SC1090
+      source "$CANDIDATE"
+      RECOVERED=true
+    fi
+  fi
+fi
 
 END_EPOCH="$(date +%s)"
 END_ISO="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 END_SHA="$(git rev-parse HEAD)"
+SESSION_ID="${SESSION_ID:-adhoc-$(date +"%Y%m%d-%H%M%S")}"
+START_EPOCH="${START_EPOCH:-$END_EPOCH}"
+START_ISO="${START_ISO:-$END_ISO}"
+START_SHA="${START_SHA:-$END_SHA}"
+BRANCH="${BRANCH:-$(git branch --show-current || echo unknown)}"
+TASK="${TASK:-}"
+WORKTREE_DIRTY="${WORKTREE_DIRTY:-unknown}"
 ELAPSED_SEC="$((END_EPOCH - START_EPOCH))"
+if (( ELAPSED_SEC < 0 )); then
+  ELAPSED_SEC=0
+fi
 
 HOURS=$((ELAPSED_SEC / 3600))
 MINUTES=$(((ELAPSED_SEC % 3600) / 60))
@@ -53,6 +75,8 @@ STATUS="$(git status --short || true)"
   echo "## Session $SESSION_ID"
   echo "- Task: ${TASK:-N/A}"
   echo "- Branch: $BRANCH"
+  echo "- Recovered session metadata: $RECOVERED"
+  echo "- Start worktree dirty: $WORKTREE_DIRTY"
   echo "- Clock-in (UTC): $START_ISO"
   echo "- Clock-out (UTC): $END_ISO"
   echo "- Duration: ${HOURS}h ${MINUTES}m ${SECONDS}s (${DEC_HOURS} hours)"
@@ -100,6 +124,9 @@ fi
 } >> "$WORKLOG_CSV"
 
 rm -f "$ACTIVE_FILE"
+if [[ -d "$SESSIONS_DIR" ]]; then
+  touch "$SESSIONS_DIR/${SESSION_ID}.closed" || true
+fi
 
 echo "Postflight complete"
 echo "Clock-out: $END_ISO"

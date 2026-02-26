@@ -1,56 +1,43 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { pool } from "@/lib/db";
-import { uploadImage } from "@/lib/storage";
 import { createXeroInvoiceForPreorder } from "@/lib/xero";
 
 export const runtime = "nodejs";
 
-type CongratsSize = "none" | "quarter" | "half" | "full";
+type CustomerType = "akada" | "guest";
 type PaymentOption = "charge_account" | "pay_now";
 
-const MESSAGE_LIMITS: Record<CongratsSize, number> = {
-  none: 0,
-  quarter: 120,
-  half: 240,
-  full: 500,
+type SubmitBody = {
+  customerType: CustomerType;
+  paymentOption: PaymentOption;
+  akadaChargeAuthorized?: boolean;
+  parentFirstName: string;
+  parentLastName: string;
+  parentEmail: string;
+  parentPhone: string;
+  items: Array<{ productId: string; quantity: number }>;
 };
 
-const YEARBOOK_AMOUNT_CENTS = 2000;
-const AD_AMOUNT_CENTS: Record<CongratsSize, number> = {
-  none: 0,
-  quarter: 2500,
-  half: 5000,
-  full: 10000,
+type ProductRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  taxable: boolean;
+  xero_account_code: string;
+  xero_tax_type: string;
 };
 
-const MAX_PHOTOS_BY_SIZE: Record<CongratsSize, number> = {
-  none: 0,
-  quarter: 1,
-  half: 3,
-  full: 6,
-};
-const MAX_TOTAL_UPLOAD_BYTES = 4 * 1024 * 1024;
+const resend = new Resend(process.env.RESEND_API_KEY!);
 
-const ALLOWED_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/heic",
-  "image/heif",
-]);
-
-function need(k: string) {
+function needEnv(k: string) {
   const v = process.env[k];
   if (!v) throw new Error(`Missing env: ${k}`);
   return v;
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
-const EMAIL_FROM = need("EMAIL_FROM");
-
-function asText(formData: FormData, key: string): string {
-  return String(formData.get(key) ?? "").trim();
-}
+const EMAIL_FROM = needEnv("EMAIL_FROM");
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -61,7 +48,13 @@ function isValidPhone(phone: string): boolean {
   return digits.length >= 10;
 }
 
-function formatDollars(cents: number): string {
+function parseTaxRate(): number {
+  const raw = Number(process.env.PREORDER_SALES_TAX_RATE ?? process.env.NEXT_PUBLIC_SALES_TAX_RATE ?? 0);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return raw > 1 ? raw / 100 : raw;
+}
+
+function dollars(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
@@ -74,41 +67,30 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function adDisplay(size: CongratsSize): string {
-  if (size === "quarter") return "1/4 page dancer congratulations";
-  if (size === "half") return "1/2 page dancer congratulations";
-  if (size === "full") return "Full page dancer congratulations";
-  return "None";
-}
-
 export async function POST(req: Request) {
   const client = await pool.connect();
   let inTransaction = false;
 
   try {
-    const formData = await req.formData();
+    const body = (await req.json()) as SubmitBody;
 
-    const parentFirstName = asText(formData, "parentFirstName");
-    const parentLastName = asText(formData, "parentLastName");
-    const parentEmail = asText(formData, "parentEmail").toLowerCase();
-    const parentPhone = asText(formData, "parentPhone");
-    const dancerFirstName = asText(formData, "dancerFirstName");
-    const dancerLastName = asText(formData, "dancerLastName");
-    const yearbookRequested = asText(formData, "yearbookRequested") === "true";
-    const congratsSizeRaw = asText(formData, "congratsSize");
-    const congratsMessage = asText(formData, "congratsMessage");
-    const paymentOptionRaw = asText(formData, "paymentOption");
-    const photos = formData.getAll("congratsPhotos").filter((item): item is File => item instanceof File);
+    const customerType = body.customerType;
+    const paymentOption = body.paymentOption;
+    const akadaChargeAuthorized = body.akadaChargeAuthorized === true;
 
-    if (
-      !parentFirstName ||
-      !parentLastName ||
-      !parentEmail ||
-      !parentPhone ||
-      !dancerFirstName ||
-      !dancerLastName
-    ) {
-      return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+    const parentFirstName = String(body.parentFirstName ?? "").trim();
+    const parentLastName = String(body.parentLastName ?? "").trim();
+    const parentEmail = String(body.parentEmail ?? "").trim().toLowerCase();
+    const parentPhone = String(body.parentPhone ?? "").trim();
+
+    const items = Array.isArray(body.items)
+      ? body.items
+          .map((i) => ({ productId: String(i.productId ?? "").trim(), quantity: Number(i.quantity ?? 0) }))
+          .filter((i) => i.productId.length > 0 && Number.isFinite(i.quantity) && i.quantity > 0)
+      : [];
+
+    if (!parentFirstName || !parentLastName || !parentEmail || !parentPhone) {
+      return NextResponse.json({ error: "Missing required contact fields." }, { status: 400 });
     }
 
     if (!isValidEmail(parentEmail)) {
@@ -119,160 +101,166 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid phone number." }, { status: 400 });
     }
 
-    if (!["none", "quarter", "half", "full"].includes(congratsSizeRaw)) {
-      return NextResponse.json({ error: "Invalid congratulations option." }, { status: 400 });
+    if (customerType !== "akada" && customerType !== "guest") {
+      return NextResponse.json({ error: "Invalid customer type." }, { status: 400 });
     }
 
-    if (!["charge_account", "pay_now"].includes(paymentOptionRaw)) {
-      return NextResponse.json({ error: "Invalid payment option." }, { status: 400 });
+    if (items.length === 0) {
+      return NextResponse.json({ error: "Please select at least one product." }, { status: 400 });
     }
 
-    const congratsSize = congratsSizeRaw as CongratsSize;
-    const paymentOption = paymentOptionRaw as PaymentOption;
-    const messageLimit = MESSAGE_LIMITS[congratsSize];
-
-    if (!yearbookRequested && congratsSize === "none") {
-      return NextResponse.json(
-        { error: "At least one item must be selected (yearbook or congratulations ad)." },
-        { status: 400 }
-      );
-    }
-
-    if (congratsSize === "none") {
-      if (congratsMessage.length > 0 || photos.length > 0) {
-        return NextResponse.json(
-          { error: "Message/photos require a dancer congratulations selection." },
-          { status: 400 }
-        );
+    if (customerType === "akada") {
+      if (paymentOption !== "charge_account") {
+        return NextResponse.json({ error: "Akada checkout must use charge_account." }, { status: 400 });
       }
-    } else {
-      if (!congratsMessage) {
-        return NextResponse.json({ error: "A congratulations message is required." }, { status: 400 });
-      }
-      if (congratsMessage.length > messageLimit) {
-        return NextResponse.json(
-          { error: `Message exceeds ${messageLimit} characters for selected ad size.` },
-          { status: 400 }
-        );
+      if (!akadaChargeAuthorized) {
+        return NextResponse.json({ error: "Authorization is required to charge studio account." }, { status: 400 });
       }
     }
 
-    const maxPhotos = MAX_PHOTOS_BY_SIZE[congratsSize];
-    if (photos.length > maxPhotos) {
-      return NextResponse.json(
-        { error: `Maximum ${maxPhotos} photo${maxPhotos === 1 ? "" : "s"} allowed for selected ad size.` },
-        { status: 400 }
-      );
+    if (customerType === "guest" && paymentOption !== "pay_now") {
+      return NextResponse.json({ error: "Guest checkout must use pay_now." }, { status: 400 });
     }
 
-    for (const photo of photos) {
-      if (photo.size <= 0) {
-        return NextResponse.json({ error: "One or more photos are empty." }, { status: 400 });
+    const uniqueProductIds = [...new Set(items.map((i) => i.productId))];
+
+    const productsRes = await client.query<ProductRow>(
+      `
+      SELECT id, name, description, price_cents, taxable, xero_account_code, xero_tax_type
+      FROM public.recital_preorder_products
+      WHERE is_active = true
+        AND id = ANY($1::uuid[])
+      `,
+      [uniqueProductIds]
+    );
+
+    const productMap = new Map(productsRes.rows.map((p) => [p.id, p]));
+
+    const taxRate = parseTaxRate();
+
+    const orderLines: Array<{
+      productId: string;
+      productName: string;
+      productDescription: string | null;
+      quantity: number;
+      unitPriceCents: number;
+      taxable: boolean;
+      xeroAccountCode: string;
+      xeroTaxType: string;
+      lineSubtotalCents: number;
+      lineTaxCents: number;
+      lineTotalCents: number;
+    }> = [];
+
+    for (const selected of items) {
+      const product = productMap.get(selected.productId);
+      if (!product) {
+        return NextResponse.json({ error: "One or more selected products are unavailable." }, { status: 400 });
       }
-      if (photo.size > 10 * 1024 * 1024) {
-        return NextResponse.json(
-          { error: `Photo ${photo.name} exceeds 10MB limit.` },
-          { status: 400 }
-        );
-      }
-      if (!ALLOWED_MIME_TYPES.has(photo.type)) {
-        return NextResponse.json(
-          { error: `Photo type not allowed: ${photo.type || "unknown"}.` },
-          { status: 400 }
-        );
-      }
+
+      const lineSubtotalCents = product.price_cents * selected.quantity;
+      const lineTaxCents = product.taxable ? Math.round(lineSubtotalCents * taxRate) : 0;
+      const lineTotalCents = lineSubtotalCents + lineTaxCents;
+
+      orderLines.push({
+        productId: product.id,
+        productName: product.name,
+        productDescription: product.description,
+        quantity: selected.quantity,
+        unitPriceCents: product.price_cents,
+        taxable: product.taxable,
+        xeroAccountCode: product.xero_account_code,
+        xeroTaxType: product.xero_tax_type,
+        lineSubtotalCents,
+        lineTaxCents,
+        lineTotalCents,
+      });
     }
 
-    const totalPhotoBytes = photos.reduce((sum, photo) => sum + photo.size, 0);
-    if (totalPhotoBytes > MAX_TOTAL_UPLOAD_BYTES) {
-      return NextResponse.json(
-        { error: "Total upload size is too large for this form. Please use smaller photos (about 4MB total max)." },
-        { status: 400 }
-      );
-    }
-
-    const yearbookAmountCents = yearbookRequested ? YEARBOOK_AMOUNT_CENTS : 0;
-    const congratsAmountCents = AD_AMOUNT_CENTS[congratsSize];
-    const totalAmountCents = yearbookAmountCents + congratsAmountCents;
+    const subtotalCents = orderLines.reduce((sum, l) => sum + l.lineSubtotalCents, 0);
+    const taxCents = orderLines.reduce((sum, l) => sum + l.lineTaxCents, 0);
+    const totalCents = subtotalCents + taxCents;
 
     await client.query("BEGIN");
     inTransaction = true;
 
-    const insertRes = await client.query(
+    const insertOrder = await client.query<{ id: string; created_at: string }>(
       `
-      INSERT INTO public.recital_preorders (
+      INSERT INTO public.recital_checkout_orders (
+        customer_type,
+        payment_option,
+        akada_charge_authorized,
         parent_first_name,
         parent_last_name,
         parent_email,
         parent_phone,
-        dancer_first_name,
-        dancer_last_name,
-        yearbook_requested,
-        congrats_size,
-        congrats_message,
-        congrats_message_max,
-        yearbook_amount_cents,
-        congrats_amount_cents,
-        total_amount_cents,
-        payment_option,
+        subtotal_cents,
+        tax_cents,
+        total_cents,
+        sales_tax_rate,
         payment_status,
         xero_sync_status
       )
       VALUES (
-        $1, $2, $3, $4,
-        $5, $6, $7, $8,
-        $9, $10, $11, $12,
-        $13, $14,
-        CASE WHEN $14 = 'pay_now' THEN 'queued_for_xero' ELSE 'pending' END,
-        CASE WHEN $14 = 'pay_now' THEN 'pending' ELSE 'not_configured' END
+        $1, $2, $3,
+        $4, $5, $6, $7,
+        $8, $9, $10, $11,
+        CASE WHEN $2 = 'pay_now' THEN 'queued_for_xero' ELSE 'pending' END,
+        CASE WHEN $2 = 'pay_now' THEN 'pending' ELSE 'not_configured' END
       )
       RETURNING id, created_at
       `,
       [
+        customerType,
+        paymentOption,
+        akadaChargeAuthorized,
         parentFirstName,
         parentLastName,
         parentEmail,
         parentPhone,
-        dancerFirstName,
-        dancerLastName,
-        yearbookRequested,
-        congratsSize,
-        congratsSize === "none" ? null : congratsMessage,
-        messageLimit,
-        yearbookAmountCents,
-        congratsAmountCents,
-        totalAmountCents,
-        paymentOption,
+        subtotalCents,
+        taxCents,
+        totalCents,
+        taxRate,
       ]
     );
 
-    const preorderId = insertRes.rows[0].id as string;
-    const submittedAt = insertRes.rows[0].created_at as string;
-    const studioTimeZone = process.env.STUDIO_TIMEZONE || "America/Chicago";
-    const submittedAtLocal = new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: studioTimeZone,
-    }).format(new Date(submittedAt));
+    const orderId = insertOrder.rows[0].id;
+    const createdAt = insertOrder.rows[0].created_at;
 
-    for (let i = 0; i < photos.length; i += 1) {
-      const file = photos[i];
-      const uploadPathPrefix = `recital-preorders/${preorderId}/photo-${i + 1}-${Date.now()}`;
-      const url = await uploadImage(file, uploadPathPrefix);
-
+    for (const line of orderLines) {
       await client.query(
         `
-        INSERT INTO public.recital_preorder_photos (
-          preorder_id,
-          file_url,
-          file_name,
-          file_size_bytes,
-          mime_type,
-          sort_order
+        INSERT INTO public.recital_checkout_order_items (
+          order_id,
+          product_id,
+          product_name,
+          product_description,
+          quantity,
+          unit_price_cents,
+          taxable,
+          xero_account_code,
+          xero_tax_type,
+          line_subtotal_cents,
+          line_tax_cents,
+          line_total_cents
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
         `,
-        [preorderId, url, file.name, file.size, file.type, i + 1]
+        [
+          orderId,
+          line.productId,
+          line.productName,
+          line.productDescription,
+          line.quantity,
+          line.unitPriceCents,
+          line.taxable,
+          line.xeroAccountCode,
+          line.xeroTaxType,
+          line.lineSubtotalCents,
+          line.lineTaxCents,
+          line.lineTotalCents,
+        ]
       );
     }
 
@@ -286,13 +274,18 @@ export async function POST(req: Request) {
     if (paymentOption === "pay_now") {
       try {
         const xeroInvoice = await createXeroInvoiceForPreorder({
-          preorderId,
+          preorderId: orderId,
           parentFirstName,
           parentLastName,
           parentEmail,
-          yearbookAmountCents,
-          congratsAmountCents,
-          totalAmountCents,
+          totalAmountCents: totalCents,
+          lineItems: orderLines.map((l) => ({
+            description: l.productName,
+            quantity: l.quantity,
+            unitAmountCents: l.unitPriceCents,
+            accountCode: l.xeroAccountCode,
+            taxType: l.xeroTaxType,
+          })),
         });
 
         payNowUrl = xeroInvoice.onlineInvoiceUrl;
@@ -300,7 +293,7 @@ export async function POST(req: Request) {
 
         await client.query(
           `
-          UPDATE public.recital_preorders
+          UPDATE public.recital_checkout_orders
           SET
             xero_sync_status = 'synced',
             xero_invoice_id = $2,
@@ -308,7 +301,7 @@ export async function POST(req: Request) {
             xero_last_error = NULL
           WHERE id = $1
           `,
-          [preorderId, xeroInvoice.invoiceId, xeroInvoice.onlineInvoiceUrl]
+          [orderId, xeroInvoice.invoiceId, xeroInvoice.onlineInvoiceUrl]
         );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Unknown Xero sync error";
@@ -317,64 +310,60 @@ export async function POST(req: Request) {
 
         await client.query(
           `
-          UPDATE public.recital_preorders
+          UPDATE public.recital_checkout_orders
           SET
             xero_sync_status = 'failed',
             payment_status = 'failed',
             xero_last_error = $2
           WHERE id = $1
           `,
-          [preorderId, msg.slice(0, 500)]
+          [orderId, msg.slice(0, 1000)]
         );
       }
     }
 
-    const xeroPayNowNote =
+    const studioTimeZone = process.env.STUDIO_TIMEZONE || "America/Chicago";
+    const submittedAtLocal = new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: studioTimeZone,
+    }).format(new Date(createdAt));
+
+    const itemLinesHtml = orderLines
+      .map((l) => {
+        const name = escapeHtml(l.productName);
+        return `<li>${name} x${l.quantity} — ${dollars(l.lineTotalCents)}</li>`;
+      })
+      .join("");
+
+    const paymentNote =
       paymentOption === "pay_now"
         ? payNowUrl
-          ? `Pay now selected. Complete payment here: <a href="${payNowUrl}" target="_blank" rel="noreferrer">${payNowUrl}</a>`
-          : "Pay now selected. We could not generate a payment link automatically, and front desk will follow up."
-        : "Studio account charge requested.";
-
-    const photoLines = photos.length > 0 ? `<p><strong>Photos uploaded:</strong> ${photos.length}</p>` : "";
-
-    const safeParentFirstName = escapeHtml(parentFirstName);
-    const safeParentLastName = escapeHtml(parentLastName);
-    const safeParentEmail = escapeHtml(parentEmail);
-    const safeParentPhone = escapeHtml(parentPhone);
-    const safeDancerFirstName = escapeHtml(dancerFirstName);
-    const safeDancerLastName = escapeHtml(dancerLastName);
-    const safeCongratsMessage = escapeHtml(congratsMessage);
+          ? `Pay online: <a href="${payNowUrl}" target="_blank" rel="noreferrer">${payNowUrl}</a>`
+          : "Pay-now selected. We could not generate a payment link automatically; front desk will follow up."
+        : "Charge to card on file authorized in Akada flow.";
 
     const html = `
-      <div style="font-family:Arial, sans-serif;font-size:16px;color:#222;line-height:1.4;">
-        <h2 style="margin:0 0 12px 0;">PREORDER Received</h2>
-        <p><strong>Order ID:</strong> ${preorderId}</p>
+      <div style="font-family:Arial,sans-serif;font-size:16px;color:#222;line-height:1.4;">
+        <h2>PREORDER Received</h2>
+        <p><strong>Order ID:</strong> ${orderId}</p>
         <p><strong>Submitted:</strong> ${submittedAtLocal} (${studioTimeZone})</p>
+        <p><strong>Customer Type:</strong> ${escapeHtml(customerType)}</p>
+        <p><strong>Payment Option:</strong> ${escapeHtml(paymentOption)}</p>
 
-        <h3 style="margin-top:20px;">Parent</h3>
-        <p>${safeParentFirstName} ${safeParentLastName}</p>
-        <p>${safeParentEmail}</p>
-        <p>${safeParentPhone}</p>
+        <h3>Parent</h3>
+        <p>${escapeHtml(parentFirstName)} ${escapeHtml(parentLastName)}</p>
+        <p>${escapeHtml(parentEmail)}</p>
+        <p>${escapeHtml(parentPhone)}</p>
 
-        <h3 style="margin-top:20px;">Dancer</h3>
-        <p>${safeDancerFirstName} ${safeDancerLastName}</p>
+        <h3>Items</h3>
+        <ul>${itemLinesHtml}</ul>
 
-        <h3 style="margin-top:20px;">Selections</h3>
-        <p><strong>Yearbook:</strong> ${yearbookRequested ? "Yes" : "No"} (${formatDollars(yearbookAmountCents)})</p>
-        <p><strong>Dancer Congratulations:</strong> ${adDisplay(congratsSize)} (${formatDollars(congratsAmountCents)})</p>
-        ${
-          congratsSize === "none"
-            ? ""
-            : `<p><strong>Message (${congratsMessage.length}/${messageLimit}):</strong> ${safeCongratsMessage}</p>`
-        }
-        ${photoLines}
+        <p><strong>Subtotal:</strong> ${dollars(subtotalCents)}</p>
+        <p><strong>Tax:</strong> ${dollars(taxCents)}</p>
+        <p style="font-size:18px;"><strong>Total:</strong> ${dollars(totalCents)}</p>
 
-        <h3 style="margin-top:20px;">Payment</h3>
-        <p><strong>Option:</strong> ${paymentOption === "pay_now" ? "Pay now" : "Charge my studio account"}</p>
-        <p>${xeroPayNowNote}</p>
-
-        <p style="margin-top:20px;font-size:18px;"><strong>Total: ${formatDollars(totalAmountCents)}</strong></p>
+        <p>${paymentNote}</p>
       </div>
     `;
 
@@ -387,9 +376,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      preorderId,
+      orderId,
       paymentOption,
-      totalAmountCents,
+      subtotalCents,
+      taxCents,
+      totalCents,
       payNowIntegrationStatus,
       payNowUrl,
       xeroErrorSummary,
@@ -398,11 +389,10 @@ export async function POST(req: Request) {
     if (inTransaction) {
       await client.query("ROLLBACK");
     }
-    console.error("Preorder submission failed:", err);
-    return NextResponse.json(
-      { error: "Failed to save preorder. Please try again." },
-      { status: 500 }
-    );
+
+    const msg = err instanceof Error ? err.message : "Failed to submit order";
+    console.error("Preorder checkout failed:", err);
+    return NextResponse.json({ error: msg }, { status: 500 });
   } finally {
     client.release();
   }

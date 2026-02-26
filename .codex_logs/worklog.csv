@@ -1,0 +1,1 @@
+session_id,task,branch,start_utc,end_utc,duration_seconds,duration_hours,start_sha,end_sha,notes,diff_summary,commit_count

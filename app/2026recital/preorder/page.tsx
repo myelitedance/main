@@ -4,9 +4,9 @@ export default function RecitalPreorderPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-purple-700">2026 Recital Preorder</h1>
+        <h1 className="text-3xl font-bold text-purple-700">2026 Recital Store</h1>
         <p className="mt-2 text-sm text-slate-700">
-          Reserve a recital yearbook and/or dancer congratulations ad.
+          Browse available recital products, add items to your cart, then choose account-based checkout or online invoice checkout.
         </p>
       </header>
 

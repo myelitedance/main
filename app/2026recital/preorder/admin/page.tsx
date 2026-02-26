@@ -12,10 +12,6 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-function asBool(value: unknown): boolean {
-  return value === true || value === "true" || value === "t";
-}
-
 function asDate(value: unknown): Date | null {
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   if (typeof value === "string" || typeof value === "number") {
@@ -40,53 +36,46 @@ export default async function RecitalPreorderAdminPage() {
   const hasSettingsTable = Boolean(tableCheck[0]?.reg);
   const xeroSettings = hasSettingsTable
     ? await sql`
-        SELECT
-          tenant_id,
-          sales_account_code,
-          tax_type,
-          yearbook_account_code,
-          callouts_account_code,
-          yearbook_tax_type,
-          callouts_tax_type,
-          connected_at
+        SELECT tenant_id, connected_at
         FROM public.xero_integration_settings
         WHERE id = true
         LIMIT 1
       `
     : [];
+
   const xeroConnected = xeroSettings.length > 0;
 
   const rows = await sql`
     SELECT
-      rp.id,
-      rp.created_at,
-      rp.parent_first_name,
-      rp.parent_last_name,
-      rp.parent_email,
-      rp.parent_phone,
-      rp.dancer_first_name,
-      rp.dancer_last_name,
-      rp.yearbook_requested,
-      rp.congrats_size,
-      rp.total_amount_cents,
-      rp.payment_option,
-      rp.payment_status,
-      rp.xero_sync_status,
-      rp.xero_invoice_id,
-      rp.xero_payment_url,
-      rp.xero_last_error,
-      COUNT(rpp.id)::int AS photo_count
-    FROM public.recital_preorders rp
-    LEFT JOIN public.recital_preorder_photos rpp ON rpp.preorder_id = rp.id
-    GROUP BY rp.id
-    ORDER BY rp.created_at DESC
+      o.id,
+      o.created_at,
+      o.parent_first_name,
+      o.parent_last_name,
+      o.parent_email,
+      o.parent_phone,
+      o.customer_type,
+      o.payment_option,
+      o.payment_status,
+      o.subtotal_cents,
+      o.tax_cents,
+      o.total_cents,
+      o.xero_sync_status,
+      o.xero_invoice_id,
+      o.xero_payment_url,
+      o.xero_last_error,
+      COUNT(i.id)::int AS item_count,
+      COALESCE(string_agg(i.product_name || ' x' || i.quantity::text, ', ' ORDER BY i.product_name), '') AS item_summary
+    FROM public.recital_checkout_orders o
+    LEFT JOIN public.recital_checkout_order_items i ON i.order_id = o.id
+    GROUP BY o.id
+    ORDER BY o.created_at DESC
   `;
 
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-gray-900">2026 Recital Preorders</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">2026 Recital Orders</h1>
 
           <div className="flex items-center gap-2">
             <a
@@ -95,6 +84,13 @@ export default async function RecitalPreorderAdminPage() {
             >
               Connect Xero
             </a>
+
+            <Link
+              href="/2026recital/preorder/admin/products"
+              className="rounded border border-blue-600 bg-white px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+            >
+              Manage Products
+            </Link>
 
             <Link
               href="/api/reports/preorders"
@@ -113,18 +109,12 @@ export default async function RecitalPreorderAdminPage() {
           )}
 
           {hasSettingsTable && !xeroConnected && (
-            <p className="text-amber-700">
-              Xero is not connected yet. Click <strong>Connect Xero</strong> to authorize and store tenant/token settings.
-            </p>
+            <p className="text-amber-700">Xero is not connected yet. Click <strong>Connect Xero</strong>.</p>
           )}
 
           {hasSettingsTable && xeroConnected && (
             <p className="text-emerald-700">
-              Xero connected. Tenant: <strong>{asString(xeroSettings[0]?.tenant_id)}</strong>, Yearbook Code:{" "}
-              <strong>{asString(xeroSettings[0]?.yearbook_account_code || xeroSettings[0]?.sales_account_code)}</strong>{" "}
-              (Tax: <strong>{asString(xeroSettings[0]?.yearbook_tax_type || xeroSettings[0]?.tax_type)}</strong>), Callouts Code:{" "}
-              <strong>{asString(xeroSettings[0]?.callouts_account_code || xeroSettings[0]?.sales_account_code)}</strong>{" "}
-              (Tax: <strong>{asString(xeroSettings[0]?.callouts_tax_type || "NONE")}</strong>)
+              Xero connected. Tenant: <strong>{asString(xeroSettings[0]?.tenant_id)}</strong>
             </p>
           )}
         </div>
@@ -135,8 +125,8 @@ export default async function RecitalPreorderAdminPage() {
               <tr>
                 <th className="px-4 py-3">Submitted</th>
                 <th className="px-4 py-3">Parent</th>
-                <th className="px-4 py-3">Dancer</th>
                 <th className="px-4 py-3">Order</th>
+                <th className="px-4 py-3">Totals</th>
                 <th className="px-4 py-3">Payment</th>
                 <th className="px-4 py-3">Xero</th>
               </tr>
@@ -146,7 +136,6 @@ export default async function RecitalPreorderAdminPage() {
               {rows.map((r) => {
                 const submittedAt = asDate(r.created_at);
                 const parentName = `${asString(r.parent_first_name)} ${asString(r.parent_last_name)}`.trim();
-                const dancerName = `${asString(r.dancer_first_name)} ${asString(r.dancer_last_name)}`.trim();
 
                 return (
                   <tr key={asString(r.id)} className="align-top hover:bg-gray-50">
@@ -159,15 +148,18 @@ export default async function RecitalPreorderAdminPage() {
                       <div className="font-medium text-gray-900">{parentName}</div>
                       <div className="text-xs text-gray-600">{asString(r.parent_email)}</div>
                       <div className="text-xs text-gray-600">{asString(r.parent_phone)}</div>
+                      <div className="mt-1 text-xs uppercase text-gray-500">{asString(r.customer_type)}</div>
                     </td>
 
-                    <td className="px-4 py-3 text-gray-800">{dancerName}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      <div className="font-medium">{Number(r.item_count ?? 0)} item(s)</div>
+                      <div className="text-xs text-gray-600">{asString(r.item_summary)}</div>
+                    </td>
 
                     <td className="px-4 py-3 text-gray-700">
-                      <div>Total: <span className="font-semibold">{dollars(r.total_amount_cents)}</span></div>
-                      <div className="text-xs text-gray-600">Yearbook: {asBool(r.yearbook_requested) ? "Yes" : "No"}</div>
-                      <div className="text-xs text-gray-600">Congrats: {asString(r.congrats_size)}</div>
-                      <div className="text-xs text-gray-600">Photos: {Number(r.photo_count ?? 0)}</div>
+                      <div>Subtotal: {dollars(r.subtotal_cents)}</div>
+                      <div>Tax: {dollars(r.tax_cents)}</div>
+                      <div className="font-semibold">Total: {dollars(r.total_cents)}</div>
                     </td>
 
                     <td className="px-4 py-3 text-gray-700">
