@@ -42,6 +42,12 @@ function needEnv(k: string) {
 }
 
 const EMAIL_FROM = needEnv("EMAIL_FROM");
+const FRONTDESK_EMAIL = "frontdesk@myelitedance.com";
+
+function extractEmailAddress(fromValue: string): string {
+  const m = fromValue.match(/<([^>]+)>/);
+  return (m?.[1] ?? fromValue).trim();
+}
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -468,8 +474,9 @@ export async function POST(req: Request) {
     `;
 
     await resend.emails.send({
-      from: EMAIL_FROM,
-      to: [parentEmail, "jason@myelitedance.com"],
+      from: `Elite Dance & Music <${extractEmailAddress(EMAIL_FROM)}>`,
+      to: [parentEmail, FRONTDESK_EMAIL],
+      replyTo: FRONTDESK_EMAIL,
       subject: "PREORDER Received",
       html,
     });
