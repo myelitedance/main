@@ -128,7 +128,7 @@ export default function PreorderForm() {
                     <p className="font-semibold text-slate-900">{p.name}</p>
                     {p.description && <p className="mt-1 text-xs text-slate-600">{p.description}</p>}
                     <p className="mt-2 text-sm font-medium text-purple-700">
-                      {dollars(p.price_cents)} {p.taxable ? "+ tax" : "(no tax)"}
+                      {dollars(p.price_cents)}
                     </p>
 
                     <div className="mt-3 flex items-center gap-2">
