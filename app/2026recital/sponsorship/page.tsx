@@ -98,7 +98,7 @@ export default function RecitalSponsorshipPage() {
           {tiers.map((tier) => (
             <article
               key={tier.title}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_6px_30px_rgba(15,23,42,0.08)]"
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_12px_34px_rgba(15,23,42,0.10)] ring-1 ring-dance-purple/10 transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.14)]"
             >
               <p className="text-2xl">{tier.icon}</p>
               <h2 className="mt-2 text-2xl font-bold text-dance-purple">{tier.title}</h2>
@@ -151,4 +151,3 @@ export default function RecitalSponsorshipPage() {
     </main>
   );
 }
-

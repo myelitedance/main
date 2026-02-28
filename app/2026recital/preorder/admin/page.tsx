@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
+import PaymentStatusSelect from "./PaymentStatusSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,8 @@ export default async function RecitalPreorderAdminPage() {
     ) aagg ON true
     ORDER BY o.created_at DESC
   `;
+  const orderCount = rows.length;
+  const allOrdersTotalCents = rows.reduce((sum, r) => sum + Number(r.total_cents ?? 0), 0);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -178,7 +181,10 @@ export default async function RecitalPreorderAdminPage() {
 
                     <td className="px-4 py-3 text-gray-700">
                       <div className="text-xs uppercase text-gray-500">{asString(r.payment_option)}</div>
-                      <div className="font-medium">{asString(r.payment_status)}</div>
+                      <PaymentStatusSelect
+                        orderId={asString(r.id)}
+                        initialStatus={asString(r.payment_status) === "paid" ? "paid" : "pending"}
+                      />
                     </td>
 
                     <td className="px-4 py-3">
@@ -208,6 +214,17 @@ export default async function RecitalPreorderAdminPage() {
               })}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-4 rounded-lg border bg-white p-4 text-sm text-gray-800 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              Orders received: <strong>{orderCount}</strong>
+            </div>
+            <div>
+              Total of all orders: <strong>{dollars(allOrdersTotalCents)}</strong>
+            </div>
+          </div>
         </div>
       </div>
     </main>
