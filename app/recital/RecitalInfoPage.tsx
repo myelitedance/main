@@ -6,7 +6,21 @@ type Props = {
   recital: RecitalRecord;
 };
 
+function getPdfEmbedUrl(url: string): string {
+  const [base, hash = ""] = url.split("#");
+  const params = new URLSearchParams(hash);
+  params.set("toolbar", "0");
+  params.set("navpanes", "0");
+  params.set("scrollbar", "0");
+  params.set("view", "FitH");
+  return `${base}#${params.toString()}`;
+}
+
 export default function RecitalInfoPage({ recital }: Props) {
+  const schedulePdfEmbedUrl = recital.pictureWeek.schedulePdfUrl
+    ? getPdfEmbedUrl(recital.pictureWeek.schedulePdfUrl)
+    : "";
+
   return (
     <main className="bg-white text-slate-900">
       <section className="bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue text-white">
@@ -116,11 +130,10 @@ export default function RecitalInfoPage({ recital }: Props) {
               </p>
               <iframe
                 title="Recital photo schedule PDF"
-                src={recital.pictureWeek.schedulePdfUrl}
-                 width="100%"
-                height="100%"
-                className="w-full h-full"
+                src={schedulePdfEmbedUrl}
+                className="mt-4 h-[70vh] min-h-[520px] w-full rounded-lg border border-slate-200"
                 style={{ border: "none" }}
+                loading="lazy"
               />
             </div>
           ) : null}
