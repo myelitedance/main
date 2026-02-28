@@ -98,8 +98,9 @@ export default function RecitalSponsorshipPage() {
           {tiers.map((tier) => (
             <article
               key={tier.title}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_12px_34px_rgba(15,23,42,0.10)] ring-1 ring-dance-purple/10 transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.14)]"
+              className="relative rounded-2xl border-2 border-slate-300 bg-white p-6 shadow-[0_12px_34px_rgba(15,23,42,0.10)] ring-1 ring-dance-purple/15 transition hover:-translate-y-0.5 hover:border-dance-purple/50 hover:shadow-[0_18px_42px_rgba(15,23,42,0.14)]"
             >
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-dance-purple via-dance-pink to-dance-blue" />
               <p className="text-2xl">{tier.icon}</p>
               <h2 className="mt-2 text-2xl font-bold text-dance-purple">{tier.title}</h2>
               {tier.tagline ? <p className="mt-2 text-sm italic text-slate-700">“{tier.tagline}”</p> : null}
