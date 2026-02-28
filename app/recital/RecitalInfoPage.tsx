@@ -101,6 +101,26 @@ export default function RecitalInfoPage({ recital }: Props) {
               </article>
             ))}
           </div>
+          {recital.pictureWeek.schedulePdfUrl ? (
+            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+              <a
+                href={recital.pictureWeek.schedulePdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block rounded-lg bg-dance-purple px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                {recital.pictureWeek.schedulePdfLabel || "View Photo Schedule PDF"}
+              </a>
+              <p className="mt-3 text-sm text-slate-600">
+                Use this official schedule PDF for class-by-class photo times.
+              </p>
+              <iframe
+                title="Recital photo schedule PDF"
+                src={recital.pictureWeek.schedulePdfUrl}
+                className="mt-4 h-[640px] w-full rounded-lg border border-slate-200"
+              />
+            </div>
+          ) : null}
         </div>
       </section>
 

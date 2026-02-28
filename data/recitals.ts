@@ -19,6 +19,8 @@ export type PictureWeekInfo = {
   heading: string;
   summary: string;
   windows: RecitalDate[];
+  schedulePdfUrl?: string;
+  schedulePdfLabel?: string;
 };
 
 export type SponsorshipInfo = {
@@ -90,18 +92,10 @@ export const recitals: RecitalRecord[] = [
           note: "Please watch studio communication for your class-specific time.",
         },
       ],
+      schedulePdfUrl: "/downloads/2026-spring-recital-photo-schedule.pdf",
+      schedulePdfLabel: "2026 Spring Recital Photo Schedule (PDF)",
     },
     policies: [
-      {
-        title: "Balance & Costume Deadline",
-        detail:
-          "Full recital balance must be paid by January 15 to avoid costume delays and possible additional shipping charges.",
-      },
-      {
-        title: "Refund Policy",
-        detail:
-          "No refunds or credits are available after January 15 because custom recital items are ordered.",
-      },
       {
         title: "Dress Rehearsal Requirement",
         detail:
