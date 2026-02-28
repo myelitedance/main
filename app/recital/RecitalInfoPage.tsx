@@ -117,7 +117,10 @@ export default function RecitalInfoPage({ recital }: Props) {
               <iframe
                 title="Recital photo schedule PDF"
                 src={recital.pictureWeek.schedulePdfUrl}
-                className="mt-4 h-[640px] w-full rounded-lg border border-slate-200"
+                 width="100%"
+                height="100%"
+                className="w-full h-full"
+                style={{ border: "none" }}
               />
             </div>
           ) : null}
